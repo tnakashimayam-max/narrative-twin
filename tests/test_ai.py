@@ -141,13 +141,60 @@ def test_モデル名は設定の値を使い_JSONの型を送る():
     assert "text" in body["output_config"]["format"]["schema"]["properties"]
 
 
-def test_断られたときの代替を頼んでいる():
+def test_Sonnetでは断られたときの代替を頼む():
+    server = Server(_message('{"text": "はい"}'))
+
+    ai.call_structured("写真の問い", system="確認", content="確認", schema=Answer, client=server.client())
+
+    assert json.loads(server.requests[0].content)["fallbacks"] == "default"
+    assert "server-side-fallback" in server.requests[0].headers["anthropic-beta"]
+
+
+def test_Haikuには断られたときの代替を送らない():
     server = Server(_message('{"text": "はい"}'))
 
     _call(server)
 
-    assert json.loads(server.requests[0].content)["fallbacks"] == "default"
-    assert "server-side-fallback" in server.requests[0].headers["anthropic-beta"]
+    assert config.MODEL_BY_ROLE["接続確認"] == "claude-haiku-5-5"
+    assert "fallbacks" not in json.loads(server.requests[0].content)
+    assert "server-side-fallback" not in server.requests[0].headers.get("anthropic-beta", "")
+
+
+def test_Haikuで断られた応答は_やり直さず断られたものとして扱う():
+    server = Server(_message("", stop_reason="refusal", model="claude-haiku-5-5"))
+
+    with pytest.raises(ai.AIRefusedError):
+        _call(server)
+
+    assert len(server.requests) == 1
+
+
+def test_応答の先頭が考える処理でも本文を読める():
+    response = _message('{"text": "はい"}', model="claude-haiku-5-5")
+    response["content"].insert(0, {"type": "thinking", "thinking": "", "signature": "abc"})
+
+    assert _call(Server(response)).value == Answer(text="はい")
+
+
+def test_考える処理だけで終わった応答は_答えがないものとして1回やり直す():
+    thinking_only = _message("", stop_reason="max_tokens", model="claude-haiku-5-5")
+    thinking_only["content"] = [{"type": "thinking", "thinking": "", "signature": "abc"}]
+    server = Server(thinking_only, _message('{"text": "はい"}'))
+
+    assert _call(server).value == Answer(text="はい")
+    assert len(server.requests) == 2
+
+
+def test_Haikuの費用はプロンプトが10万トークンを超えると高い値段で計算する():
+    assert config.cost_usd("claude-haiku-5-5", 100_000, 1000) == pytest.approx(0.0105)
+    assert config.cost_usd("claude-haiku-5-5", 100_001, 1000) == pytest.approx(0.0525, abs=1e-4)
+    assert config.cost_usd("claude-haiku-5-5", 1000, 1000, batch=True) == pytest.approx(0.0003)
+
+
+def test_写真を読むのはSonnetでほかの動く処理はHaiku():
+    assert config.MODEL_BY_ROLE["写真の問い"] == "claude-sonnet-5-5"
+    for role in ("ツインの会話", "スレッドの問い", "グループのツイン", "便りの下書き", "言明への分割", "人の候補", "架空ログの作成", "接続確認"):
+        assert config.MODEL_BY_ROLE[role] == "claude-haiku-5-5", role
 
 
 def test_JSONとして読めない答えは1回やり直す():

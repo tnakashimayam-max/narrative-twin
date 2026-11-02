@@ -13,7 +13,8 @@
 - モデルの使い分け：役割ごとのモデルは app/config.py の1か所で決める。
   選んだ理由の全体の表は docs/tools.md にある。
 - 拒否されたときの代替（server-side fallback）：安全の確認で拒否されたときに、
-  API の側で別のモデルに切り替えてもらう。
+  API の側で別のモデルに切り替えてもらう。Opus と Sonnet だけで使う。Haiku 5.5 にはこの機能が
+  ないので送らず、断られた応答（stop_reason が refusal）を AIRefusedError として扱う。
 - 画像を読む力：写真の問いのため。
 - Message Batches API：大量の処理を半額でまとめて行うため。
 
@@ -100,6 +101,7 @@ def _make_client() -> anthropic.Anthropic:
 def _answer_text(content: list) -> str | None:
     """答えの文を取り出す。
 
+    位置ではなく種類で選ぶ。Haiku 5.5 は考える処理が最初から有効で、先頭が thinking のことがあるため。
     fallback の区切りより前は、断ったモデルの途中の出力なので答えとして使わない。
     """
     text = None
@@ -152,6 +154,12 @@ def call_structured(
     """Claude を呼び、schema の型に合う答えを返す。"""
     params = _request_params(role, system, content, schema)
     claude = client or _make_client()
+    # 代替の指定は、機能のあるモデルにだけ送る。Haiku 5.5 に送るとエラーになるため。
+    options: dict = {}
+    if params["model"] in config.MODELS_WITH_FALLBACK:
+        options.update(betas=[_FALLBACK_BETA], fallbacks="default")
+    if role in config.TIMEOUT_SECONDS_BY_ROLE:
+        options["timeout"] = config.TIMEOUT_SECONDS_BY_ROLE[role]
 
     problem = "答えが空でした"
     # やり直した分の費用も記録に残すため、トークン数は全部の試行を足す
@@ -162,9 +170,7 @@ def call_structured(
         # 読み取りの失敗になり、断られたことが分からない。先に終わり方を見るために、
         # create で受け取ってから自分で検証する。
         try:
-            response = claude.beta.messages.create(
-                **params, betas=[_FALLBACK_BETA], fallbacks="default"
-            )
+            response = claude.beta.messages.create(**params, **options)
         except anthropic.APIError as error:
             raise AIUnavailableError(_describe_api_error(error)) from error
         input_tokens += response.usage.input_tokens
