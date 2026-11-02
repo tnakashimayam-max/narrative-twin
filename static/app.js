@@ -19,6 +19,44 @@ const userList = document.getElementById("user-list");
 const loginError = document.getElementById("login-error");
 const homeTitle = document.getElementById("home-title");
 const homeRole = document.getElementById("home-role");
+const photoSection = document.getElementById("photo-section");
+const photoInput = document.getElementById("photo-input");
+const photoStatus = document.getElementById("photo-status");
+const photoQuestion = document.getElementById("photo-question");
+
+// 写真の問いは、本人の画面にだけ出す。問いには必ず「ツイン（AI）」と付ける。
+async function askAboutPhoto(file) {
+  photoQuestion.hidden = true;
+  photoStatus.textContent = "写真を見ています。少しお待ちください。";
+  let message = "つながりませんでした。もう一度お試しください。";
+  try {
+    const response = await fetch("/api/photo-question", {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    const body = await response.json();
+    if (response.ok) {
+      photoStatus.textContent = "";
+      photoQuestion.textContent = `ツイン（AI）：${body.question}`;
+      photoQuestion.hidden = false;
+      return;
+    }
+    message = body.detail;
+  } catch {
+    // つながらないときは、上のメッセージのまま出す
+  }
+  photoStatus.textContent = message;
+}
+
+photoInput.addEventListener("change", () => {
+  if (photoInput.files.length > 0) {
+    const file = photoInput.files[0];
+    // 値を消しておくと、失敗のあとに同じ写真を選び直せる
+    photoInput.value = "";
+    askAboutPhoto(file);
+  }
+});
 
 function showError(message) {
   loginError.textContent = message;
@@ -29,6 +67,10 @@ function showHome(user) {
   document.body.dataset.look = LOOK_BY_ROLE[user.role];
   homeTitle.textContent = `${user.name}の画面`;
   homeRole.textContent = `立場：${user.role}`;
+  photoSection.hidden = user.role !== "本人";
+  photoQuestion.hidden = true;
+  photoStatus.textContent = "";
+  photoInput.value = "";
   loginView.hidden = true;
   homeView.hidden = false;
   // 画面が切り替わったことが、読み上げの機能を使う人にも分かるようにする

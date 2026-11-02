@@ -17,7 +17,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Role(StrEnum):
@@ -296,7 +296,7 @@ class Interpretation(_Base):
     言明の下に並べ、本人が確かめると状態が変わる仕組み）を、NAK の考え方をもとに
     期間中に新しく書いた実装として、この表で持つ。
     目的は、AIの読み取りを本人の言葉と分けて持つこと。
-    現時点では表の定義だけで、解釈を作る処理はない。
+    解釈は app/splitter.py が仮説として入れる。本人が確かめる処理はまだない。
     """
 
     id: int
@@ -490,6 +490,77 @@ class AccessLog(_Base):
     viewer_user_id: int
     target: str
     opened_at: datetime
+
+
+class AICall(_Base):
+    """AI の呼び出しの記録。どのモデルで作ったかを残すので、あとから検証できる。
+
+    言明への分割は推論の記録の種類に入らないので、呼び出し全体をここに残す。
+    """
+
+    id: int
+    role: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    is_batch: bool = False
+    target: str | None = None
+    called_at: datetime
+
+
+# ---- AI の結果の型。プログラムが確かめてから保存するので、そのまま表には入れない ----
+
+
+class PhotoQuestion(_Base):
+    """写真について本人に問いかける文。問いは1回に1つだけなので、1文だけを受け取る。"""
+
+    question: str
+
+    @field_validator("question")
+    @classmethod
+    def _one_question(cls, value: str) -> str:
+        text = value.strip()
+        ends = [char for char in text if char in "。！？!?\n.…"]
+        has_words = any(char.isalnum() for char in text)
+        if not has_words or len(ends) != 1 or text[-1] not in "？?":
+            raise ValueError("問いかける文を1つだけにしてください")
+        return text
+
+
+class SplitInterpretation(_Base):
+    """解釈の案（NAK-4V の1つの視点）。保存するときは必ず仮説になる。"""
+
+    perspective: Perspective
+    viewpoint_role: Role
+    body: str = Field(min_length=1)
+    confidence: Confidence
+    caution: str | None = None
+
+
+class SplitStatement(_Base):
+    """言明の案。
+
+    話した人と誰についてかは、入力に書かれた名前で受け取る（TSS）。
+    根拠の発言は、入力で振った1始まりの番号で受け取る。発言の本当の番号は53ビットの乱数なので、
+    AI に書き写させると誤りやすいため。共有範囲は受け取らない。見せる範囲は本人が決めるため。
+    """
+
+    source: Source
+    subject: str
+    speaker: str
+    body: str = Field(min_length=1)
+    period: Period
+    theme: Theme
+    petals: Petals = []
+    utterance_numbers: list[int]
+    interpretations: list[SplitInterpretation] = []
+    confirm_question: str | None = None
+
+
+class SplitResult(_Base):
+    """言明に分けた結果。"""
+
+    statements: list[SplitStatement]
 
 
 class Evaluation(_Base):

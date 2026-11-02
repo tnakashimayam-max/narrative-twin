@@ -31,7 +31,15 @@
     <main id="home-view" class="panel" hidden>
       <h1 id="home-title" tabindex="-1"></h1>
       <p id="home-role"></p>
-      <p>この画面の中身は、これから作ります。</p>
+      <section id="photo-section" class="photo" hidden>
+        <h2>写真について話す</h2>
+        <p>写真を1枚選ぶと、ツイン（AI）が問いかけます。</p>
+        <label class="file-label" for="photo-input">写真を選ぶ</label>
+        <input id="photo-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" />
+        <p id="photo-status" role="status"></p>
+        <p id="photo-question" class="twin-question" hidden></p>
+      </section>
+      <p id="home-note">この画面の中身は、これから作ります。</p>
       <button id="logout-button" type="button">別の人を選ぶ</button>
     </main>
 

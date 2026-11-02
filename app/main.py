@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import auth, config, db, records
+from app import auth, config, db, intake, records
 
 
 def create_app(db_path: Path | str | None = None) -> FastAPI:
@@ -28,6 +28,7 @@ def create_app(db_path: Path | str | None = None) -> FastAPI:
     app.state.db_path = path
     app.include_router(auth.router)
     app.include_router(records.router)
+    app.include_router(intake.router)
     # 画面のファイルは最後につなぐ。先につなぐと /api の道を隠してしまうため。
     app.mount("/", StaticFiles(directory=config.STATIC_DIR, html=True), name="static")
     return app

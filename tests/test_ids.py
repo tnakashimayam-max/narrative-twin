@@ -41,6 +41,7 @@ SEQUENTIAL_ID_TABLES = [
     "consolidation_runs",
     "evaluations",
     "care_plan_drafts",
+    "ai_calls",
 ]
 LARGEST_SAFE_INTEGER = 2**53 - 1
 

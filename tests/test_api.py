@@ -141,10 +141,11 @@ def test_原則2の順に並ぶ(conn, users, login, add_utterance, make_draft, a
         ),
     )
     words = add_statement("朝の散歩が好きです。")
+    seen = add_utterance("今日は笑顔でうなずいていた", speaker="田中さん")
     now = ledger.append_statement(
         conn,
         make_draft(
-            [said.id],
+            [seen.id],
             "今日は笑顔でうなずいていた",
             source=Source.OBSERVATION,
             speaker_user_id=users["田中さん"].id,

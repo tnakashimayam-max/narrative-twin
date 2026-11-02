@@ -18,19 +18,24 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Iterable
 from datetime import date, datetime
 
-from app import db
+from app import db, verbatim
 from app.schemas import (
     Comment,
     CommentDraft,
     ConfirmStatus,
     Conversation,
     ConversationDraft,
+    Interpretation,
+    InterpretationStatus,
     Letter,
     LetterDraft,
+    Period,
+    Perspective,
     Petal,
     Place,
     Role,
@@ -38,6 +43,7 @@ from app.schemas import (
     Source,
     Statement,
     StatementDraft,
+    Theme,
     Utterance,
     UtteranceDraft,
 )
@@ -105,6 +111,59 @@ def add_comment(conn: sqlite3.Connection, draft: CommentDraft) -> Comment:
     return db.row_to_model(row, Comment)
 
 
+def add_interpretation(
+    conn: sqlite3.Connection,
+    *,
+    statement_id: int,
+    perspective: Perspective,
+    viewpoint_role: Role,
+    body: str,
+    confidence: float,
+    caution: str | None,
+) -> Interpretation:
+    """解釈を、仮説として言明の下に入れる（仮説リーフ）。
+
+    状態を引数で受け取らないのは、AI の結果を「本人が確かめた」として入れさせないため。
+    根拠は元の言明1つにする。
+    """
+    values = Interpretation(
+        id=1,
+        statement_id=statement_id,
+        perspective=perspective,
+        viewpoint_role=viewpoint_role,
+        body=body,
+        confidence=confidence,
+        caution=caution,
+        evidence_statement_ids=[statement_id],
+        status=InterpretationStatus.HYPOTHESIS,
+    ).model_dump(mode="json", exclude={"id"})
+    with conn:
+        interpretation_id = db.insert_row(conn, "interpretations", values)
+    row = conn.execute("SELECT * FROM interpretations WHERE id = ?", (interpretation_id,)).fetchone()
+    return db.row_to_model(row, Interpretation)
+
+
+def add_pending_question(
+    conn: sqlite3.Connection,
+    *,
+    question: str,
+    theme: Theme | None = None,
+    period: Period | None = None,
+    petals: list[Petal] | None = None,
+) -> None:
+    """本人に確かめる問いの候補を入れる。まだ聞いていないので、聞いた日と結果は空にする。"""
+    with conn:
+        conn.execute(
+            "INSERT INTO question_logs (question, theme, period, petals) VALUES (?, ?, ?, ?)",
+            (
+                question,
+                theme.value if theme else None,
+                period.value if period else None,
+                json.dumps([petal.value for petal in petals or []], ensure_ascii=False),
+            ),
+        )
+
+
 def add_utterance(conn: sqlite3.Connection, draft: UtteranceDraft) -> Utterance:
     """発言を追記する。"""
     with conn:
@@ -149,20 +208,25 @@ def _check_draft(conn: sqlite3.Connection, draft: StatementDraft) -> None:
 
     if not draft.source_utterance_ids:
         raise LedgerError("根拠の発言がない言明は入れられません")
-    for utterance_id in draft.source_utterance_ids:
-        if get_utterance(conn, utterance_id) is None:
-            raise LedgerError(f"根拠の発言が見つかりません：{utterance_id}")
+    utterances = [get_utterance(conn, number) for number in draft.source_utterance_ids]
+    if None in utterances:
+        raise LedgerError("根拠の発言が見つかりません")
+
+    # AIの推測のほかは、話した人が根拠の発言の話し手と同じでなければならない。
+    # 別の人の発言を、美穂さんの証言などとして記録させないため。
+    if draft.source is not Source.AI_GUESS:
+        for utterance in utterances:
+            if utterance.speaker_is_twin or utterance.speaker_user_id != draft.speaker_user_id:
+                raise LedgerError("話した人が、根拠の発言の話し手と合いません")
 
     if draft.source not in _VERBATIM_SOURCES:
         return
 
-    if len(draft.source_utterance_ids) != 1:
+    if len(utterances) != 1:
         raise LedgerError("本人の言葉の根拠の発言は、ちょうど1つです")
-    utterance = get_utterance(conn, draft.source_utterance_ids[0])
-    if not _is_self(conn, utterance.speaker_user_id):
-        raise LedgerError("本人の言葉は、本人の発言からだけ作れます")
-    if draft.body not in utterance.text:
-        raise LedgerError("本人の言葉の本文は、発言の原文の抜き出しにしてください")
+    problem = verbatim.quote_problem(utterances[0].text, draft.body)
+    if problem:
+        raise LedgerError(f"本人の言葉の本文：{problem}")
 
 
 def _insert(

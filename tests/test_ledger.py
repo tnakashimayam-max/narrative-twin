@@ -149,10 +149,47 @@ def _draft_by(users, make_draft, utterance_id, source, speaker):
     )
 
 
+@pytest.mark.parametrize(
+    ("source", "said_by", "written_by"),
+    [
+        (Source.FAMILY_TESTIMONY, "節子さん", "美穂さん"),
+        (Source.FAMILY_TESTIMONY, "誠一さん", "美穂さん"),
+        (Source.FAMILY_TESTIMONY, None, "美穂さん"),
+        (Source.CONNECTED_TESTIMONY, "美穂さん", "節子さん"),
+        (Source.OBSERVATION, "美穂さん", "田中さん"),
+        (Source.OBSERVATION, None, "美穂さん"),
+        (Source.SELF_WORDS, "美穂さん", "誠一さん"),
+    ],
+)
+def test_話した人を根拠の発言の話し手と違う人にできない(
+    conn, users, add_utterance, make_draft, source, said_by, written_by
+):
+    utterance = add_utterance("朝の散歩が好きです。", speaker=said_by, is_twin=said_by is None)
+
+    with pytest.raises(LedgerError, match="話し手"):
+        ledger.append_statement(conn, _draft_by(users, make_draft, utterance.id, source, written_by))
+
+
+def test_AIの推測は人の発言を根拠にできる(conn, users, add_utterance, make_draft):
+    utterance = add_utterance("朝の散歩が好きです。", speaker="美穂さん")
+    draft = make_draft(
+        [utterance.id],
+        "外の空気を大切にしているのかもしれません",
+        source=Source.AI_GUESS,
+        speaker_user_id=None,
+        speaker_is_twin=True,
+    )
+
+    assert ledger.append_statement(conn, draft).speaker_is_twin is True
+
+
 @pytest.mark.parametrize("speaker", SPEAKERS, ids=lambda s: s or "ツイン")
 @pytest.mark.parametrize("source", ALLOWED_SPEAKERS.keys(), ids=lambda s: s.value)
 def test_出どころごとに書ける人が決まっている(conn, users, add_utterance, make_draft, source, speaker):
-    utterance = add_utterance("朝の散歩が好きです。")
+    # 話した人と根拠の発言の話し手を揃える。ここでは役割の決まりだけを確かめるため。
+    utterance = add_utterance(
+        "朝の散歩が好きです。", speaker=speaker or "誠一さん", is_twin=speaker is None
+    )
     draft = _draft_by(users, make_draft, utterance.id, source, speaker)
 
     if speaker in ALLOWED_SPEAKERS[source]:

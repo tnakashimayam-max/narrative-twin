@@ -116,6 +116,73 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.photo {
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.file-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+input[type="file"] {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+}
+
+.twin-question {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-left: 4px solid var(--accent);
+  font-weight: 700;
+}
+
+.case-form {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 32px;
+}
+
+.case-form label {
+  font-weight: 700;
+}
+
+.case-form textarea,
+.case-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.case-list {
+  padding: 0;
+  list-style: none;
+}
+
+.case-list li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.case-list p {
+  margin: 0 0 8px;
+}
+
 .error {
   margin-top: 16px;
   color: var(--error);

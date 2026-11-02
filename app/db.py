@@ -248,6 +248,17 @@ CREATE TABLE IF NOT EXISTS care_plan_drafts (
     previous_version_id INTEGER REFERENCES care_plan_drafts(id)
 );
 
+CREATE TABLE IF NOT EXISTS ai_calls (
+    id INTEGER PRIMARY KEY,
+    role TEXT NOT NULL,
+    model TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    is_batch INTEGER NOT NULL DEFAULT 0 CHECK (is_batch IN (0, 1)),
+    target TEXT,
+    called_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS evaluations (
     id INTEGER PRIMARY KEY,
     question TEXT NOT NULL,
@@ -347,6 +358,7 @@ TABLE_MODELS: dict[str, type[BaseModel]] = {
     "inference_logs": s.InferenceLog,
     "question_logs": s.QuestionLog,
     "care_plan_drafts": s.CarePlanDraft,
+    "ai_calls": s.AICall,
     "evaluations": s.Evaluation,
 }
 
@@ -456,6 +468,34 @@ def list_users(connection: sqlite3.Connection) -> list[s.User]:
 def get_user(connection: sqlite3.Connection, user_id: int) -> s.User | None:
     row = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return row_to_model(row, s.User) if row else None
+
+
+def log_ai_call(
+    connection: sqlite3.Connection,
+    *,
+    role: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    target: str | None = None,
+    is_batch: bool = False,
+) -> None:
+    """AI の呼び出しを記録する。どのモデルで作ったかと、費用の元になるトークン数を残す。"""
+    with connection:
+        connection.execute(
+            "INSERT INTO ai_calls "
+            "(role, model, input_tokens, output_tokens, is_batch, target, called_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                role,
+                model,
+                input_tokens,
+                output_tokens,
+                int(is_batch),
+                target,
+                datetime.now().astimezone().isoformat(),
+            ),
+        )
 
 
 def log_access(connection: sqlite3.Connection, viewer_user_id: int, target: str) -> None:

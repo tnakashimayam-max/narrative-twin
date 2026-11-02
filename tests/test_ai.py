@@ -62,7 +62,7 @@ class Server:
 
 def _call(server: Server):
     return ai.call_structured(
-        "接続確認", system="確認", user_text="確認", schema=Answer, client=server.client()
+        "接続確認", system="確認", content="確認", schema=Answer, client=server.client()
     )
 
 
@@ -187,7 +187,7 @@ def test_モデルが決まっていない役割は呼ばない():
 
     with pytest.raises(ValueError):
         ai.call_structured(
-            "決まっていない役割", system="確認", user_text="確認", schema=Answer, client=server.client()
+            "決まっていない役割", system="確認", content="確認", schema=Answer, client=server.client()
         )
 
     assert server.requests == []
@@ -241,7 +241,9 @@ def _imported_modules(path: Path) -> set[str]:
 
 
 @pytest.mark.parametrize(
-    "filename", sorted(path.name for path in APP_DIR.glob("*.py") if path.name != "ai.py")
+    "filename",
+    # intake.py は AI の層と決まった手順の層をつなぐ場所なので、AI の層を読み込む
+    sorted(path.name for path in APP_DIR.glob("*.py") if path.name not in {"ai.py", "intake.py"}),
 )
 def test_決まった手順の層はAIを呼ばない(filename):
     imported = _imported_modules(APP_DIR / filename)

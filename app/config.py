@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
 DB_PATH = ROOT / "data" / "narrative_twin.db"
 STATIC_DIR = ROOT / "static"
+EVAL_CASES_PATH = ROOT / "eval" / "cases.json"
 
 API_KEY_NAME = "ANTHROPIC_API_KEY"
 
@@ -50,6 +51,20 @@ MODEL_BY_ROLE: dict[str, str] = {
     "根拠チェック": _OPUS,
 }
 
+# 役割ごとの考える深さ。指定のない役割はモデルの既定のまま。
+# いずれも短く決まった形の答えなので、深く考えさせて費用を増やす必要がない。
+EFFORT_BY_ROLE: dict[str, str] = {
+    "写真の問い": "low",
+    "言明への分割": "medium",
+    "架空ログの作成": "low",
+}
+
+# 役割ごとの応答の上限。バッチは数が多いので、1回あたりの費用の上限をここで決める。
+MAX_TOKENS_BY_ROLE: dict[str, int] = {
+    "架空ログの作成": 4000,
+    "言明への分割": 8000,
+}
+
 # 公式の料金表（2026-11-02 に確認）。1M トークンあたりの USD。費用の計算と docs/tools.md に使う。
 # バッチは入力も出力も半額。
 PRICE_PER_MTOK: dict[str, dict[str, float]] = {
@@ -60,6 +75,16 @@ BATCH_DISCOUNT = 0.5
 
 # 1回の応答の上限。ここで切れると JSON が壊れ、型に合わない答えとしてやり直しになる。
 MAX_TOKENS = 16000
+
+# 通信の失敗のときに SDK が繰り返す回数。費用と待ち時間を読めるよう、明示する。
+MAX_API_RETRIES = 2
+
+
+def cost_usd(model: str, input_tokens: int, output_tokens: int, *, batch: bool = False) -> float:
+    """トークン数から費用を計算する。料金表にないモデルは 0 ではなくエラーにする。"""
+    price = PRICE_PER_MTOK[model]
+    cost = (input_tokens * price["input"] + output_tokens * price["output"]) / 1_000_000
+    return cost * BATCH_DISCOUNT if batch else cost
 
 
 class MissingApiKeyError(RuntimeError):
