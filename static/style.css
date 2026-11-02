@@ -1,0 +1,123 @@
+/*
+  役割：簡易ログインの画面と空の画面の見た目。
+  4つの極：特定の極に属さない土台。
+  守る原則：8（「架空データ」を目立たせる）。
+
+  本文は16px以上、ボタンは高さ44px以上にする。高齢の本人が迷わず押せるようにするため。
+  手紙・アルバム風（本人・家族・縁のある人）と、白を基調にした見た目（専門職）を
+  body の data-look で切り替える。
+*/
+
+:root {
+  --paper: #fbf6ea;
+  --card: #fffdf7;
+  --ink: #33291f;
+  --line: #8a7458;
+  --accent: #6b4a2b;
+  --accent-ink: #ffffff;
+  --error: #9b1c1c;
+}
+
+body[data-look="modern"] {
+  --paper: #ffffff;
+  --card: #ffffff;
+  --ink: #1f2933;
+  --line: #9aa5b1;
+  --accent: #1f4e79;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 2px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.panel {
+  max-width: 40rem;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+/* [hidden] を display の指定より強くする。切り替えた画面が残らないようにするため。 */
+[hidden] {
+  display: none !important;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  line-height: 1.4;
+}
+
+h1:focus {
+  outline: none;
+}
+
+.user-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+button {
+  min-height: 56px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.error {
+  margin-top: 16px;
+  color: var(--error);
+  font-weight: 700;
+}

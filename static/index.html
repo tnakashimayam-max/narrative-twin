@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  役割：簡易ログインの画面と、4人それぞれの空の画面。
+  4つの極：特定の極に属さない土台。
+  守る原則：8（「架空データ」を常に出す）。
+  サーバーとのやり取りの取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Narrative Twin</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <span class="brand">Narrative Twin</span>
+      <span class="tags">
+        <span class="tag">架空データ</span>
+        <span class="tag">デモ用の簡易ログイン</span>
+      </span>
+    </header>
+
+    <main id="login-view" class="panel">
+      <h1>どなたですか？</h1>
+      <p>お名前を選ぶと、その人の画面に切り替わります。パスワードはいりません。</p>
+      <div id="user-list" class="user-list"></div>
+      <p id="login-error" class="error" role="alert" hidden></p>
+    </main>
+
+    <main id="home-view" class="panel" hidden>
+      <h1 id="home-title" tabindex="-1"></h1>
+      <p id="home-role"></p>
+      <p>この画面の中身は、これから作ります。</p>
+      <button id="logout-button" type="button">別の人を選ぶ</button>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
