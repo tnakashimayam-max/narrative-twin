@@ -289,8 +289,13 @@ def _imported_modules(path: Path) -> set[str]:
 
 @pytest.mark.parametrize(
     "filename",
-    # intake.py は AI の層と決まった手順の層をつなぐ場所なので、AI の層を読み込む
-    sorted(path.name for path in APP_DIR.glob("*.py") if path.name not in {"ai.py", "intake.py"}),
+    # 次のファイルは AI の層と決まった手順の層をつなぐ場所なので、AI の層を読み込む。
+    # 照合（verbatim）、台帳（ledger）、同意（consent）、写真（photos）、部屋の表（room_store）などはここに入らない。
+    sorted(
+        path.name
+        for path in APP_DIR.glob("*.py")
+        if path.name not in {"ai.py", "intake.py", "twin.py", "jobs.py", "rooms.py", "timeline.py"}
+    ),
 )
 def test_決まった手順の層はAIを呼ばない(filename):
     imported = _imported_modules(APP_DIR / filename)

@@ -5,18 +5,21 @@
 守る原則：10（API を通さず記録を返す経路を作らない）。
 
 create_app に保存先を渡せるようにしているのは、テストを本物のデータベースから切り離すため。
-関連するテスト：tests/test_api.py
+写真は静的ファイルとしては出さない。data/ を画面のファイルの道につながない。
+関連するテスト：tests/test_api.py、tests/test_modes.py
 """
 
 from __future__ import annotations
 
+import threading
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import auth, config, db, eval_cases, intake, records
+from app import archive, auth, clock, config, db, ecomap, eval_cases, intake, people, photos, records, rooms, timeline
 
 
 def create_app(
@@ -42,10 +45,25 @@ def create_app(
     app.state.db_path = path
     app.state.deployment = deployment
     app.state.eval_cases_path = Path(eval_cases_path) if eval_cases_path else config.EVAL_CASES_PATH
+    app.state.day_offset = timedelta(0)
+    # ツインが考えている部屋と、同じ対象を同時に処理しないための鍵。1つのプロセスの中で足りる。
+    app.state.thinking_rooms = set()
+    app.state.room_locks = {}
+    app.state.room_locks_guard = threading.Lock()
+    app.state.job_locks = {}
+    app.state.job_locks_guard = threading.Lock()
+    # /api/people/candidates を先につなぐ。/api/people/{番号} より後だと番号の道に吸われるため。
     app.include_router(auth.router)
+    app.include_router(ecomap.router)
+    app.include_router(people.router)
+    app.include_router(photos.router)
+    app.include_router(rooms.router)
+    app.include_router(timeline.router)
+    app.include_router(archive.router)
     app.include_router(records.router)
     app.include_router(intake.router)
     app.include_router(eval_cases.router)
+    app.include_router(clock.router)
     # 画面のファイルは最後につなぐ。先につなぐと /api の道を隠してしまうため。
     app.mount("/", StaticFiles(directory=config.STATIC_DIR, html=True), name="static")
     return app

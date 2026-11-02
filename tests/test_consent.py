@@ -175,7 +175,7 @@ def test_ログインしていなければ返さない(db_path, conn, records):
 
 def test_存在しない人の印を送っても返さない(db_path, conn, records):
     client = TestClient(create_app(db_path))
-    client.cookies.set("nt_user_id", "99999")
+    client.headers["X-NT-User"] = "99999"
 
     assert client.get("/api/statements").status_code == 401
 

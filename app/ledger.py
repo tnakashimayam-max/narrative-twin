@@ -186,6 +186,37 @@ def add_pending_question(
         )
 
 
+def add_asked_question(
+    conn: sqlite3.Connection,
+    *,
+    question: str,
+    theme: Theme | None,
+    asked_on: date,
+    utterance_id: int,
+    conversation_id: int | None = None,
+    letter_id: int | None = None,
+    room_id: int | None = None,
+) -> int:
+    """ツインが聞いた問いを質問の記録に入れ、番号を返す。結果は本人が応じたあとで入る。"""
+    with atomic(conn):
+        cursor = conn.execute(
+            """
+            INSERT INTO question_logs (question, theme, asked_on, conversation_id, letter_id, room_id, utterance_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                question,
+                theme.value if theme else None,
+                asked_on.isoformat(),
+                conversation_id,
+                letter_id,
+                room_id,
+                utterance_id,
+            ),
+        )
+    return cursor.lastrowid
+
+
 def add_utterance(conn: sqlite3.Connection, draft: UtteranceDraft) -> Utterance:
     """発言を追記する。"""
     with atomic(conn):

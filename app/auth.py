@@ -1,14 +1,18 @@
-"""デモ用の簡易ログイン。
+"""名前を押すだけの簡易ログイン。
 
-役割：名前を選ぶだけのログインと、ログイン中の人の取り出し。
+役割：名前を選ぶログインと、ログイン中の人の取り出し。本人の最初の登録。
 4つの極：特定の極に属さない土台。
-守る原則：8（利用者は架空の4人）、10（役割はサーバーが利用者の表から引く）。
+守る原則：8（提出物とデモは架空）、10（立場はサーバーが人の表から引く）。
 
-これは本物の認証ではない。パスワードがなく、だれでも4人のだれにでもなれる。
-見せてよい記録の絞り込みを確かめるためのデモの仕組みで、架空データだけを扱う。
-役割はブラウザから受け取らず、覚えている番号で利用者の表から毎回引く。
+これは本物の認証ではない。パスワードがなく、だれでも一覧のだれにでもなれる。サーバーは
+127.0.0.1 だけで待ち受ける。立場はブラウザから受け取らず、番号で人の表から毎回引く。
+はずした人と亡くなった方は、ここで止める。一覧から消すだけでは、別のウィンドウで開いたままの人に
+見え続けるため。
 
-関連するテスト：tests/test_api.py、tests/test_consent.py
+だれとして使っているかは、ヘッダーの番号で受け取る。cookie は同じブラウザのウィンドウで共有されるので、
+2つのウィンドウで別の人として使えないため。
+
+関連するテスト：tests/test_api.py、tests/test_people.py
 """
 
 from __future__ import annotations
@@ -16,13 +20,14 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import db
-from app.schemas import User
+from app.schemas import Gender, Role, User
 
-COOKIE_NAME = "nt_user_id"
+USER_HEADER = "X-NT-User"
+NOT_FOUND = "見つかりません"
 
 router = APIRouter(prefix="/api")
 
@@ -31,8 +36,17 @@ class LoginRequest(BaseModel):
     user_id: int = Field(ge=1, le=db.MAX_ID)
 
 
-def _user_id_from_cookie(raw: str) -> int | None:
-    """覚えている番号を読む。SQLite に渡せない長さの値は、だれでもない扱いにする。"""
+class SelfDraft(BaseModel):
+    """本人の登録の入力。"""
+
+    name: str = Field(min_length=1, max_length=40)
+    called_name: str | None = Field(default=None, max_length=40)
+    birth_year: int | None = Field(default=None, ge=1880, le=2100)
+    gender: Gender | None = None
+
+
+def _user_id_from_header(raw: str) -> int | None:
+    """番号を読む。SQLite に渡せない長さの値は、だれでもない扱いにする。"""
     if raw.isascii() and raw.isdigit() and len(raw) <= 18:
         return int(raw)
     return None
@@ -47,48 +61,111 @@ def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
+def can_log_in(user: User | None) -> bool:
+    """ログインできる人かを返す。はずした人と亡くなった方はログインできない。"""
+    return user is not None and user.removed_at is None and not user.is_deceased
+
+
 def current_user(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> User:
     """ログイン中の人を返す。わからなければ 401 にする。"""
-    user_id = _user_id_from_cookie(request.cookies.get(COOKIE_NAME, ""))
+    user_id = _user_id_from_header(request.headers.get(USER_HEADER, ""))
     user = db.get_user(conn, user_id) if user_id is not None else None
-    if user is None:
+    if not can_log_in(user):
         raise HTTPException(status_code=401, detail="名前を選んでください")
     return user
 
 
+def self_only(viewer: User) -> None:
+    """本人だけが使える道。本人以外には、道がないのと同じ応答にする。"""
+    if viewer.role is not Role.SELF:
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+
+
+def require_self(viewer: User = Depends(current_user)) -> User:
+    """本人だけが使える道の入口。"""
+    self_only(viewer)
+    return viewer
+
+
+def person_view(user: User) -> dict:
+    """本人以外にも返してよい形。生まれた年やメモなどは入れない。"""
+    return {
+        "id": user.id,
+        "name": user.name,
+        "called_name": user.display_name,
+        "role": user.role.value,
+        "photo_id": None if user.removed_at else user.photo_id,
+    }
+
+
+def person_detail(user: User) -> dict:
+    """本人だけに返す形。"""
+    return {
+        **person_view(user),
+        "relation": user.relation,
+        "residence": user.residence.value if user.residence else None,
+        "birth_year": user.birth_year,
+        "gender": user.gender.value if user.gender else None,
+        "is_deceased": user.is_deceased,
+        "memo": user.memo,
+    }
+
+
 @router.get("/mode")
-def mode(request: Request) -> dict[str, object]:
-    """起動の種類を返す。画面の隅の表示に使う。"""
+def mode(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, object]:
+    """起動の種類を返す。画面の隅の表示と、最初の登録の画面を出すかの判断に使う。"""
     deployment = request.app.state.deployment
-    return {"mine": deployment.mine, "label": deployment.label}
+    return {
+        "mine": deployment.mine,
+        "label": deployment.label,
+        "needs_self": db.self_user(conn) is None,
+    }
 
 
 @router.get("/users")
-def list_users(conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[User]]:
-    """ログイン画面に出す名前の一覧。"""
-    return {"items": db.list_users(conn)}
+def list_users(conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[dict]]:
+    """ログイン画面に出す名前の一覧。プロフィール写真はログインのあとで読む。"""
+    return {
+        "items": [
+            {"id": user.id, "name": user.name, "called_name": user.display_name, "role": user.role.value}
+            for user in db.login_users(conn)
+        ]
+    }
 
 
 @router.post("/login")
-def login(
-    body: LoginRequest, response: Response, conn: sqlite3.Connection = Depends(get_conn)
-) -> User:
-    """選ばれた名前の人としてログインする。"""
+def login(body: LoginRequest, conn: sqlite3.Connection = Depends(get_conn)) -> dict:
+    """選ばれた人として使えるかを確かめる。覚えておくのは画面の側。"""
     user = db.get_user(conn, body.user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="見つかりません")
-    # 画面の JavaScript からは読めない形で覚える
-    response.set_cookie(COOKIE_NAME, str(user.id), httponly=True, samesite="lax")
-    return user
-
-
-@router.post("/logout", status_code=204)
-def logout(response: Response) -> None:
-    """ログインをやめる。"""
-    response.delete_cookie(COOKIE_NAME)
+    if not can_log_in(user):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    return person_view(user)
 
 
 @router.get("/me")
-def me(user: User = Depends(current_user)) -> User:
+def me(user: User = Depends(current_user)) -> dict:
     """ログイン中の人を返す。"""
-    return user
+    return person_view(user)
+
+
+@router.post("/self", status_code=201)
+def register_self(body: SelfDraft, conn: sqlite3.Connection = Depends(get_conn)) -> dict:
+    """本人を登録する。本人がまだいないときだけ。自分用の最初の起動で使う。"""
+    if db.self_user(conn) is not None:
+        raise HTTPException(status_code=409, detail="本人はもう登録されています。")
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="お名前を入れてください。")
+    with conn:
+        conn.execute(
+            "INSERT INTO users (id, name, role, called_name, birth_year, gender) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                db.new_id(conn, "users"),
+                name,
+                Role.SELF.value,
+                (body.called_name or "").strip() or name,
+                body.birth_year,
+                body.gender.value if body.gender else None,
+            ),
+        )
+    return person_detail(db.self_user(conn))

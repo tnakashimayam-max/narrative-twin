@@ -41,6 +41,7 @@ from app.schemas import (
     Source,
     SplitResult,
     SplitStatement,
+    SplitTargetKind,
     StatementDraft,
     Theme,
     Utterance,
@@ -95,25 +96,33 @@ def format_transcript(
     utterances: list[Utterance],
     users: list[User],
     letter_body: str | None = None,
+    earlier: list[Utterance] | None = None,
 ) -> str:
     """発言を、AI に渡す形にする。発言には1始まりの番号を振る。
 
     スレッドでは、コメントが何を指すかが分かるよう、便りの本文を文脈として渡す。
     便りの本文には番号を振らないので、言明の根拠にはならない。
+    分け終えた発言（earlier）も文脈として番号なしで渡す。新しい発言の意味が分かるようにしつつ、
+    同じ発言を2回分けないため。
     """
     by_id = {user.id: user for user in users}
+
+    def _speaker(utterance: Utterance) -> str:
+        if utterance.speaker_is_twin:
+            return TWIN_LABEL
+        user = by_id[utterance.speaker_user_id]
+        return f"{user.name}（{user.role.value}）"
+
     people = "、".join(f"{user.name}（{user.role.value}）" for user in users)
     lines = [f"## 場面\n{place}、{day.isoformat()}", f"## 人物の一覧\n{people}、{TWIN_LABEL}"]
     if letter_body:
         lines.append(f"## 便りの本文（文脈です。言明の根拠にしません）\n{letter_body}")
+    if earlier:
+        lines.append("## これまでの発言（文脈です。番号はありません。言明の根拠にしません）")
+        lines.extend(f"{_speaker(utterance)}：{utterance.text}" for utterance in earlier)
     lines.append("## 発言")
     for number, utterance in enumerate(utterances, start=1):
-        if utterance.speaker_is_twin:
-            speaker = TWIN_LABEL
-        else:
-            user = by_id[utterance.speaker_user_id]
-            speaker = f"{user.name}（{user.role.value}）"
-        lines.append(f"[{number}] {speaker}：{utterance.text}")
+        lines.append(f"[{number}] {_speaker(utterance)}：{utterance.text}")
     return "\n".join(lines)
 
 
@@ -165,6 +174,10 @@ def _drop_reason(item: SplitStatement, users_by_name: dict[str, User], picked) -
             return "AIの推測が言い切っています"
     if item.source is Source.OBSERVATION and picked[0].place is Place.THREAD:
         return "スレッドのコメントは、書いた人の役割の証言にします"
+    if item.source is Source.OBSERVATION and picked[0].place is Place.GROUP:
+        speaker = users_by_name.get(item.speaker)
+        if speaker is None or speaker.role is not Role.PROFESSIONAL:
+            return "グループの発言は、話した人の役割の証言にします"
     return None
 
 
@@ -189,8 +202,13 @@ def save_split(
     result: SplitResult,
     utterances: list[Utterance],
     users: list[User],
+    mark: tuple[SplitTargetKind, int, int] | None = None,
 ) -> SplitReport:
-    """AI の結果を確かめて保存する。"""
+    """AI の結果を確かめて保存する。
+
+    mark を渡すと、どこまで分けたかの印を同じ処理の中で進める。言明が入ったのに印が進まない、
+    あるいはその逆が起きると、2回分けたり、発言を飛ばしたりするため。
+    """
     report = SplitReport()
     users_by_name = {user.name: user for user in users}
     users_by_id = {user.id: user for user in users}
@@ -263,6 +281,8 @@ def save_split(
                     petals=item.petals,
                 )
                 report.question_count += 1
+        if mark is not None:
+            _write_mark(conn, *mark)
     return report
 
 
@@ -277,19 +297,80 @@ def load_utterances(
     return [db.row_to_model(row, Utterance) for row in rows]
 
 
-def already_split(conn: sqlite3.Connection, utterances: list[Utterance]) -> bool:
-    """この発言を根拠にした言明がすでにあるかを返す。同じ記録を2回分けないために使う。
-
-    呼び出しの記録で判定しないのは、途中で失敗した記録をもう一度処理できるようにするため。
-    """
-    numbers = [utterance.id for utterance in utterances]
-    marks = ", ".join("?" for _ in numbers)
+def read_mark(conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int) -> int:
+    """どこまで分けたかの印を返す。まだなければ 0 を返す。"""
     row = conn.execute(
-        f"SELECT 1 FROM statements, json_each(statements.source_utterance_ids) "
-        f"WHERE json_each.value IN ({marks}) LIMIT 1",
-        numbers,
+        "SELECT last_utterance_rowid FROM split_marks WHERE target_kind = ? AND target_id = ?",
+        (kind.value, target_id),
     ).fetchone()
-    return row is not None
+    return row["last_utterance_rowid"] if row else 0
+
+
+def _write_mark(conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int, rowid: int) -> None:
+    moment = datetime.now().astimezone().isoformat()
+    cursor = conn.execute(
+        "UPDATE split_marks SET last_utterance_rowid = ?, updated_at = ? WHERE target_kind = ? AND target_id = ?",
+        (rowid, moment, kind.value, target_id),
+    )
+    if cursor.rowcount == 0:
+        conn.execute(
+            "INSERT INTO split_marks (target_kind, target_id, last_utterance_rowid, updated_at) VALUES (?, ?, ?, ?)",
+            (kind.value, target_id, rowid, moment),
+        )
+
+
+_TARGET_COLUMN = {SplitTargetKind.CONVERSATION: "conversation_id", SplitTargetKind.LETTER: "letter_id"}
+
+
+def load_after_mark(
+    conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int, mark: int
+) -> tuple[list[Utterance], int]:
+    """印より後の発言と、その中で最大の rowid を返す。
+
+    印に使う値は、AI に渡す前に読んだこの値にする。保存のときの最大にすると、
+    AI を待つ間に届いた発言を飛ばしてしまうため。
+    """
+    rows = conn.execute(
+        f"SELECT rowid AS seen_rowid, * FROM utterances WHERE {_TARGET_COLUMN[kind]} = ? AND rowid > ? ORDER BY rowid",
+        (target_id, mark),
+    ).fetchall()
+    utterances = []
+    last = mark
+    for row in rows:
+        values = dict(row)
+        last = values.pop("seen_rowid")
+        utterances.append(Utterance.model_validate(values))
+    return utterances, last
+
+
+def load_before_mark(
+    conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int, mark: int, limit: int
+) -> list[Utterance]:
+    """印までの発言を、新しいほうから limit 件、話した順に返す。文脈として渡すために使う。"""
+    rows = conn.execute(
+        f"SELECT * FROM utterances WHERE {_TARGET_COLUMN[kind]} = ? AND rowid <= ? ORDER BY rowid DESC LIMIT ?",
+        (target_id, mark, limit),
+    ).fetchall()
+    return [db.row_to_model(row, Utterance) for row in reversed(rows)]
+
+
+def people_in(conn: sqlite3.Connection, utterances: list[Utterance]) -> list[User]:
+    """AI に渡す人物の一覧を作る。本人、話した人、発言に名前が出てくる人だけにする。
+
+    登録したほかの人の名前まで渡さないため。
+    """
+    chosen: dict[int, User] = {}
+    self_user = db.self_user(conn)
+    if self_user:
+        chosen[self_user.id] = self_user
+    for utterance in utterances:
+        if utterance.speaker_user_id and utterance.speaker_user_id not in chosen:
+            chosen[utterance.speaker_user_id] = db.get_user(conn, utterance.speaker_user_id)
+    text = "\n".join(utterance.text for utterance in utterances)
+    for user in db.list_users(conn):
+        if user.id not in chosen and (user.name in text or user.display_name in text):
+            chosen[user.id] = user
+    return list(chosen.values())
 
 
 def first_spoken_on(utterances: list[Utterance]) -> date:

@@ -79,8 +79,16 @@ def test_画面の隅の表示を起動の種類で分ける(tmp_path):
     fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
     mine = TestClient(create_app(deployment=config.deployment(mine=True, data_dir=tmp_path)))
 
-    assert fictional.get("/api/mode").json() == {"mine": False, "label": "架空データ"}
-    assert mine.get("/api/mode").json() == {"mine": True, "label": "自分の記録で試用中"}
+    assert fictional.get("/api/mode").json() == {"mine": False, "label": "架空データ", "needs_self": False}
+    assert mine.get("/api/mode").json() == {"mine": True, "label": "自分の記録で試用中", "needs_self": True}
+
+
+def test_日付を動かす道は架空用の起動だけにある(tmp_path):
+    fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
+    mine = TestClient(create_app(deployment=config.deployment(mine=True, data_dir=tmp_path)))
+
+    assert fictional.post("/api/dev/date", json={"date": "2030-05-01"}).json() == {"today": "2030-05-01"}
+    assert mine.post("/api/dev/date", json={"date": "2030-05-01"}).status_code == 404
 
 
 def test_自分の記録の置き場はGitに入らない():

@@ -46,7 +46,20 @@ AGREED_WORDS = {
         "AIの推測だけ（要確認）",
         "根拠なし",
     ],
-    s.Place: ["日記と会話", "スレッド", "チャット", "会議"],
+    s.Place: ["日記と会話", "スレッド", "チャット", "会議", "グループ"],
+    s.Gender: ["男性", "女性", "不明"],
+    s.Residence: ["同居", "近く", "遠く"],
+    s.FamilyLinkKind: ["親子", "夫婦"],
+    s.RelativeKind: ["親", "子", "配偶者", "きょうだい", "その他"],
+    s.CandidateStatus: ["候補", "登録した", "ちがう", "今はいい"],
+    s.RoomKind: ["ツイン", "1対1", "グループ"],
+    s.MessageKind: ["発言", "お知らせ"],
+    s.PhotoKind: ["会話", "部屋", "便り", "プロフィール"],
+    s.LinkStrength: ["強い", "ふつう", "弱い", "ストレス"],
+    s.SupportDirection: ["本人から", "相手から", "お互い", "なし"],
+    s.SplitTargetKind: ["会話", "便り"],
+    s.CareKind: ["なし", "体の不調", "命に関わる", "強いつらさ"],
+    s.GroupTurnKind: ["問い", "答え", "聞けていない", "書かない"],
     s.Perspective: ["表の言葉", "本当のニーズ", "本人の真意", "気持ち"],
     s.InterpretationStatus: ["仮説", "本人が確かめた"],
     s.ConsolidationUnit: ["月", "年", "人生の段階"],
@@ -97,23 +110,22 @@ def _enum_in(annotation) -> type[StrEnum] | None:
 
 
 @pytest.mark.parametrize("table", db.TABLE_MODELS.keys())
-def test_決めた言葉の列にはデータベースの制約がある(conn, table):
-    sql = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
-    ).fetchone()["sql"]
-
+def test_決めた言葉の列にはデータベースの確かめがある(conn, table):
+    """言葉の確かめは、列を足さずに言葉を増やせるよう、CHECK ではなくトリガーで行う。"""
     for name, field in db.TABLE_MODELS[table].model_fields.items():
         enum_cls = _enum_in(field.annotation)
         if enum_cls is None:
             continue
-        match = re.search(rf"CHECK \(\s*{name} IN \((.*?)\)", sql, re.S)
-        assert match, f"{table}.{name} に制約がありません"
-        allowed = set(re.findall(r"'([^']*)'", match.group(1)))
         if (table, name) == ("letters", "share_with"):
-            # 便りの共有の相手は、共有範囲のうち2つだけ
+            # 便りの共有の相手は、共有範囲のうち2つだけなので、表の CHECK で守る
+            sql = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+            ).fetchone()["sql"]
+            match = re.search(rf"CHECK \(\s*{name} IN \((.*?)\)", sql, re.S)
+            allowed = set(re.findall(r"'([^']*)'", match.group(1)))
             assert allowed == {s.ShareScope.FAMILY.value, s.ShareScope.CONNECTED.value}
-        else:
-            assert allowed == {member.value for member in enum_cls}
+            continue
+        assert db.WORD_COLUMNS[table][name] is enum_cls, f"{table}.{name} の確かめがありません"
 
 
 def test_外部キーの確認が有効(conn):
@@ -219,3 +231,65 @@ def test_話した人とツインの両方を空にできない(conn, conversati
                 """,
                 (conversation_id,),
             )
+
+
+# ---- 表の変更 ----
+
+
+def test_表の変更は適用の前にファイルを控え_データを失わない(tmp_path, monkeypatch):
+    path = tmp_path / "keep.db"
+    db.init_db(path)
+    connection = db.connect(path)
+    with connection:
+        connection.execute("UPDATE users SET memo = '残す記録' WHERE id = 1")
+    connection.close()
+    monkeypatch.setattr(db, "MIGRATIONS", [(2, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
+
+    db.init_db(path)
+
+    connection = db.connect(path)
+    assert connection.execute("SELECT memo FROM users WHERE id = 1").fetchone()[0] == "残す記録"
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert [row["name"] for row in connection.execute("PRAGMA table_info(users)")][-1] == "future_note"
+    connection.close()
+    backup = tmp_path / "keep.db.before_v2"
+    assert backup.exists()
+    old = db.connect(backup)
+    assert old.execute("SELECT memo FROM users WHERE id = 1").fetchone()[0] == "残す記録"
+    assert "future_note" not in [row["name"] for row in old.execute("PRAGMA table_info(users)")]
+    old.close()
+
+
+def test_適用した表の変更はくり返さない(tmp_path, monkeypatch):
+    path = tmp_path / "keep.db"
+    db.init_db(path)
+    monkeypatch.setattr(db, "MIGRATIONS", [(2, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
+
+    db.init_db(path)
+    db.init_db(path)
+
+    connection = db.connect(path)
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    connection.close()
+
+
+def test_古い形のデータベースは起動を止めて知らせる(tmp_path):
+    path = tmp_path / "old.db"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, role TEXT)")
+    connection.commit()
+    connection.close()
+
+    with pytest.raises(db.OldDatabaseError):
+        db.init_db(path)
+
+
+def test_自分用の種なしの起動を2回しても人は増えない(tmp_path):
+    path = tmp_path / "mine.db"
+
+    db.init_db(path, seed_demo=False)
+    db.init_db(path, seed_demo=False)
+
+    connection = db.connect(path)
+    assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+    connection.close()

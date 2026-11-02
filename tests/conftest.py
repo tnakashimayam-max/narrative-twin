@@ -132,6 +132,7 @@ def login(db_path, conn, users):
         client = TestClient(create_app(db_path))
         response = client.post("/api/login", json={"user_id": users[name].id})
         assert response.status_code == 200
+        client.headers["X-NT-User"] = str(users[name].id)
         return client
 
     return _login

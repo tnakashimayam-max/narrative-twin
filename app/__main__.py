@@ -13,11 +13,12 @@
 from __future__ import annotations
 
 import argparse
+import threading
 from collections.abc import Sequence
 
 import uvicorn
 
-from app import config
+from app import config, jobs
 from app.main import create_app
 
 HOST = "127.0.0.1"
@@ -32,7 +33,10 @@ def choose_deployment(argv: Sequence[str] | None = None) -> config.Deployment:
 
 def main() -> None:
     deployment = choose_deployment()
-    uvicorn.run(create_app(deployment=deployment), host=HOST, port=deployment.port)
+    app = create_app(deployment=deployment)
+    # 前回の起動で止まった処理を流し直す。テストが本物の API を呼ばないよう、ここからだけ呼ぶ。
+    threading.Thread(target=jobs.catch_up, args=(app,), daemon=True).start()
+    uvicorn.run(app, host=HOST, port=deployment.port)
 
 
 if __name__ == "__main__":

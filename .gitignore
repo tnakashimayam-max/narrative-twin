@@ -9,3 +9,4 @@ data/photos/
 *.db-wal
 *.db-shm
 .playwright-mcp/
+*.db.before_*

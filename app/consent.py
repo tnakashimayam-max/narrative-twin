@@ -102,3 +102,31 @@ def visible_letters(conn: sqlite3.Connection, viewer: User) -> list[Letter]:
         values,
     ).fetchall()
     return [db.row_to_model(row, Letter) for row in rows]
+
+
+def visible_letter(conn: sqlite3.Connection, viewer: User, letter_id: int) -> Letter | None:
+    """番号で開いた便りを、見てよいときだけ返す。見えない便りは「ない」と同じ扱いにする。"""
+    row = conn.execute("SELECT * FROM letters WHERE id = ?", (letter_id,)).fetchone()
+    if row is None:
+        return None
+    letter = db.row_to_model(row, Letter)
+    return letter if letter.share_with in visible_scopes(conn, viewer) else None
+
+
+# 立場ごとに、タイムラインで見えるものの説明。_BASE_SCOPES の言葉での表し方。
+_ROLE_SEES: dict[Role, list[str]] = {
+    Role.FAMILY: ["「家族」向けの便りとその写真", "「縁のある人まで」向けの便りとその写真"],
+    Role.CONNECTED: ["「縁のある人まで」向けの便りとその写真"],
+    Role.PROFESSIONAL: [],
+}
+
+
+def role_change_preview(current: Role, new: Role) -> dict[str, list[str]]:
+    """立場を変えると見えるようになるものと、見えなくなるものを言葉で返す。"""
+    before = _ROLE_SEES.get(current, [])
+    after = _ROLE_SEES.get(new, [])
+    sees = [item for item in after if item not in before]
+    stops = [item for item in before if item not in after]
+    if not sees and not stops:
+        sees = ["タイムラインで見えるものは変わりません"]
+    return {"sees": sees, "stops": stops, "same": ["入っている部屋の発言と写真は、部屋にいる間は見えます"]}

@@ -58,32 +58,25 @@ def test_ログインにパスワードはいらない(client, users):
     assert response.status_code == 200
 
 
-def test_ログインをやめると_だれでもなくなる(login):
-    client = login("節子さん")
+def test_2つのウィンドウで別の人として使える(login):
+    first = login("節子さん")
+    second = login("田中さん")
 
-    assert client.post("/api/logout").status_code == 204
-    assert client.get("/api/me").status_code == 401
-
-
-def test_別の人を選ぶと画面の人も変わる(login, users):
-    client = login("節子さん")
-
-    client.post("/api/login", json={"user_id": users["田中さん"].id})
-
-    assert client.get("/api/me").json()["name"] == "田中さん"
+    assert first.get("/api/me").json()["name"] == "節子さん"
+    assert second.get("/api/me").json()["name"] == "田中さん"
+    assert first.get("/api/me").json()["name"] == "節子さん"
 
 
-def test_ログインの印はJavaScriptから読めない(client, users):
+def test_ログインはcookieを使わない(client, users):
     response = client.post("/api/login", json={"user_id": users["節子さん"].id})
 
-    assert "httponly" in response.headers["set-cookie"].lower()
-
-
-@pytest.mark.parametrize("cookie", ["9" * 25, "9" * 5000, "abc", "-1"], ids=["25桁", "5000桁", "文字", "負の数"])
-def test_おかしな印は_だれでもない扱いになる(client, cookie):
-    client.cookies.set("nt_user_id", cookie)
-
+    assert "set-cookie" not in response.headers
     assert client.get("/api/me").status_code == 401
+
+
+@pytest.mark.parametrize("value", ["9" * 25, "9" * 5000, "abc", "-1"], ids=["25桁", "5000桁", "文字", "負の数"])
+def test_おかしな印は_だれでもない扱いになる(client, value):
+    assert client.get("/api/me", headers={"X-NT-User": value}).status_code == 401
 
 
 def test_大きすぎる番号でログインしても落ちない(client):

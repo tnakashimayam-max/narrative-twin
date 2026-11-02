@@ -590,7 +590,7 @@ def test_花びらは2個まで_データベースでも止める(conn):
 def test_決めた言葉以外はデータベースが拒否する(conn):
     sql, values = _raw_statement()
 
-    with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+    with pytest.raises(sqlite3.IntegrityError, match="決めた言葉"):
         with conn:
             conn.execute(sql.replace("家族の証言", "想像"), values)
 

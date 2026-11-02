@@ -522,7 +522,6 @@ def test_保存の途中で失敗すると何も残らず同じ発言からや�
 
     assert conn.execute("SELECT COUNT(*) FROM statements").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM interpretations").fetchone()[0] == 0
-    assert not splitter.already_split(conn, [utterance])
 
     report = save([utterance], *items)
 

@@ -32,6 +32,8 @@ RANDOM_ID_TABLES = [
     "interpretations",
     "model_elements",
     "inference_logs",
+    "rooms",
+    "room_messages",
 ]
 SEQUENTIAL_ID_TABLES = [
     "users",
@@ -42,7 +44,15 @@ SEQUENTIAL_ID_TABLES = [
     "evaluations",
     "care_plan_drafts",
     "ai_calls",
+    "twin_presences",
+    "family_links",
+    "map_places",
+    "map_links",
+    "person_candidates",
+    "job_failures",
 ]
+# 番号の列がない表。部屋の人は部屋と人の組で、印は対象の組で見分ける。
+NO_ID_TABLES = ["room_members", "split_marks"]
 LARGEST_SAFE_INTEGER = 2**53 - 1
 
 
@@ -52,7 +62,7 @@ def _id_column(conn, table):
 
 
 def test_番号の持ち方をすべての表で決めている():
-    assert set(RANDOM_ID_TABLES) | set(SEQUENTIAL_ID_TABLES) == set(db.TABLE_MODELS)
+    assert set(RANDOM_ID_TABLES) | set(SEQUENTIAL_ID_TABLES) | set(NO_ID_TABLES) == set(db.TABLE_MODELS)
 
 
 @pytest.mark.parametrize("table", RANDOM_ID_TABLES)

@@ -105,6 +105,7 @@ class Place(StrEnum):
     THREAD = "スレッド"
     CHAT = "チャット"
     MEETING = "会議"
+    GROUP = "グループ"
 
 
 class Perspective(StrEnum):
@@ -191,6 +192,115 @@ class EvalMethod(StrEnum):
 
     WILL_MODEL = "意思モデル"
     RAG = "RAG"
+
+
+class Gender(StrEnum):
+    """性別（任意。家系図の形に使う）"""
+
+    MALE = "男性"
+    FEMALE = "女性"
+    UNKNOWN = "不明"
+
+
+class Residence(StrEnum):
+    """住まい"""
+
+    TOGETHER = "同居"
+    NEAR = "近く"
+    FAR = "遠く"
+
+
+class FamilyLinkKind(StrEnum):
+    """家系図の関係。親子は from が親、to が子。"""
+
+    PARENT_CHILD = "親子"
+    SPOUSE = "夫婦"
+
+
+class RelativeKind(StrEnum):
+    """人の候補の関係"""
+
+    PARENT = "親"
+    CHILD = "子"
+    SPOUSE = "配偶者"
+    SIBLING = "きょうだい"
+    OTHER = "その他"
+
+
+class CandidateStatus(StrEnum):
+    """人の候補の状態。決めるのは本人。"""
+
+    PENDING = "候補"
+    REGISTERED = "登録した"
+    REJECTED = "ちがう"
+    LATER = "今はいい"
+
+
+class RoomKind(StrEnum):
+    """部屋の種類"""
+
+    TWIN = "ツイン"
+    PAIR = "1対1"
+    GROUP = "グループ"
+
+
+class MessageKind(StrEnum):
+    """部屋の行の種類。お知らせは、ツインが入った、はずれたなどの表示。"""
+
+    SAY = "発言"
+    NOTICE = "お知らせ"
+
+
+class PhotoKind(StrEnum):
+    """写真の種類。AI に送ってよいのは会話の写真だけ。"""
+
+    TALK = "会話"
+    ROOM = "部屋"
+    LETTER = "便り"
+    PROFILE = "プロフィール"
+
+
+class LinkStrength(StrEnum):
+    """つながりの線の種類。本人が選ぶ。AI は提案しない。"""
+
+    STRONG = "強い"
+    NORMAL = "ふつう"
+    WEAK = "弱い"
+    STRESS = "ストレス"
+
+
+class SupportDirection(StrEnum):
+    """支援の向き。本人が選ぶ。"""
+
+    FROM_SELF = "本人から"
+    TO_SELF = "相手から"
+    BOTH = "お互い"
+    NONE = "なし"
+
+
+class SplitTargetKind(StrEnum):
+    """どこまで言明に分けたかの印の対象。"""
+
+    CONVERSATION = "会話"
+    LETTER = "便り"
+
+
+class CareKind(StrEnum):
+    """問いを続けず、人につなぐ場面の種類。"""
+
+    NONE = "なし"
+    BODY = "体の不調"
+    LIFE = "命に関わる"
+    DISTRESS = "強いつらさ"
+
+
+class GroupTurnKind(StrEnum):
+    """グループのツインが書く場面の種類。"""
+
+    QUESTION = "問い"
+    ANSWER = "答え"
+    CANNOT = "聞けていない"
+    NOTHING = "書かない"
 
 
 
@@ -347,9 +457,11 @@ class ConversationDraft(_Base):
     conversation_date: date
     trigger: str | None = None
     theme: Theme | None = None
-    life_stage: LifeStage
+    life_stage: LifeStage = LifeStage.ACTIVE
     summary: str | None = None
     self_confirmation: str | None = None
+    room_id: int | None = None
+    closed_at: datetime | None = None
 
 
 class Conversation(ConversationDraft):
@@ -365,6 +477,9 @@ class Photo(_Base):
     file: str
     taken_on: date | None = None
     description: str | None = None
+    owner_user_id: int | None = None
+    kind: PhotoKind
+    created_at: datetime
 
 
 class LetterDraft(_Base):
@@ -397,6 +512,7 @@ class CommentDraft(_Base):
     body: str
     commented_at: datetime
     is_twin_question: bool = False
+    client_key: str | None = None
 
     @model_validator(mode="after")
     def _check_author(self) -> CommentDraft:
@@ -451,6 +567,10 @@ class QuestionLog(_Base):
     petals: Petals = []
     asked_on: date | None = None
     result: QuestionResult | None = None
+    conversation_id: int | None = None
+    letter_id: int | None = None
+    room_id: int | None = None
+    utterance_id: int | None = None
 
 
 class CarePlanDraft(_Base):
@@ -467,11 +587,25 @@ class CarePlanDraft(_Base):
 
 
 class User(_Base):
-    """利用者（架空の4人）"""
+    """人。ログインできる人だけでなく、亡くなった方も家系図のために入る。"""
 
     id: int
     name: str
     role: Role
+    called_name: str | None = None
+    birth_year: int | None = None
+    gender: Gender | None = None
+    relation: str | None = None
+    residence: Residence | None = None
+    is_deceased: bool = False
+    memo: str | None = None
+    photo_id: int | None = None
+    removed_at: datetime | None = None
+
+    @property
+    def display_name(self) -> str:
+        """呼ぶときの名前。呼ばれ方がなければ名前を使う。"""
+        return self.called_name or self.name
 
 
 class Delegation(_Base):
@@ -506,25 +640,252 @@ class AICall(_Base):
     is_batch: bool = False
     target: str | None = None
     called_at: datetime
+    seconds: float | None = None
+
+
+class Room(_Base):
+    """部屋。"""
+
+    id: int
+    kind: RoomKind
+    name: str | None = None
+    created_at: datetime
+
+
+class RoomMember(_Base):
+    """部屋の人。はずれた人は left_at が入る。"""
+
+    room_id: int
+    user_id: int
+    joined_at: datetime
+    left_at: datetime | None = None
+
+
+class TwinPresence(_Base):
+    """グループにツインが入っている間。conversation_id の会話の発言だけをツインが読む。"""
+
+    id: int
+    room_id: int
+    conversation_id: int
+    joined_at: datetime
+    left_at: datetime | None = None
+
+
+class RoomMessage(_Base):
+    """部屋に出す1行。AI に渡す発言は本文を utterances にだけ持ち、ここからは番号で指す。"""
+
+    id: int
+    room_id: int
+    sender_user_id: int | None = None
+    is_twin: bool = False
+    kind: MessageKind
+    text: str | None = None
+    photo_id: int | None = None
+    utterance_id: int | None = None
+    conversation_id: int | None = None
+    question_log_id: int | None = None
+    client_key: str | None = None
+    sent_at: datetime
+
+
+class FamilyLink(_Base):
+    """家系図の関係。親子は from が親、to が子。"""
+
+    id: int
+    from_user_id: int
+    to_user_id: int
+    kind: FamilyLinkKind
+    created_at: datetime
+
+
+class MapPlace(_Base):
+    """つながりの地図の、人でないつながり（病院、デイサービス、町内会など）。ログインはできない。"""
+
+    id: int
+    name: str
+    kind: str | None = None
+    created_at: datetime
+    removed_at: datetime | None = None
+
+
+class MapLink(_Base):
+    """つながりの線。本人が選ぶ。"""
+
+    id: int
+    user_id: int | None = None
+    place_id: int | None = None
+    strength: LinkStrength
+    direction: SupportDirection
+    updated_at: datetime
+
+
+class PersonCandidate(_Base):
+    """話に出てきた人の候補。本人が決めるまで、地図にも一覧にも足さない。"""
+
+    id: int
+    name: str
+    relation: str | None = None
+    relative_kind: RelativeKind
+    related_to_name: str | None = None
+    is_deceased: bool = False
+    gender: Gender
+    evidence_utterance_id: int
+    status: CandidateStatus
+    created_at: datetime
+    decided_at: datetime | None = None
+
+
+class SplitMark(_Base):
+    """どこまで言明に分けたかの印。"""
+
+    target_kind: SplitTargetKind
+    target_id: int
+    last_utterance_rowid: int
+    updated_at: datetime
+
+
+class JobFailure(_Base):
+    """裏の処理の失敗の記録。"""
+
+    id: int
+    job: str
+    target: str | None = None
+    message: str
+    failed_at: datetime
 
 
 # ---- AI の結果の型。プログラムが確かめてから保存するので、そのまま表には入れない ----
 
 
-class PhotoQuestion(_Base):
-    """写真について本人に問いかける文。問いは1回に1つだけなので、1文だけを受け取る。"""
+# 本人になりきる言い方。ツインの文に入っていたら受け取らず、1回やり直す（原則12）。
+_FIRST_PERSON = ("私は", "私が", "私の", "私も", "私に", "わたしは", "わたしが", "わたしの", "僕は", "僕が", "ぼくは", "俺は")
 
-    question: str
+
+def _twin_voice(text: str) -> str:
+    """ツインの文を確かめる。空でなく、本人になりきっていないこと。"""
+    cleaned = text.strip()
+    if not any(char.isalnum() for char in cleaned):
+        raise ValueError("文が空です")
+    if any(word in cleaned for word in _FIRST_PERSON):
+        raise ValueError("「私は」を使わないでください")
+    return cleaned
+
+
+def _no_question_mark(text: str) -> str:
+    """受け止めの文に問いを混ぜない。問いは1回に1つまでを、型で守るため。"""
+    if any(mark in text for mark in "？?"):
+        raise ValueError("ここには問いを書かないでください")
+    return text
+
+
+def _one_question(text: str) -> str:
+    """問いがちょうど1つで、「？」で終わること。"""
+    cleaned = _twin_voice(text)
+    if sum(cleaned.count(mark) for mark in "？?") != 1 or cleaned[-1] not in "？?":
+        raise ValueError("問いを1つだけにしてください")
+    return cleaned
+
+
+class TwinTurn(_Base):
+    """ツインの1回の返事。受け止めと問いを別の項目で受け取り、問いを1つまでに保つ。
+
+    previous_question_result は、直前の問いに本人がどう応じたかの AI の読み取り。
+    断ったと読んだら、プログラムがその話題をお休みにする。
+    """
+
+    reply: str
+    question: str | None = None
+    question_theme: Theme | None = None
+    care: CareKind = CareKind.NONE
+    previous_question_result: QuestionResult | None = None
+
+    @field_validator("reply")
+    @classmethod
+    def _check_reply(cls, value: str) -> str:
+        return _no_question_mark(_twin_voice(value))
 
     @field_validator("question")
     @classmethod
-    def _one_question(cls, value: str) -> str:
-        text = value.strip()
-        ends = [char for char in text if char in "。！？!?\n.…"]
-        has_words = any(char.isalnum() for char in text)
-        if not has_words or len(ends) != 1 or text[-1] not in "？?":
-            raise ValueError("問いかける文を1つだけにしてください")
-        return text
+    def _check_question(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return _one_question(value)
+
+
+class TwinPhotoTurn(TwinTurn):
+    """写真を読んだときの返事。写真の説明は、あとの会話で写真を送り直さずに話を続けるために残す。"""
+
+    photo_description: str = Field(min_length=1, max_length=120)
+
+
+class ConversationSummary(_Base):
+    """会話の要約。AI の読み取りで、本人の言葉として扱わない。"""
+
+    summary: str = Field(min_length=1, max_length=300)
+
+
+class TwinClosing(_Base):
+    """「今日はここまで」のときの返事と、今日の暮らしに役立つ一言。"""
+
+    reply: str
+    tip: str
+
+    @field_validator("reply", "tip")
+    @classmethod
+    def _check_text(cls, value: str) -> str:
+        return _no_question_mark(_twin_voice(value))
+
+
+class ThreadQuestion(_Base):
+    """スレッドのツインの問い。書かないときは null。"""
+
+    question: str | None = None
+
+    @field_validator("question")
+    @classmethod
+    def _check_question(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return _one_question(value)
+
+
+class GroupTurn(_Base):
+    """グループのツインの答え。"""
+
+    kind: GroupTurnKind
+    text: str = ""
+
+    @model_validator(mode="after")
+    def _check_text(self) -> GroupTurn:
+        if self.kind is GroupTurnKind.QUESTION:
+            self.text = _one_question(self.text)
+        elif self.kind is GroupTurnKind.ANSWER:
+            self.text = _no_question_mark(_twin_voice(self.text))
+        return self
+
+
+class LetterBodyDraft(_Base):
+    """便りの下書き。本人が直してから共有する。"""
+
+    body: str = Field(min_length=1, max_length=120)
+
+
+class PersonCandidateDraft(_Base):
+    """話に出てきた人の候補。人の仲の良さや悪さは項目に持たない。AI に決めさせないため。"""
+
+    name: str = Field(min_length=1, max_length=40)
+    relation: str = Field(default="", max_length=40)
+    relative_kind: RelativeKind = RelativeKind.OTHER
+    related_to: str | None = Field(default=None, max_length=40)
+    is_deceased: bool = False
+    gender: Gender = Gender.UNKNOWN
+    utterance_number: int
+
+
+class PersonCandidateResult(_Base):
+    """人の候補の一覧。"""
+
+    people: list[PersonCandidateDraft]
 
 
 class SplitInterpretation(_Base):

@@ -403,7 +403,7 @@ def submit_split(args) -> int:
             ai.batch_request(
                 custom_id,
                 "言明への分割",
-                system=prompts.SPLIT_SYSTEM,
+                system=prompts.split_system("誠一さん"),
                 content=prompts.split_user_text(transcript, "まだありません。"),
                 schema=ai.SplitResult,
             )

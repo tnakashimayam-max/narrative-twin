@@ -1,7 +1,8 @@
 """AIを呼ぶ層。
 
 役割：Claude API を呼び、Pydantic で型を決めた JSON として結果を受け取る。
-4つの極：1. 書く・話す（写真の問い）、3. 読み解き、積み上げる（言明への分割）。
+4つの極：1. 書く・話す（ツインの会話、写真）、2. 分かち合う（スレッド、グループ、便りの下書き）、
+          3. 読み解き、積み上げる（言明への分割、要約、人の候補）。
 守る原則：1（AIは結果を返すだけで、判断や記録の確定はしない）。
 
 決まった手順で動く層（app/ledger.py、app/consent.py）とファイルを分けている。
@@ -15,7 +16,7 @@
 - 拒否されたときの代替（server-side fallback）：安全の確認で拒否されたときに、
   API の側で別のモデルに切り替えてもらう。Opus と Sonnet だけで使う。Haiku 5.5 にはこの機能が
   ないので送らず、断られた応答（stop_reason が refusal）を AIRefusedError として扱う。
-- 画像を読む力：写真の問いのため。
+- 画像を読む力：写真に写っているものに触れて話すため。Sonnet だけで使う。
 - Message Batches API：大量の処理を半額でまとめて行うため。
 
 どのモデルで作ったかを残すため、結果にはモデル名とトークン数を必ず付ける。失敗したときも、
@@ -42,7 +43,19 @@ import anthropic
 from pydantic import BaseModel, ValidationError
 
 from app import config, prompts
-from app.schemas import PhotoQuestion, SplitResult
+from app.schemas import (
+    ConversationSummary,
+    GroupTurn,
+    LetterBodyDraft,
+    PersonCandidateResult,
+    Photo,
+    PhotoKind,
+    SplitResult,
+    ThreadQuestion,
+    TwinClosing,
+    TwinPhotoTurn,
+    TwinTurn,
+)
 
 ResultT = TypeVar("ResultT", bound=BaseModel)
 
@@ -92,6 +105,7 @@ class AIResult(Generic[ResultT]):
     model: str
     input_tokens: int
     output_tokens: int
+    seconds: float | None = None
 
 
 def _make_client() -> anthropic.Anthropic:
@@ -161,6 +175,7 @@ def call_structured(
     if role in config.TIMEOUT_SECONDS_BY_ROLE:
         options["timeout"] = config.TIMEOUT_SECONDS_BY_ROLE[role]
 
+    started = time.monotonic()
     problem = "答えが空でした"
     # やり直した分の費用も記録に残すため、トークン数は全部の試行を足す
     input_tokens = 0
@@ -195,6 +210,7 @@ def call_structured(
             model=_answering_model(response),
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            seconds=round(time.monotonic() - started, 2),
         )
 
     raise AIResultError(
@@ -222,28 +238,72 @@ def check_connection(client: anthropic.Anthropic | None = None) -> AIResult[Conn
     )
 
 
-def ask_about_photo(
-    image: bytes, media_type: str, client: anthropic.Anthropic | None = None
-) -> AIResult[PhotoQuestion]:
-    """写真を1枚渡し、本人に問いかける文を1つだけ受け取る。画像を読む力を使う。"""
+def twin_turn(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[TwinTurn]:
+    """ツインの1回の返事。本人が待つので速いモデルを使う（config.MODEL_BY_ROLE）。"""
+    return call_structured("ツインの会話", system=system, content=text, schema=TwinTurn, client=client)
+
+
+def twin_photo_turn(
+    photo: Photo,
+    image: bytes,
+    *,
+    system: str,
+    text: str,
+    client: anthropic.Anthropic | None = None,
+) -> AIResult[TwinPhotoTurn]:
+    """写真を1枚渡して、ツインの返事を受け取る。画像を読む力を使う。
+
+    AI に送ってよいのは、本人がツインとの部屋に送った「会話」の写真だけ。入口で確かめる。
+    プロフィール写真を AI に送らないため。関連するテスト：tests/test_photos.py
+    """
+    if photo.kind is not PhotoKind.TALK:
+        raise ValueError("AI に送れるのは会話の写真だけです")
     content = [
         {
             "type": "image",
             "source": {
                 "type": "base64",
-                "media_type": media_type,
+                "media_type": "image/jpeg",
                 "data": base64.b64encode(image).decode("ascii"),
             },
         },
-        {"type": "text", "text": prompts.PHOTO_USER},
+        {"type": "text", "text": text},
     ]
-    return call_structured(
-        "写真の問い",
-        system=prompts.PHOTO_SYSTEM,
-        content=content,
-        schema=PhotoQuestion,
-        client=client,
-    )
+    return call_structured("写真の問い", system=system, content=content, schema=TwinPhotoTurn, client=client)
+
+
+def twin_closing(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[TwinClosing]:
+    """「今日はここまで」の返事。"""
+    return call_structured("ツインの会話", system=system, content=text, schema=TwinClosing, client=client)
+
+
+def summarize_conversation(
+    *, system: str, text: str, client: anthropic.Anthropic | None = None
+) -> AIResult[ConversationSummary]:
+    """閉じた会話の要約。本人の言葉としては扱わない。"""
+    return call_structured("会話の要約", system=system, content=text, schema=ConversationSummary, client=client)
+
+
+def thread_question(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[ThreadQuestion]:
+    """スレッドのツインの問い。"""
+    return call_structured("スレッドの問い", system=system, content=text, schema=ThreadQuestion, client=client)
+
+
+def group_turn(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[GroupTurn]:
+    """グループのツインの答え。"""
+    return call_structured("グループのツイン", system=system, content=text, schema=GroupTurn, client=client)
+
+
+def letter_draft(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[LetterBodyDraft]:
+    """便りの下書き。"""
+    return call_structured("便りの下書き", system=system, content=text, schema=LetterBodyDraft, client=client)
+
+
+def person_candidates(
+    *, system: str, text: str, client: anthropic.Anthropic | None = None
+) -> AIResult[PersonCandidateResult]:
+    """話に出てきた人の候補。"""
+    return call_structured("人の候補", system=system, content=text, schema=PersonCandidateResult, client=client)
 
 
 def split_utterances(
@@ -251,11 +311,13 @@ def split_utterances(
     model_summary: str,
     feedback: str | None = None,
     client: anthropic.Anthropic | None = None,
+    *,
+    self_name: str,
 ) -> AIResult[SplitResult]:
     """会話やスレッドの発言を言明に分ける。結果の確かめと保存は app/splitter.py が行う。"""
     return call_structured(
         "言明への分割",
-        system=prompts.SPLIT_SYSTEM,
+        system=prompts.split_system(self_name),
         content=prompts.split_user_text(transcript, model_summary, feedback),
         schema=SplitResult,
         client=client,
