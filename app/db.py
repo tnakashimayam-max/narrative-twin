@@ -384,17 +384,20 @@ def connect(path: Path | str) -> sqlite3.Connection:
     FastAPI は依存の処理と本体を別のスレッドで動かすことがあるので、
     check_same_thread を外す。接続は1回の要求の中でだけ使い、使い回さない。
     """
-    connection = sqlite3.connect(path, check_same_thread=False)
+    connection = sqlite3.connect(path, check_same_thread=False, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
+    # 部屋の発言を3秒ごとに読みながら、裏で言明を保存する。読む人と書く人が待たせ合わないようにする。
+    connection.execute("PRAGMA journal_mode = WAL")
     return connection
 
 
-def init_db(path: Path | str) -> None:
+def init_db(path: Path | str, *, seed_demo: bool = True) -> None:
     """表とトリガーを作る。デモの利用者と託す設定は、表を初めて作るときにだけ入れる。
 
     託す設定を起動のたびに入れ直すと、本人が取り消した設定が起動し直しで戻ってしまう。
-    関連するテスト：tests/test_schema.py
+    自分用の起動（seed_demo=False）では架空の人を入れない。
+    関連するテスト：tests/test_schema.py、tests/test_modes.py
     """
     db_file = Path(path)
     db_file.parent.mkdir(parents=True, exist_ok=True)
@@ -407,7 +410,7 @@ def init_db(path: Path | str) -> None:
             is None
         )
         connection.executescript(SCHEMA + TRIGGERS)
-        if first_time:
+        if first_time and seed_demo:
             with connection:
                 connection.executemany(
                     "INSERT INTO users (id, name, role) VALUES (?, ?, ?)",

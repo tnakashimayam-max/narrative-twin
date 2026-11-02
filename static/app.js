@@ -133,4 +133,11 @@ document.getElementById("logout-button").addEventListener("click", async () => {
   showLogin();
 });
 
+fetch("/api/mode")
+  .then((response) => response.json())
+  .then((mode) => {
+    document.getElementById("mode-label").textContent = mode.label;
+  })
+  .catch(() => {});
+
 start().catch(() => showError("つながりませんでした。再読み込みしてください。"));

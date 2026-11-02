@@ -10,15 +10,47 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
-DB_PATH = ROOT / "data" / "narrative_twin.db"
+DATA_DIR = ROOT / "data"
+DB_PATH = DATA_DIR / "narrative_twin.db"
+PHOTOS_DIR = DATA_DIR / "photos"
 STATIC_DIR = ROOT / "static"
 EVAL_CASES_PATH = ROOT / "eval" / "cases.json"
+
+LABEL_FICTIONAL = "架空データ"
+LABEL_MINE = "自分の記録で試用中"
+
+
+@dataclass(frozen=True)
+class Deployment:
+    """起動の種類ごとの保存先と表示。
+
+    架空用と自分用で保存先を丸ごと分ける。開発者が自分の本当の言葉と写真で試すとき、
+    公開するものに混ざらないようにするため。data/mine/ は Git に入らない（.gitignore）。
+    ポートを分けるのは、ブラウザを操作する MCP が開ける先を架空用だけに限るため（.mcp.json）。
+    """
+
+    mine: bool
+    port: int
+    db_path: Path
+    photos_dir: Path
+    label: str
+
+
+def deployment(*, mine: bool = False, data_dir: Path | None = None) -> Deployment:
+    """起動の種類を決める。data_dir を渡せるのは、テストで本物の data/ に触れないため。"""
+    base = data_dir if data_dir is not None else DATA_DIR
+    if mine:
+        folder = base / "mine"
+        return Deployment(True, 8001, folder / "narrative_twin.db", folder / "photos", LABEL_MINE)
+    return Deployment(False, 8000, base / "narrative_twin.db", base / "photos", LABEL_FICTIONAL)
+
 
 API_KEY_NAME = "ANTHROPIC_API_KEY"
 

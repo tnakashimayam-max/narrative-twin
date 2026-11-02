@@ -56,6 +56,13 @@ def current_user(request: Request, conn: sqlite3.Connection = Depends(get_conn))
     return user
 
 
+@router.get("/mode")
+def mode(request: Request) -> dict[str, object]:
+    """起動の種類を返す。画面の隅の表示に使う。"""
+    deployment = request.app.state.deployment
+    return {"mine": deployment.mine, "label": deployment.label}
+
+
 @router.get("/users")
 def list_users(conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[User]]:
     """ログイン画面に出す名前の一覧。"""

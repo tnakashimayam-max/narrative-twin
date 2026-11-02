@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from datetime import date, datetime
 
 from app import db, verbatim
@@ -70,9 +71,30 @@ class LedgerError(ValueError):
     """台帳の決まりに合わない追記をしようとしたとき。"""
 
 
+@contextmanager
+def atomic(conn: sqlite3.Connection) -> Iterator[None]:
+    """中の追記を、すべて入るか、すべて入らないかの1つの処理にする。
+
+    言明、解釈、問いの候補を別々に確定すると、途中で失敗したときに一部だけが残り、
+    「もう分けた」と判定されて、残りを作り直せなくなる。
+    すでに処理の中なら外側に任せ、ここでは確定しない。関数を重ねて呼べるようにするため。
+    関連するテスト：tests/test_splitter.py
+    """
+    if conn.in_transaction:
+        yield
+        return
+    conn.execute("BEGIN")
+    try:
+        yield
+    except BaseException:
+        conn.rollback()
+        raise
+    conn.commit()
+
+
 def add_conversation(conn: sqlite3.Connection, draft: ConversationDraft) -> Conversation:
     """会話を入れる。"""
-    with conn:
+    with atomic(conn):
         conversation_id = db.insert_row(conn, "conversations", draft.model_dump(mode="json"))
     row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
     return db.row_to_model(row, Conversation)
@@ -80,7 +102,7 @@ def add_conversation(conn: sqlite3.Connection, draft: ConversationDraft) -> Conv
 
 def add_letter(conn: sqlite3.Connection, draft: LetterDraft) -> Letter:
     """便りを入れる。"""
-    with conn:
+    with atomic(conn):
         letter_id = db.insert_row(conn, "letters", draft.model_dump(mode="json"))
     row = conn.execute("SELECT * FROM letters WHERE id = ?", (letter_id,)).fetchone()
     return db.row_to_model(row, Letter)
@@ -100,7 +122,7 @@ def add_comment(conn: sqlite3.Connection, draft: CommentDraft) -> Comment:
         place=Place.THREAD,
     )
     try:
-        with conn:
+        with atomic(conn):
             utterance_id = db.insert_row(conn, "utterances", utterance.model_dump(mode="json"))
             comment_id = db.insert_row(
                 conn, "comments", {**draft.model_dump(mode="json"), "utterance_id": utterance_id}
@@ -137,7 +159,7 @@ def add_interpretation(
         evidence_statement_ids=[statement_id],
         status=InterpretationStatus.HYPOTHESIS,
     ).model_dump(mode="json", exclude={"id"})
-    with conn:
+    with atomic(conn):
         interpretation_id = db.insert_row(conn, "interpretations", values)
     row = conn.execute("SELECT * FROM interpretations WHERE id = ?", (interpretation_id,)).fetchone()
     return db.row_to_model(row, Interpretation)
@@ -152,7 +174,7 @@ def add_pending_question(
     petals: list[Petal] | None = None,
 ) -> None:
     """本人に確かめる問いの候補を入れる。まだ聞いていないので、聞いた日と結果は空にする。"""
-    with conn:
+    with atomic(conn):
         conn.execute(
             "INSERT INTO question_logs (question, theme, period, petals) VALUES (?, ?, ?, ?)",
             (
@@ -166,7 +188,7 @@ def add_pending_question(
 
 def add_utterance(conn: sqlite3.Connection, draft: UtteranceDraft) -> Utterance:
     """発言を追記する。"""
-    with conn:
+    with atomic(conn):
         utterance_id = db.insert_row(conn, "utterances", draft.model_dump(mode="json"))
     return get_utterance(conn, utterance_id)
 
@@ -237,7 +259,7 @@ def _insert(
     values["created_at"] = values["created_at"] or datetime.now().astimezone().isoformat()
     values["replaces_id"] = replaces_id
     try:
-        with conn:
+        with atomic(conn):
             statement_id = db.insert_row(conn, "statements", values)
     except sqlite3.IntegrityError as error:
         raise LedgerError(f"台帳に追記できません：{error}") from error

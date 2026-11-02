@@ -500,3 +500,40 @@ def test_本文の問題をやり直しの文にする(add_utterance):
 
     assert len(problems) == 1
     assert "文の途中" in problems[0]
+
+
+# ---- 保存は1つの処理にまとめる ----
+
+
+def test_保存の途中で失敗すると何も残らず同じ発言からやり直せる(conn, save, add_utterance, monkeypatch):
+    utterance = add_utterance("庭が好きです。花も好きです。")
+    items = (
+        _item("庭が好きです。", interpretations=[_interpretation()]),
+        _item("花も好きです。", confirm_question="花が好きなのかもしれません。合っていますか？"),
+    )
+
+    def _fail(*args, **kwargs):
+        raise RuntimeError("途中で失敗")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(ledger, "add_pending_question", _fail)
+        with pytest.raises(RuntimeError):
+            save([utterance], *items)
+
+    assert conn.execute("SELECT COUNT(*) FROM statements").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM interpretations").fetchone()[0] == 0
+    assert not splitter.already_split(conn, [utterance])
+
+    report = save([utterance], *items)
+
+    assert len(report.statement_ids) == 2
+
+
+def test_決まりに合わない言明を捨てても_ほかの言明は保存される(conn, save, add_utterance):
+    utterance = add_utterance("庭が好きです。")
+
+    report = save([utterance], _item("海が好きです。"), _item("庭が好きです。"))
+
+    assert len(report.statement_ids) == 1
+    assert len(report.dropped) == 1
+    assert conn.in_transaction is False

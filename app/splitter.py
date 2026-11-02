@@ -201,66 +201,68 @@ def save_split(
             and users_by_id[utterance.speaker_user_id].role is Role.SELF
         )
 
-    for item in result.statements:
-        picked = _pick(utterances, item.utterance_numbers)
-        reason = _drop_reason(item, users_by_name, picked)
-        if reason:
-            report.dropped.append(DroppedStatement(item.body, reason))
-            continue
+    # 全部入るか、全部入らないかにする。途中で失敗しても、同じ発言からやり直せるようにするため。
+    with ledger.atomic(conn):
+        for item in result.statements:
+            picked = _pick(utterances, item.utterance_numbers)
+            reason = _drop_reason(item, users_by_name, picked)
+            if reason:
+                report.dropped.append(DroppedStatement(item.body, reason))
+                continue
 
-        speaker_user_id, speaker_is_twin = _resolve_speaker(item.speaker, users_by_name)
-        draft = StatementDraft(
-            source_utterance_ids=[utterance.id for utterance in picked],
-            subject_user_id=users_by_name[item.subject].id,
-            speaker_user_id=speaker_user_id,
-            speaker_is_twin=speaker_is_twin,
-            source=item.source,
-            body=item.body,
-            period=item.period,
-            theme=item.theme,
-            petals=item.petals,
-            share_scope=ShareScope.SELF_ONLY,
-            effective_date=picked[0].spoken_at.date(),
-            created_at=picked[0].spoken_at,
-        )
-        try:
-            statement = ledger.append_statement(conn, draft)
-        except ledger.LedgerError as error:
-            report.dropped.append(DroppedStatement(item.body, str(error)))
-            continue
-        report.statement_ids.append(statement.id)
-
-        self_spoke = any(_spoken_by_self(utterance) for utterance in picked)
-        interpretations = [] if item.source is Source.AI_GUESS else item.interpretations
-        for interpretation in interpretations:
-            confidence, caution = interpretation.confidence, interpretation.caution
-            if not self_spoke and interpretation.perspective is Perspective.INTENT:
-                confidence = min(confidence, SELF_INTENT_CAP)
-                # AI の注意書きが空や「特になし」でも残るよう、決まった文を必ず先に置く
-                extra = caution.strip() if caution else ""
-                caution = f"{_SELF_INTENT_CAUTION} {extra}".strip()
-            ledger.add_interpretation(
-                conn,
-                statement_id=statement.id,
-                perspective=interpretation.perspective,
-                viewpoint_role=interpretation.viewpoint_role,
-                body=interpretation.body,
-                confidence=confidence,
-                caution=caution,
-            )
-            report.interpretation_count += 1
-
-        if item.confirm_question and not _question_is_usable(item):
-            report.dropped_question_count += 1
-        elif item.confirm_question:
-            ledger.add_pending_question(
-                conn,
-                question=item.confirm_question,
-                theme=item.theme,
+            speaker_user_id, speaker_is_twin = _resolve_speaker(item.speaker, users_by_name)
+            draft = StatementDraft(
+                source_utterance_ids=[utterance.id for utterance in picked],
+                subject_user_id=users_by_name[item.subject].id,
+                speaker_user_id=speaker_user_id,
+                speaker_is_twin=speaker_is_twin,
+                source=item.source,
+                body=item.body,
                 period=item.period,
+                theme=item.theme,
                 petals=item.petals,
+                share_scope=ShareScope.SELF_ONLY,
+                effective_date=picked[0].spoken_at.date(),
+                created_at=picked[0].spoken_at,
             )
-            report.question_count += 1
+            try:
+                statement = ledger.append_statement(conn, draft)
+            except ledger.LedgerError as error:
+                report.dropped.append(DroppedStatement(item.body, str(error)))
+                continue
+            report.statement_ids.append(statement.id)
+
+            self_spoke = any(_spoken_by_self(utterance) for utterance in picked)
+            interpretations = [] if item.source is Source.AI_GUESS else item.interpretations
+            for interpretation in interpretations:
+                confidence, caution = interpretation.confidence, interpretation.caution
+                if not self_spoke and interpretation.perspective is Perspective.INTENT:
+                    confidence = min(confidence, SELF_INTENT_CAP)
+                    # AI の注意書きが空や「特になし」でも残るよう、決まった文を必ず先に置く
+                    extra = caution.strip() if caution else ""
+                    caution = f"{_SELF_INTENT_CAUTION} {extra}".strip()
+                ledger.add_interpretation(
+                    conn,
+                    statement_id=statement.id,
+                    perspective=interpretation.perspective,
+                    viewpoint_role=interpretation.viewpoint_role,
+                    body=interpretation.body,
+                    confidence=confidence,
+                    caution=caution,
+                )
+                report.interpretation_count += 1
+
+            if item.confirm_question and not _question_is_usable(item):
+                report.dropped_question_count += 1
+            elif item.confirm_question:
+                ledger.add_pending_question(
+                    conn,
+                    question=item.confirm_question,
+                    theme=item.theme,
+                    period=item.period,
+                    petals=item.petals,
+                )
+                report.question_count += 1
     return report
 
 

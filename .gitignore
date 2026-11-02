@@ -4,3 +4,8 @@ __pycache__
 *.db
 *.sqlite
 data/trial/
+data/mine/
+data/photos/
+*.db-wal
+*.db-shm
+.playwright-mcp/
