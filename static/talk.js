@@ -21,6 +21,9 @@ import { avatar, el, openSheet, twinFigure } from "./ui.js";
 const POLL_MS = 3000;
 const BANNER_NO_TWIN = "ツイン（AI）はこの部屋を読みません";
 const BANNER_TWIN = "ツイン（AI）がいます。ここでの話を読みます";
+const GUESS_ENDING = "合っていますか？";
+const GUESS_ANSWERS = ["そうです", "ちがいます", "今は話したくない"];
+const DISMISSED_SHARE = "nt_dismissed_share";
 
 function newKey() {
   return crypto.randomUUID();
@@ -113,7 +116,7 @@ async function openNewRoomSheet(ctx) {
     const message = el("p", { class: "error", role: "alert", hidden: true });
     inner.append(
       el("h2", { text: "新しい部屋を作る" }),
-      el("p", { class: "hint", text: "1人を選ぶと1対1の部屋、2人以上か名前を入れるとグループになります。" }),
+      el("p", { class: "hint", text: "話したい人を選んでください。1人なら二人の部屋、2人以上ならグループになります。" }),
       ...checks.map(({ person, input }) => el("label", { class: "check" }, input, `${personName(person)}（${person.role}）`)),
       el("label", { class: "field" }, "部屋の名前（グループのとき）", nameInput),
       message,
@@ -123,7 +126,7 @@ async function openNewRoomSheet(ctx) {
         el("button", {
           type: "button",
           class: "primary",
-          text: "この人たちと部屋を作る",
+          text: "部屋を作る",
           onclick: async () => {
             const chosen = checks.filter(({ input }) => input.checked).map(({ person }) => person.id);
             const name = nameInput.value.trim();
@@ -161,6 +164,7 @@ export function openRoom(container, ctx, roomId) {
   let room = null;
   let sending = false;
   let attached = null; // 送る前の写真 { blob, url }
+  let shownShare = null;
   const people = new Map();
   const tracker = newDateTracker();
   const seen = new Set();
@@ -169,13 +173,15 @@ export function openRoom(container, ctx, roomId) {
   const title = el("div", { class: "room-title" });
   const headerIcon = el("span", {});
   const closeDayButton = el("button", { type: "button", class: "close-day", text: "今日はここまで", hidden: true });
-  const twinToggle = el("button", { type: "button", class: "close-day quiet", hidden: true });
-  const banner = el("div", { class: "room-banner", hidden: true });
+  const twinToggle = el("button", { type: "button", class: "quiet", hidden: true });
+  const bannerText = el("div", {});
+  const banner = el("div", { class: "room-banner", hidden: true }, bannerText, twinToggle);
   const messagesInner = el("div", { class: "messages-inner" });
   const pendingArea = el("div", {});
   const thinkingArea = el("div", {});
   const shareArea = el("div", {});
-  const messagesBox = el("div", { class: "messages" }, messagesInner, pendingArea, thinkingArea, shareArea);
+  const guessArea = el("div", {});
+  const messagesBox = el("div", { class: "messages" }, messagesInner, guessArea, pendingArea, thinkingArea, shareArea);
   const statusLine = el("p", { class: "error", role: "alert", hidden: true });
 
   const textBox = el("textarea", { rows: 1, placeholder: "ひとこと", "aria-label": "送る言葉" });
@@ -201,7 +207,6 @@ export function openRoom(container, ctx, roomId) {
       }),
       headerIcon,
       title,
-      twinToggle,
       closeDayButton
     ),
     banner,
@@ -209,13 +214,31 @@ export function openRoom(container, ctx, roomId) {
     composer
   );
 
+  // いちばん下を見ている間は、新しい吹き出しや写真が出ても下についていく
+  let stick = true;
+
   function nearBottom() {
     return messagesBox.scrollHeight - messagesBox.scrollTop - messagesBox.clientHeight < 120;
   }
 
   function scrollDown() {
     messagesBox.scrollTop = messagesBox.scrollHeight;
+    stick = true;
   }
+
+  messagesBox.addEventListener("scroll", () => {
+    stick = nearBottom();
+  });
+  // 写真は読み終わると高さが変わるので、読み終わったときにも下へ動かす
+  messagesBox.addEventListener(
+    "load",
+    () => {
+      if (stick) {
+        scrollDown();
+      }
+    },
+    true
+  );
 
   function showStatus(text) {
     statusLine.textContent = text || "";
@@ -232,7 +255,12 @@ export function openRoom(container, ctx, roomId) {
     } else {
       headerIcon.replaceChildren(room.kind === "1対1" ? avatar(room.members.find((m) => m.id !== ctx.me.id)) : groupIcon());
       banner.hidden = false;
-      banner.textContent = room.twin_present ? BANNER_TWIN : BANNER_NO_TWIN;
+      const others = room.members.filter((member) => member.id !== ctx.me.id).map((member) => member.called_name);
+      bannerText.replaceChildren(
+        el("div", { text: room.twin_present ? BANNER_TWIN : BANNER_NO_TWIN }),
+        room.twin_present ? el("div", { text: "「@ツイン」と書くと、ツイン（AI）が答えます" }) : "",
+        room.kind === "グループ" ? el("div", { class: "hint", text: `この部屋の人：${others.join("、")}` }) : ""
+      );
       if (room.kind === "グループ" && ctx.me.role === "本人") {
         twinToggle.hidden = false;
         twinToggle.textContent = room.twin_present ? "ツイン（AI）をはずす" : "ツイン（AI）を入れる";
@@ -240,8 +268,33 @@ export function openRoom(container, ctx, roomId) {
     }
   }
 
+  function clearGuessAnswers() {
+    guessArea.replaceChildren();
+  }
+
+  /* 推測の問いへの答えのボタン。押すと、その言葉を本人の発言として送る（原則4）。 */
+  function showGuessAnswers(item) {
+    clearGuessAnswers();
+    guessArea.append(
+      el(
+        "div",
+        { class: "row guess-answers" },
+        GUESS_ANSWERS.map((word) =>
+          el("button", {
+            type: "button",
+            text: word,
+            onclick: () => {
+              textBox.value = word;
+              send();
+            },
+          })
+        )
+      )
+    );
+  }
+
   function addMessages(items) {
-    const stick = nearBottom();
+    const following = stick;
     for (const item of items) {
       if (seen.has(item.id)) {
         continue;
@@ -255,8 +308,13 @@ export function openRoom(container, ctx, roomId) {
         messagesInner.append(divider);
       }
       messagesInner.append(bubble(item, { viewerId: ctx.me.id, people, onRest: ctx.me.role === "本人" ? restQuestion : null }));
+      // いちばん新しい行が本人への推測の問いのときだけ、答えのボタンを出す
+      clearGuessAnswers();
+      if (room?.kind === "ツイン" && item.is_twin && item.is_question && item.text?.endsWith(GUESS_ENDING)) {
+        showGuessAnswers(item);
+      }
     }
-    if (stick) {
+    if (following) {
       scrollDown();
     }
   }
@@ -283,30 +341,55 @@ export function openRoom(container, ctx, roomId) {
           "div",
           { class: "bubble-row" },
           twinFigure({ thinking: true }),
-          el("div", { class: "bubble-body" }, el("span", { class: "bubble-name", text: TWIN_NAME }), el("span", { class: "visually-hidden", role: "status", text: "考えています" }))
+          el("div", { class: "bubble-body" }, el("span", { class: "bubble-name", text: TWIN_NAME }), el("span", { class: "hint", role: "status", text: "考えています" }))
         )
       );
       scrollDown();
     }
   }
 
+  function shareDismissed(conversationId) {
+    return sessionStorage.getItem(DISMISSED_SHARE) === String(conversationId);
+  }
+
   function showShare(conversationId) {
-    shareArea.replaceChildren();
-    if (!conversationId) {
+    if (shownShare === conversationId) {
       return;
     }
+    shownShare = conversationId;
+    shareArea.replaceChildren();
+    if (!conversationId || shareDismissed(conversationId)) {
+      return;
+    }
+    const following = stick;
     shareArea.append(
       el(
         "div",
         { class: "card" },
         el("p", { text: "今日の話を、家族や縁のある人に見せることもできます。" }),
-        el("button", {
-          type: "button",
-          text: "この話を共有する",
-          onclick: () => openShareSheet(conversationId, () => shareArea.replaceChildren()),
-        })
+        el(
+          "div",
+          { class: "row" },
+          el("button", {
+            type: "button",
+            text: "この話を共有する",
+            onclick: () => openShareSheet(conversationId, () => shareArea.replaceChildren()),
+          }),
+          el("button", {
+            type: "button",
+            class: "quiet",
+            text: "今はしない",
+            onclick: () => {
+              sessionStorage.setItem(DISMISSED_SHARE, String(conversationId));
+              shareArea.replaceChildren();
+            },
+          })
+        )
       )
     );
+    if (following) {
+      scrollDown();
+    }
   }
 
   async function poll() {
@@ -459,6 +542,8 @@ export function openRoom(container, ctx, roomId) {
     showStatus("");
     const pending = { key: newKey(), text, blob: attached?.blob, url: attached?.url };
     pendings.set(pending.key, pending);
+    clearGuessAnswers();
+    shownShare = null;
     shareArea.replaceChildren();
     textBox.value = "";
     textBox.style.height = "";

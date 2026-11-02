@@ -179,6 +179,7 @@ export function renderHome(container, ctx) {
     panel.replaceChildren(
       el("div", { class: "row" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` })),
       el("p", { class: "hint", text: `立場：${ctx.me.role}` }),
+      el("p", { text: "便りはタイムラインで、部屋の話はトークで読めます。下のタブを押してください。" }),
       el("button", {
         type: "button",
         class: "wide",

@@ -83,7 +83,7 @@ _CARE_RECEIVE = {
 }
 _CARE_ORDER = [CareKind.NONE, CareKind.DISTRESS, CareKind.BODY, CareKind.LIFE]
 # 句点で終わる問いの形。この場面では原因を聞かないので、受け止めの文に混ざっていたら決まった文に替える。
-_HIDDEN_QUESTION = re.compile(r"(ますか|ませんか|ですか|でしょうか|ありますか)[。！!]?")
+_HIDDEN_QUESTION = re.compile(r"(ますか|ませんか|ですか|でしたか|でしょうか|ありますか)[。！!]?")
 
 # 本人が終えたそうな言葉。問いを落とし、引き留めない。誤って落としても、問わないだけで害は小さい。
 _GOODBYE_WORDS = (

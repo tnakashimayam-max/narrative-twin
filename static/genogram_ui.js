@@ -8,7 +8,7 @@
 */
 
 import { api } from "./api.js";
-import { el, openSheet, svg } from "./ui.js";
+import { el, openSheet, svg, twoStepButton } from "./ui.js";
 
 const CELL = 112;
 const ROW = 138;
@@ -215,14 +215,9 @@ export async function openGenogram(ctx) {
             "li",
             {},
             el("span", { style: "flex:1", text: link.kind === "親子" ? `${a}は${b}の親です` : `${a}と${b}は夫婦です` }),
-            el("button", {
-              type: "button",
-              class: "quiet",
-              text: "消す",
-              onclick: async () => {
-                await api(`/family-links/${link.id}`, { method: "DELETE" });
-                redraw();
-              },
+            twoStepButton("消す", "もう一度押すと消します", async () => {
+              await api(`/family-links/${link.id}`, { method: "DELETE" });
+              redraw();
             })
           )
         );

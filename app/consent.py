@@ -117,7 +117,7 @@ def visible_letter(conn: sqlite3.Connection, viewer: User, letter_id: int) -> Le
 _SCOPE_WORDS: dict[ShareScope, str] = {
     ShareScope.FAMILY: "「家族」向けの便りとその写真、「家族」の範囲の記録",
     ShareScope.CONNECTED: "「縁のある人まで」向けの便りとその写真、「縁のある人まで」の範囲の記録",
-    ShareScope.DECISION_SUPPORT: "「意思決定支援用」の範囲の記録",
+    ShareScope.DECISION_SUPPORT: "もしものときの話し合いに使う記録（意思決定支援用）",
 }
 
 

@@ -584,12 +584,12 @@ TABLE_MODELS: dict[str, type[BaseModel]] = {
 }
 
 # デモの利用者（架空の4人）。番号を固定し、起動し直しても同じ人を指すようにする。
-# (番号, 名前, 立場, 続柄, 住まい)
+# (番号, 名前, 立場, 続柄, 住まい, 性別)
 DEMO_USERS = [
-    (1, "誠一さん", s.Role.SELF, None, None),
-    (2, "美穂さん", s.Role.FAMILY, "長女", s.Residence.NEAR),
-    (3, "節子さん", s.Role.CONNECTED, "ご近所の友人", s.Residence.NEAR),
-    (4, "田中さん", s.Role.PROFESSIONAL, "ケアマネジャー", s.Residence.NEAR),
+    (1, "誠一さん", s.Role.SELF, None, None, s.Gender.MALE),
+    (2, "美穂さん", s.Role.FAMILY, "長女", s.Residence.NEAR, s.Gender.FEMALE),
+    (3, "節子さん", s.Role.CONNECTED, "ご近所の友人", s.Residence.NEAR, s.Gender.FEMALE),
+    (4, "田中さん", s.Role.PROFESSIONAL, "ケアマネジャー", s.Residence.NEAR, None),
 ]
 
 # 美穂さんは託された人、田中さんは招かれた専門職として、最初から設定しておく。
@@ -639,11 +639,19 @@ def init_db(path: Path | str, *, seed_demo: bool = True) -> None:
         if first_time and seed_demo:
             with connection:
                 connection.executemany(
-                    "INSERT INTO users (id, name, role, called_name, relation, residence) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO users (id, name, role, called_name, relation, residence, gender) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     [
-                        (user_id, name, role.value, name, relation, residence.value if residence else None)
-                        for user_id, name, role, relation, residence in DEMO_USERS
+                        (
+                            user_id,
+                            name,
+                            role.value,
+                            name,
+                            relation,
+                            residence.value if residence else None,
+                            gender.value if gender else None,
+                        )
+                        for user_id, name, role, relation, residence, gender in DEMO_USERS
                     ],
                 )
                 connection.executemany(

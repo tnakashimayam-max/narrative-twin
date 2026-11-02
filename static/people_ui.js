@@ -11,7 +11,7 @@
 
 import { api, uploadPhoto } from "./api.js";
 import { shrinkPhoto } from "./photo.js";
-import { avatar, el, openSheet } from "./ui.js";
+import { add, avatar, el, openSheet, twoStepButton } from "./ui.js";
 
 const ROLES = [
   ["家族", "家族"],
@@ -72,10 +72,11 @@ export function openPersonForm(ctx, person, onDone) {
     });
 
     const form = el("form", { class: "stack" });
-    form.append(
+    add(
+      form,
       el("h2", { text: isNew ? "人を登録する" : `${person.name}を直す` }),
       el("label", { class: "field" }, "お名前", name),
-      el("label", { class: "field" }, "呼ばれ方", called),
+      el("label", { class: "field" }, "呼ばれ方（ツインや家族がこう呼びます。例：和子さん）", called),
       isSelfTarget ? null : el("label", { class: "field" }, "立場", role),
       preview,
       isSelfTarget ? null : el("label", { class: "field" }, "続柄", relation),
@@ -91,28 +92,23 @@ export function openPersonForm(ctx, person, onDone) {
     );
 
     if (!isNew && !isSelfTarget) {
-      let armed = false;
-      const removeButton = el("button", {
-        type: "button",
-        class: "quiet wide",
-        text: "この人をはずす",
-        onclick: async () => {
-          if (!armed) {
-            armed = true;
-            removeButton.textContent = "もう一度押すと、はずします（過去の発言は残ります）";
-            return;
-          }
-          try {
-            await api(`/people/${person.id}/remove`, { method: "POST" });
-            close();
-            onDone?.();
-          } catch (error) {
-            message.textContent = error.message;
-            message.hidden = false;
-          }
-        },
-      });
-      form.append(removeButton);
+      form.append(
+        twoStepButton(
+          "この人をはずす",
+          "もう一度押すと、はずします（過去の発言は残ります）",
+          async () => {
+            try {
+              await api(`/people/${person.id}/remove`, { method: "POST" });
+              close();
+              onDone?.();
+            } catch (error) {
+              message.textContent = error.message;
+              message.hidden = false;
+            }
+          },
+          "quiet wide"
+        )
+      );
     }
 
     form.addEventListener("submit", async (event) => {
@@ -200,7 +196,7 @@ export function personRow(person, ctx, onDone) {
     "div",
     { class: "person-row" },
     avatar(person),
-    el("div", { class: "person-text" }, el("strong", { text: person.name }), el("div", { class: "hint", text: detail })),
+    el("div", { class: "person-text" }, el("strong", { text: person.called_name || person.name }), el("div", { class: "hint", text: detail })),
     el("button", { type: "button", class: "quiet", text: "直す", onclick: () => openPersonForm(ctx, person, onDone) })
   );
 }

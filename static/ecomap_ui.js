@@ -7,16 +7,16 @@
 */
 
 import { api, photoUrl } from "./api.js";
-import { avatar, el, openSheet, svg, twinDrawing } from "./ui.js";
+import { add, avatar, el, openSheet, svg, twinDrawing, twoStepButton } from "./ui.js";
 import { openPersonForm } from "./people_ui.js";
 
-// 幅360pxの画面で図が約0.86倍になるので、19 の文字が16px以上になる
-const SIZE = 380;
+// 幅360pxの画面で図が約0.82倍になるので、20 の文字が16px以上になる
+const SIZE = 400;
 const CENTER = SIZE / 2;
-const INNER = 90;
-const OUTER = 162;
+const INNER = 108;
+const OUTER = 172;
 const BADGE = 26;
-const FONT = 19;
+const FONT = 20;
 const INK = "#27477a";
 const STRESS = "#9b1c1c";
 
@@ -117,7 +117,7 @@ function badge({ x, y, label, sublabel, photoId, shape = "circle", ring = false,
     });
   }
   // 図の端では、名前が切れないように寄せる
-  const anchor = x < 80 ? "start" : x > SIZE - 80 ? "end" : "middle";
+  const anchor = x < 70 ? "start" : x > SIZE - 70 ? "end" : "middle";
   const textX = anchor === "start" ? x - BADGE : anchor === "end" ? x + BADGE : x;
   group.append(
     svg("text", { x: textX, y: labelAbove ? y - BADGE - 8 : y + BADGE + 20, "text-anchor": anchor, "font-size": FONT }, shortName(label))
@@ -125,20 +125,36 @@ function badge({ x, y, label, sublabel, photoId, shape = "circle", ring = false,
   return group;
 }
 
-/* 外側の輪の始まりの角度を選ぶ。内側のバッジと、その下の名前に近づきすぎないようにする。 */
+/* 点と線分の距離を返す。 */
+function distanceToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const ratio = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(px - (ax + ratio * dx), py - (ay + ratio * dy));
+}
+
+/* 外側の輪の始まりの角度を選ぶ。
+
+   内側のバッジとその下の名前に、外側のバッジが近づかず、外側へ伸びる線が内側のバッジの上を
+   通らない角度にする。線が丸の下を通ると、その人から伸びる線に見えるため。
+*/
 function bestStart(count, inner) {
   let best = -Math.PI / 2;
   let bestGap = -1;
-  for (let step = 0; step < 36; step += 1) {
-    const start = -Math.PI / 2 + (step * Math.PI) / 18;
+  for (let step = 0; step < 72; step += 1) {
+    const start = -Math.PI / 2 + (step * Math.PI) / 36;
     let gap = Infinity;
     for (let index = 0; index < count; index += 1) {
       const angle = start + (2 * Math.PI * index) / Math.max(count, 1);
       const x = CENTER + OUTER * Math.cos(angle);
       const y = CENTER + OUTER * Math.sin(angle);
       for (const spot of inner) {
-        // 名前はバッジの下に出るので、下にずらした位置との距離も見る
-        gap = Math.min(gap, Math.hypot(x - spot.x, y - spot.y), Math.hypot(x - spot.x, y - (spot.y + BADGE + 16)));
+        gap = Math.min(
+          gap,
+          distanceToSegment(spot.x, spot.y, CENTER, CENTER, x, y),
+          distanceToSegment(spot.x, spot.y + BADGE + 14, CENTER, CENTER, x, y),
+          Math.hypot(x - spot.x, y - spot.y) - BADGE
+        );
       }
     }
     if (gap > bestGap) {
@@ -224,7 +240,7 @@ export async function renderEcomap(section, ctx, refresh) {
 
   const drawing = svg(
     "svg",
-    { viewBox: `0 0 ${SIZE} ${SIZE + 24}`, class: "diagram", role: "group", "aria-label": "本人を真ん中にしたつながりの地図" },
+    { viewBox: `0 0 ${SIZE} ${SIZE + 30}`, class: "diagram", role: "group", "aria-label": "本人を真ん中にしたつながりの地図" },
     svg(
       "defs",
       {},
@@ -336,8 +352,7 @@ export async function renderEcomap(section, ctx, refresh) {
   section.append(
     el("p", { class: "hint", text: "丸を押すと、プロフィールとトークの開始、線の種類を選べます。この地図は本人だけに見えます。" }),
     drawing,
-    legend(),
-    words,
+    el("details", { class: "fold" }, el("summary", { text: "線の意味を見る" }), legend(), words),
     el(
       "div",
       { class: "row" },
@@ -356,8 +371,9 @@ function openPersonSheet(ctx, item, onDone) {
     const person = item.person;
     const details = [person.role, person.relation, person.residence].filter(Boolean).join("・");
     const message = el("p", { class: "error", role: "alert", hidden: true });
-    inner.append(
-      el("div", { class: "row" }, avatar(person, "large"), el("div", {}, el("h2", { text: person.name }), el("div", { class: "hint", text: details }))),
+    add(
+      inner,
+      el("div", { class: "row" }, avatar(person, "large"), el("div", {}, el("h2", { text: person.called_name || person.name }), el("div", { class: "hint", text: details }))),
       person.memo ? el("p", { text: person.memo }) : null,
       el(
         "div",
@@ -402,7 +418,8 @@ function openPersonSheet(ctx, item, onDone) {
 function openPlaceSheet(item, onDone) {
   openSheet((inner, close) => {
     const message = el("p", { class: "error", role: "alert", hidden: true });
-    inner.append(
+    add(
+      inner,
       el("h2", { text: item.place.name }),
       item.place.kind ? el("p", { class: "hint", text: item.place.kind }) : null,
       linePicker(
@@ -416,20 +433,15 @@ function openPlaceSheet(item, onDone) {
       el(
         "div",
         { class: "row" },
-        el("button", {
-          type: "button",
-          class: "quiet",
-          text: "このつながりをはずす",
-          onclick: async () => {
-            try {
-              await api(`/map/places/${item.place.id}/remove`, { method: "POST" });
-              close();
-              onDone();
-            } catch (error) {
-              message.textContent = error.message;
-              message.hidden = false;
-            }
-          },
+        twoStepButton("このつながりをはずす", "もう一度押すと、はずします", async () => {
+          try {
+            await api(`/map/places/${item.place.id}/remove`, { method: "POST" });
+            close();
+            onDone();
+          } catch (error) {
+            message.textContent = error.message;
+            message.hidden = false;
+          }
         }),
         el("button", { type: "button", class: "quiet", text: "閉じる", onclick: close })
       )

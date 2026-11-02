@@ -56,6 +56,10 @@ export function bubble(message, { viewerId, people, onRest } = {}) {
     if (message.is_question) {
       classes.push("question");
     }
+    // AI の推測は「推測」と表示する（原則4）
+    if (isTwin && message.text.endsWith("合っていますか？")) {
+      body.append(el("span", { class: "guess-tag", text: "推測" }));
+    }
     body.append(el("div", { class: "bubble-line" }, el("div", { class: classes.join(" "), text: message.text }), time));
   } else {
     body.append(time);

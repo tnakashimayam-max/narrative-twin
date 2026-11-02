@@ -11,8 +11,8 @@ import { shrinkPhoto } from "./photo.js";
 import { el, openSheet } from "./ui.js";
 
 const SCOPES = [
-  ["家族", "家族（家族の人だけ）"],
-  ["縁のある人まで", "縁のある人まで（家族と、友人・知人・ご近所の人）"],
+  ["家族", "家族だけに見せる", ["家族"]],
+  ["縁のある人まで", "家族と、縁のある人（友人・知人・ご近所など）に見せる", ["家族", "縁のある人"]],
 ];
 
 export function openShareSheet(conversationId, onShared) {
@@ -68,15 +68,28 @@ export function openShareSheet(conversationId, onShared) {
       }
     });
     let scope = "家族";
+    // だれに届くかを名前で見せる。範囲の言葉だけでは、だれが入るか分からないため。
+    let everyone = [];
+    try {
+      everyone = (await api("/people")).items.filter((person) => !person.is_deceased);
+    } catch {
+      // 名前が読めなくても、相手は選べる
+    }
     const scopeRow = el(
       "div",
       { class: "stack" },
-      SCOPES.map(([value, label], index) => {
+      SCOPES.map(([value, label, roles], index) => {
         const input = el("input", { type: "radio", name: "letter-scope", checked: index === 0 });
         input.addEventListener("change", () => {
           scope = value;
         });
-        return el("label", { class: "check" }, input, label);
+        const names = everyone.filter((person) => roles.includes(person.role)).map((person) => person.called_name);
+        return el(
+          "label",
+          { class: "check scope-choice" },
+          input,
+          el("span", {}, label, el("span", { class: "hint scope-names", text: names.length ? `届く人：${names.join("、")}` : "届く人はまだいません" }))
+        );
       })
     );
     const shareButton = el("button", {
@@ -102,12 +115,12 @@ export function openShareSheet(conversationId, onShared) {
     });
     inner.replaceChildren(
       el("h2", { text: "この話を共有する" }),
-      el("p", { class: "hint", text: "ツイン（AI）が作った下書きです。直してから共有できます。押すまで、だれにも見えません。" }),
+      el("p", { class: "hint", text: "ツイン（AI）が作った下書きです。言っていないことが入っていないか、読んでください。直してから共有できます。押すまで、だれにも見えません。" }),
       el("label", { class: "field" }, "便りの本文", body),
       el("div", { class: "stack" }, el("strong", { text: "写真" }), photoRow, el("label", { class: "button" }, "写真を足す", newPhoto)),
       el("div", { class: "stack" }, el("strong", { text: "見せる相手" }), scopeRow),
       errorLine,
-      el("div", { class: "stack" }, shareButton, el("button", { type: "button", class: "quiet wide", text: "やめる", onclick: close }))
+      el("div", { class: "stack sheet-actions" }, shareButton, el("button", { type: "button", class: "quiet wide", text: "やめる", onclick: close }))
     );
   });
 }

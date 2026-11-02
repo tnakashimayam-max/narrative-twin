@@ -7,7 +7,7 @@
 */
 
 import { api } from "./api.js";
-import { bubble, personName } from "./bubbles.js";
+import { bubble, dateDivider, newDateTracker, personName } from "./bubbles.js";
 import { avatar, dateLabel, el, photoImage } from "./ui.js";
 
 const POLL_MS = 5000;
@@ -61,7 +61,7 @@ export function renderTimeline(container, ctx) {
           "div",
           {},
           el("strong", { text: personName(author) }),
-          el("div", { class: "hint", text: `${dateLabel(letter.shared_at)}・${letter.share_with}` })
+          el("div", { class: "hint", text: `${dateLabel(letter.shared_at)}・${letter.share_with}に見せています` })
         )
       ),
       letter.photo_id ? photoImage(letter.photo_id, "letter-photo", "便りの写真") : null,
@@ -74,13 +74,17 @@ export function renderTimeline(container, ctx) {
         el("div", { class: "letter-reply" }, replyBox, sendButton)
       )
     );
-    return { card, thread, shown: new Set() };
+    return { card, thread, shown: new Set(), tracker: newDateTracker() };
   }
 
   function updateThread(entry, letter) {
     for (const item of letter.thread) {
       if (!entry.shown.has(item.id)) {
         entry.shown.add(item.id);
+        const divider = dateDivider(entry.tracker, item.sent_at);
+        if (divider) {
+          entry.thread.append(divider);
+        }
         entry.thread.append(bubble(item, { viewerId: ctx.me.id, people }));
       }
     }

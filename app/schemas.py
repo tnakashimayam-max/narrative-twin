@@ -773,7 +773,7 @@ def _twin_voice(text: str) -> str:
 
 
 # 「？」を付けない問いの形。文末で見る。「そうですか。」は受け止めなので入れない。
-_HIDDEN_QUESTION = re.compile(r"(?<!そう)(?:でしょうか|ますか|ましたか|ませんか|ですか)[。！!…]*$")
+_HIDDEN_QUESTION = re.compile(r"(?<!そう)(?:でしょうか|ますか|ましたか|ませんか|ですか|でしたか)[。！!…]*$")
 
 
 def _no_question_mark(text: str) -> str:

@@ -39,6 +39,35 @@ export function el(tag, props = {}, ...children) {
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/* 親に子を足す。null や false を「null」という文字にしない。 */
+export function add(parent, ...children) {
+  for (const child of children.flat()) {
+    if (child !== undefined && child !== null && child !== false) {
+      parent.append(child);
+    }
+  }
+  return parent;
+}
+
+/* 取り消せない操作のボタン。押し間違えないよう、2回押す形にする。ブラウザの確認の窓は使わない。 */
+export function twoStepButton(label, confirmLabel, action, className = "quiet") {
+  let armed = false;
+  const button = el("button", {
+    type: "button",
+    class: className,
+    text: label,
+    onclick: async () => {
+      if (!armed) {
+        armed = true;
+        button.textContent = confirmLabel;
+        return;
+      }
+      await action();
+    },
+  });
+  return button;
+}
+
 /* SVG の要素を作る。 */
 export function svg(tag, attributes = {}, ...children) {
   const node = document.createElementNS(SVG_NS, tag);
