@@ -109,6 +109,17 @@ _GOODBYE_WORDS = (
 # AI から聞かない話題の語。問いにこの語があれば落とす。
 _NOT_TO_ASK = ("病気", "病院", "薬", "痛み", "痛い", "体調", "具合", "亡くな", "つらかった", "辛かった", "お金", "借金")
 
+# 活用で形が変わる語は、本人が話したかを語の頭で見る。「痛くて」と話した人に「痛いのですね」と返せるようにするため。
+_TOPIC_STEMS = {
+    "痛み": "痛",
+    "痛い": "痛",
+    "病気": "病",
+    "病院": "病",
+    "亡くな": "亡",
+    "つらかった": "つら",
+    "辛かった": "辛",
+}
+
 # 本人の気持ちを決めつける言い方。プロンプトで頼んでも実測で出たので、この文だけプログラムで外す。
 # やり直しにしないのは、返事を待たせず、失敗も増やさないため。
 _ASSUMING_WORDS = ("伝わります", "伝わってきます", "思い浮かびます", "大切にされて", "大切に使われて")
@@ -185,7 +196,7 @@ def trim_reply(reply: str, heard: str) -> str:
         sentence
         for sentence in sentences
         if not any(word in sentence for word in _ASSUMING_WORDS)
-        and not any(word in sentence and word not in heard for word in _NOT_TO_ASK)
+        and not any(word in sentence and _TOPIC_STEMS.get(word, word) not in heard for word in _NOT_TO_ASK)
     ]
     return "".join(kept).strip()
 
