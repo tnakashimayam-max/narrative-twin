@@ -108,6 +108,10 @@ _GOODBYE_WORDS = (
 # AI から聞かない話題の語。問いにこの語があれば落とす。
 _NOT_TO_ASK = ("病気", "病院", "薬", "痛み", "痛い", "体調", "具合", "亡くな", "つらかった", "辛かった", "お金", "借金")
 
+# 本人の気持ちを決めつける言い方。プロンプトで頼んでも実測で出たので、この文だけプログラムで外す。
+# やり直しにしないのは、返事を待たせず、失敗も増やさないため。
+_ASSUMING_WORDS = ("伝わります", "伝わってきます", "思い浮かびます", "大切にされて", "大切に使われて")
+
 # 本人の考えや気持ちを聞く言葉。AI を呼ばずに決まった文を返す。
 _ASKS_FOR_SELF = ("本音", "本心", "気持ち", "どう思", "考えて", "思って", "望んで", "したいの", "意思")
 
@@ -167,6 +171,22 @@ def reports_self(text: str, self_user: User) -> bool:
     """グループの答えが、本人の考えや発言を伝える文かを返す。"""
     names = (self_user.name, self_user.display_name, *_FAMILY_WORDS)
     return _REPORTED_PAST.search(text) is not None and any(name in text for name in names)
+
+
+def trim_reply(reply: str, heard: str) -> str:
+    """受け止めの文から、気持ちの決めつけと、本人が今話していない体やつらさの話の文を外す。
+
+    前の話に出た不調を AI が持ち出すと、関係のない話の途中で思い出させることになる（原則6）。
+    heard は今の発言と写真の説明。全部の文が外れたら空を返し、呼ぶ側が決まった文に替える。
+    """
+    sentences = re.findall(r"[^。！!\n]+[。！!]*", reply)
+    kept = [
+        sentence
+        for sentence in sentences
+        if not any(word in sentence for word in _ASSUMING_WORDS)
+        and not any(word in sentence and word not in heard for word in _NOT_TO_ASK)
+    ]
+    return "".join(kept).strip()
 
 
 def mentions_twin(text: str) -> bool:
@@ -333,7 +353,9 @@ def respond_in_twin_room(
                 "UPDATE photos SET description = ? WHERE id = ?",
                 (result.value.photo_description[:120], photo.id),
             )
-        reply = turn.reply
+        heard = said + (result.value.photo_description if photo is not None else "")
+        fallback = _CARE_RECEIVE[care] if care is not CareKind.NONE else _HEARD_RECEIPT
+        reply = trim_reply(turn.reply, heard) or fallback
         if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
             reply = _CARE_RECEIVE[care]
         elif not words_are_real(reply, sources):

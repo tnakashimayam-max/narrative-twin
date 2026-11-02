@@ -174,6 +174,14 @@ def test_登録している人は候補にしない(me, use_claude):
     assert me.get("/api/people/candidates").json()["items"] == []
 
 
+def test_さんの有無だけが違う人を候補にしない(me, use_claude):
+    use_claude(人の候補={"people": [_candidate("美穂", "長女", "子")]})
+
+    _talk_and_close(me, "美穂が来てくれました。")
+
+    assert me.get("/api/people/candidates").json()["items"] == []
+
+
 def test_同じ続柄の人を別の候補にしない(me, use_claude):
     use_claude(人の候補={"people": [_candidate("和子"), _candidate("妻")]})
 

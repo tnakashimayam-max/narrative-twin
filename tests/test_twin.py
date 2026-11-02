@@ -195,6 +195,27 @@ def test_お休みの話題の問いは落とす(conn, me, use_claude):
     assert [item["text"] for item in body["replies"]] == ["はい。"]
 
 
+@pytest.mark.parametrize(
+    ("reply", "heard", "kept"),
+    [
+        ("急須なのですね。大切に使われてきたのが伝わります。", "急須です。", "急須なのですね。"),
+        ("庭の写真ですね。胸の痛みのことも気にかけています。", "庭の写真です。", "庭の写真ですね。"),
+        ("腰が痛いのですね。", "腰が痛いんです。", "腰が痛いのですね。"),
+        ("そのお気持ちが伝わります。", "迷惑はかけたくない。", ""),
+    ],
+)
+def test_受け止めから決めつけと持ち出しの文を外す(reply, heard, kept):
+    assert twin.trim_reply(reply, heard) == kept
+
+
+def test_全部の文が外れたら決まった受け止めを返す(me, use_claude):
+    use_claude(ツインの会話=_turn("そのお気持ちが伝わります。"))
+
+    body = _send(me, "迷惑はかけたくない。").json()
+
+    assert [item["text"] for item in body["replies"]] == ["お話をうかがいました。"]
+
+
 def test_本人が断ったと読めたら_その話題をお休みにする(conn, me, use_claude):
     use_claude(ツインの会話=_turn("はい。", "ご家族はお元気ですか？", "家族"))
     _send(me, "今朝、庭を見ました。")

@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import threading
 
@@ -116,6 +117,11 @@ def summarize(conn: sqlite3.Connection, conversation_id: int) -> None:
         )
 
 
+def _stem(name: str) -> str:
+    """呼び方の違いを除く。「美穂」と「美穂さん」を同じ人として見るため。"""
+    return re.sub(r"(さん|様|さま|ちゃん|くん|君)$", "", name.strip())
+
+
 def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str) -> None:
     """本人の発言から、話に出てきた人の候補を抜き出す。決めるのは本人なので、候補の表にだけ入れる。
 
@@ -133,7 +139,9 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
     known = sorted({name for person in people for name in (person.name, person.display_name, person.relation) if name})
     # 候補の続柄も入れる。「和子（妻）」が候補にいるのに「妻」を別の人として出さないため。
     past = conn.execute("SELECT name, relation FROM person_candidates").fetchall()
-    known_names = set(known) | {value for row in past for value in (row["name"], row["relation"]) if value}
+    known_names = {
+        _stem(value) for value in [*known, *(v for row in past for v in (row["name"], row["relation"]))] if value
+    }
     numbered = "\n".join(
         f"[{index}] {splitter.speech(utterance.text)}" for index, utterance in enumerate(utterances, start=1)
     )
@@ -155,11 +163,11 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
             if not 1 <= person.utterance_number <= len(utterances):
                 continue
             evidence = utterances[person.utterance_number - 1]
-            if not name or name not in evidence.text or name in known_names:
+            if not name or name not in evidence.text or _stem(name) in known_names:
                 continue
-            known_names.add(name)
+            known_names.add(_stem(name))
             if person.relation:
-                known_names.add(person.relation)
+                known_names.add(_stem(person.relation))
             conn.execute(
                 """
                 INSERT INTO person_candidates (name, relation, relative_kind, related_to_name, is_deceased,
