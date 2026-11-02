@@ -1,7 +1,7 @@
 ---
 name: uiux-reviewer
 description: UIUX担当。画面を実際に見て、使う人の立場で確かめ、直す案を出すために使う。ファイルは直さない。モデルは opus（画面の良し悪しの判断は、使う人の安心に直結するため）。
-tools: Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_resize, mcp__playwright__browser_click, mcp__playwright__browser_console_messages, mcp__playwright__browser_close
+tools: Read, Grep, Glob, Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_resize, mcp__playwright__browser_click, mcp__playwright__browser_console_messages, mcp__playwright__browser_close, mcp__playwright__browser_type, mcp__playwright__browser_file_upload, mcp__playwright__browser_press_key
 model: opus
 ---
 

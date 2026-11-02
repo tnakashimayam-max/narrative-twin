@@ -26,6 +26,7 @@ AI の答えは守られるとは限らないので、次のことをプログ�
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from dataclasses import dataclass, field
@@ -90,6 +91,15 @@ class SplitReport:
     dropped: list[DroppedStatement] = field(default_factory=list)
 
 
+def speech(text: str) -> str:
+    """発言を1行に収める。改行のある発言は JSON の文字列にする。
+
+    本文の中の「誠一さん：〜」が本人の行に見えないようにするため。保存する原文は変えない。
+    関連するテスト：tests/test_splitter.py
+    """
+    return json.dumps(text, ensure_ascii=False) if "\n" in text or "\r" in text else text
+
+
 def format_transcript(
     place: str,
     day: date,
@@ -119,10 +129,10 @@ def format_transcript(
         lines.append(f"## 便りの本文（文脈です。言明の根拠にしません）\n{letter_body}")
     if earlier:
         lines.append("## これまでの発言（文脈です。番号はありません。言明の根拠にしません）")
-        lines.extend(f"{_speaker(utterance)}：{utterance.text}" for utterance in earlier)
+        lines.extend(f"{_speaker(utterance)}：{speech(utterance.text)}" for utterance in earlier)
     lines.append("## 発言")
     for number, utterance in enumerate(utterances, start=1):
-        lines.append(f"[{number}] {_speaker(utterance)}：{utterance.text}")
+        lines.append(f"[{number}] {_speaker(utterance)}：{speech(utterance.text)}")
     return "\n".join(lines)
 
 
@@ -149,24 +159,27 @@ def quote_problems(result: SplitResult, utterances: list[Utterance]) -> list[str
     return problems
 
 
-def _plain_name(name: str) -> str:
-    """AI が人物の一覧の書き方のまま「誠一さん（本人）」と書いても、名前を読めるようにする。
+_ROLE_SUFFIX = re.compile(r"[（(](?:本人|家族|縁のある人|専門職)[）)]$")
 
-    名前を読み間違えたわけではないのに言明を捨てると、本人の言葉が失われるため。
-    ツインの呼び名には（AI）が入っているので、先に見分ける。
+
+def _find_user(name: str, users_by_name: dict[str, User]) -> User | None:
+    """AI の書いた名前から人を探す。
+
+    AI が人物の一覧の書き方のまま「誠一さん（本人）」と書いても読めるようにする。名前を読み間違えた
+    わけではないのに言明を捨てると、本人の言葉が失われるため。名前そのものにかっこがある人もいるので、
+    まず完全に同じ名前を探し、なければ、かっこの中が立場の言葉のときだけ外して探す。
     """
     cleaned = name.strip()
-    if cleaned in (TWIN_LABEL, "ツイン"):
-        return TWIN_LABEL
-    return re.sub(r"[（(][^（）()]*[）)]$", "", cleaned).strip()
+    if cleaned in users_by_name:
+        return users_by_name[cleaned]
+    return users_by_name.get(_ROLE_SUFFIX.sub("", cleaned).strip())
 
 
 def _resolve_speaker(name: str, users_by_name: dict[str, User]) -> tuple[int | None, bool] | None:
     """話した人の名前を、利用者の番号とツインの印にする。分からなければ None を返す。"""
-    plain = _plain_name(name)
-    if plain == TWIN_LABEL:
+    if name.strip() in (TWIN_LABEL, "ツイン"):
         return None, True
-    user = users_by_name.get(plain)
+    user = _find_user(name, users_by_name)
     return (user.id, False) if user else None
 
 
@@ -176,7 +189,7 @@ def _drop_reason(item: SplitStatement, users_by_name: dict[str, User], picked) -
         return "本人の訂正は、訂正の処理からだけ作れます"
     if picked is None or not picked:
         return "根拠の発言の番号が入力にありません"
-    if _plain_name(item.subject) not in users_by_name:
+    if _find_user(item.subject, users_by_name) is None:
         return "誰についてかが、人物の一覧にありません"
     if _resolve_speaker(item.speaker, users_by_name) is None:
         return "話した人が、人物の一覧にありません"
@@ -188,7 +201,7 @@ def _drop_reason(item: SplitStatement, users_by_name: dict[str, User], picked) -
     if item.source is Source.OBSERVATION and picked[0].place is Place.THREAD:
         return "スレッドのコメントは、書いた人の役割の証言にします"
     if item.source is Source.OBSERVATION and picked[0].place is Place.GROUP:
-        speaker = users_by_name.get(_plain_name(item.speaker))
+        speaker = _find_user(item.speaker, users_by_name)
         if speaker is None or speaker.role is not Role.PROFESSIONAL:
             return "グループの発言は、話した人の役割の証言にします"
     return None
@@ -244,7 +257,7 @@ def save_split(
             speaker_user_id, speaker_is_twin = _resolve_speaker(item.speaker, users_by_name)
             draft = StatementDraft(
                 source_utterance_ids=[utterance.id for utterance in picked],
-                subject_user_id=users_by_name[_plain_name(item.subject)].id,
+                subject_user_id=_find_user(item.subject, users_by_name).id,
                 speaker_user_id=speaker_user_id,
                 speaker_is_twin=speaker_is_twin,
                 source=item.source,
@@ -288,6 +301,8 @@ def save_split(
             elif item.confirm_question:
                 ledger.add_pending_question(
                     conn,
+                    conversation_id=picked[0].conversation_id,
+                    letter_id=picked[0].letter_id,
                     question=item.confirm_question,
                     theme=item.theme,
                     period=item.period,
@@ -335,10 +350,15 @@ def _write_mark(conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int,
 _TARGET_COLUMN = {SplitTargetKind.CONVERSATION: "conversation_id", SplitTargetKind.LETTER: "letter_id"}
 
 
+# 1回に AI へ渡す発言の上限。残りは次の回に分ける。読む量を増やしすぎないため。
+_SPLIT_MAX_LINES = 40
+_SPLIT_MAX_CHARS = 12000
+
+
 def load_after_mark(
     conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int, mark: int
 ) -> tuple[list[Utterance], int]:
-    """印より後の発言と、その中で最大の rowid を返す。
+    """印より後の発言を古いほうから上限まで返し、その中で最大の rowid も返す。
 
     印に使う値は、AI に渡す前に読んだこの値にする。保存のときの最大にすると、
     AI を待つ間に届いた発言を飛ばしてしまうため。
@@ -347,11 +367,16 @@ def load_after_mark(
         f"SELECT rowid AS seen_rowid, * FROM utterances WHERE {_TARGET_COLUMN[kind]} = ? AND rowid > ? ORDER BY rowid",
         (target_id, mark),
     ).fetchall()
-    utterances = []
+    utterances: list[Utterance] = []
     last = mark
+    total = 0
     for row in rows:
         values = dict(row)
-        last = values.pop("seen_rowid")
+        seen = values.pop("seen_rowid")
+        total += len(values["text"])
+        if utterances and (len(utterances) >= _SPLIT_MAX_LINES or total > _SPLIT_MAX_CHARS):
+            break
+        last = seen
         utterances.append(Utterance.model_validate(values))
     return utterances, last
 

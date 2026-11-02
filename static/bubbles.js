@@ -53,7 +53,7 @@ export function bubble(message, { viewerId, people, onRest } = {}) {
     if (!isTwin) {
       classes.push("person");
     }
-    if (message.question_id) {
+    if (message.is_question) {
       classes.push("question");
     }
     body.append(el("div", { class: "bubble-line" }, el("div", { class: classes.join(" "), text: message.text }), time));

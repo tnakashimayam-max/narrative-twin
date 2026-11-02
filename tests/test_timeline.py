@@ -157,6 +157,20 @@ def test_見えない便りにはコメントできない(me, login):
     assert _comment(login("田中さん"), letter, "見えないはず").status_code == 404
 
 
+def test_コメントの順番から見えない便りのコメントの数が分からない(me, login, use_claude):
+    use_claude()
+    hidden = _share(me, body="家族への便り", share_with="家族")
+    for index in range(3):
+        _comment(login("美穂さん"), hidden, f"家族のコメント{index}")
+    shown = _share(me, body="みんなへの便り", share_with="縁のある人まで")
+
+    comment = _comment(login("節子さん"), shown, "きれいですね。").json()
+    thread = login("節子さん").get("/api/timeline").json()["items"][0]["thread"]
+
+    assert comment["seq"] == 1
+    assert [item["seq"] for item in thread] == [1]
+
+
 def test_タイムラインに数の項目を持たない(me, login):
     letter = _share(me, share_with="家族")
 

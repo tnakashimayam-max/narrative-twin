@@ -7,7 +7,7 @@
 呼び出しのモデルとトークン数は ai_calls の表に残す。ふだんは会話を閉じたあとや、スレッドとグループの
 発言のあとに裏で動く（app/jobs.py）。
 
-関連するテスト：tests/test_intake.py、tests/test_jobs.py
+関連するテスト：tests/test_intake.py、tests/test_twin.py
 """
 
 from __future__ import annotations

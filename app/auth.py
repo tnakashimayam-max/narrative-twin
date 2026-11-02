@@ -156,6 +156,8 @@ def register_self(body: SelfDraft, conn: sqlite3.Connection = Depends(get_conn))
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="お名前を入れてください。")
+    if "ツイン" in name or "ツイン" in (body.called_name or ""):
+        raise HTTPException(status_code=400, detail="その名前は使えません。別の名前にしてください。")
     with conn:
         conn.execute(
             "INSERT INTO users (id, name, role, called_name, birth_year, gender) VALUES (?, ?, ?, ?, ?, ?)",

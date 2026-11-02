@@ -55,16 +55,20 @@ class CommentInput(BaseModel):
     client_key: str = Field(min_length=1, max_length=64)
 
 
-def _comment_view(row: sqlite3.Row) -> dict:
-    """コメントを、トークの吹き出しと同じ形にする。"""
+def _comment_view(row: sqlite3.Row, seq: int) -> dict:
+    """コメントを、トークの吹き出しと同じ形にする。
+
+    seq はスレッドの中の順番にする。表全体の rowid を返すと、見えない便りのコメントの数が分かるため。
+    """
     return {
         "id": row["id"],
-        "seq": row["rowid"],
+        "seq": seq,
         "kind": "発言",
         "sender_user_id": row["author_user_id"],
         "is_twin": bool(row["is_twin_question"]),
         "text": row["body"],
         "photo_id": None,
+        "is_question": bool(row["is_twin_question"]),
         "question_id": None,
         "question_rested": False,
         "sent_at": row["commented_at"],
@@ -76,7 +80,7 @@ def _thread(conn: sqlite3.Connection, letter_id: int) -> list[dict]:
     rows = conn.execute(
         "SELECT rowid, * FROM comments WHERE letter_id = ? ORDER BY rowid", (letter_id,)
     ).fetchall()
-    return [_comment_view(row) for row in rows]
+    return [_comment_view(row, index) for index, row in enumerate(rows, start=1)]
 
 
 def _letter_view(conn: sqlite3.Connection, letter: Letter) -> dict:
@@ -205,7 +209,10 @@ def add_comment(
         (letter_id, viewer.id, body.client_key),
     ).fetchone()
     if existing is not None:
-        return _comment_view(existing)
+        position = conn.execute(
+            "SELECT COUNT(*) FROM comments WHERE letter_id = ? AND rowid <= ?", (letter_id, existing["rowid"])
+        ).fetchone()[0]
+        return _comment_view(existing, position)
     comment: Comment = ledger.add_comment(
         conn,
         CommentDraft(
@@ -218,4 +225,4 @@ def add_comment(
     )
     background.add_task(jobs.after_comment, request.app, letter_id, viewer.id)
     row = conn.execute("SELECT rowid, * FROM comments WHERE id = ?", (comment.id,)).fetchone()
-    return _comment_view(row)
+    return _comment_view(row, len(_thread(conn, letter_id)))

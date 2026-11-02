@@ -182,6 +182,16 @@ def test_同じ続柄の人を別の候補にしない(me, use_claude):
     assert [item["name"] for item in me.get("/api/people/candidates").json()["items"]] == ["和子"]
 
 
+def test_候補を作るときに話に出てこない人の名前と続柄を渡さない(me, use_claude):
+    fake = use_claude()
+
+    _talk_and_close(me, "今日は妻と庭を見ました。")
+
+    text = fake.bodies("人の候補")[0]["messages"][0]["content"]
+    for word in ("美穂さん", "節子さん", "田中さん", "長女", "ケアマネジャー"):
+        assert word not in text
+
+
 def test_候補を抜き出すのは本人の発言だけ(me, use_claude):
     fake = use_claude(ツインの会話={"reply": "ツインが言った佐藤さんの話です。"})
 

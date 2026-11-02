@@ -136,3 +136,18 @@ def test_本人の訂正も断片では入らない(conn, users, add_statement, 
             utterance_id=said.id,
             body="娘とは毎日",
         )
+
+
+@pytest.mark.parametrize(
+    ("opener", "closer"),
+    [("“", "”"), ("‘", "’"), ('"', '"'), ("'", "'"), ("〝", "〟"), ("〈", "〉"), ("《", "》"), ("〔", "〕"), ("［", "］"), ("｢", "｣")],
+)
+def test_かぎかっこ以外の引用符の中からも抜き出せない(opener, closer):
+    text = f"和子は{opener}もう無理です。施設に入りましょう。{closer}と言った。"
+
+    assert quote_problem(text, "施設に入りましょう。") is not None
+    assert quote_problem(text, text) is None
+
+
+def test_引用符が閉じたあとの本人の言葉は入る():
+    assert quote_problem('和子は"無理です。"と言った。私はそうは思わない。', "私はそうは思わない。") is None

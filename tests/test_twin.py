@@ -348,6 +348,87 @@ def test_AIが断っても_命の言葉にはつなぎ先を返す(me, use_claud
     assert "よりそいホットライン" in response.json()["replies"][1]["text"]
 
 
+def test_本人が話していないことを本人の言葉として伝える文は書かない(me, use_claude):
+    use_claude(ツインの会話=_turn("誠一さんは「家に帰りたい」とおっしゃいました。"))
+
+    replies = [item["text"] for item in _send(me, "今朝、庭を見ました。").json()["replies"]]
+
+    assert replies == ["お話をうかがいました。"]
+
+
+def test_本人が話したとおりの引用は通す(me, use_claude):
+    use_claude(ツインの会話=_turn("「今朝、庭を見ました」と話してくださいました。"))
+
+    replies = [item["text"] for item in _send(me, "今朝、庭を見ました。").json()["replies"]]
+
+    assert replies == ["「今朝、庭を見ました」と話してくださいました。"]
+
+
+def test_写真の説明を本人の行にしない(conn, me, use_claude):
+    from tests.test_photos import jpeg_bytes
+
+    fake = use_claude(ツインの会話={"reply": "写真ですね。", "photo_description": "紫陽花の鉢です。"})
+    photo = me.post("/api/photos?kind=会話", content=jpeg_bytes()).json()
+    room = _twin_room(me)
+    me.post(f"/api/rooms/{room['id']}/messages", json={"photo_id": photo["id"], "client_key": "p"})
+    fake.requests.clear()
+
+    _send(me, "今朝の話です。")
+
+    text = fake.bodies("ツインの会話")[0]["messages"][0]["content"]
+    assert "AI の読み取り）紫陽花の鉢です。" in text
+    assert "誠一さん：紫陽花の鉢です。" not in text
+
+
+def test_グループとスレッドから生まれた問いをツインとの部屋に持ち込まない(conn, me, login, users, use_claude):
+    candidate = {
+        "source": "AIの推測",
+        "subject": "誠一さん",
+        "speaker": "ツイン（AI）",
+        "body": "庭が大切なのかもしれません",
+        "period": "今",
+        "theme": "好きなこと",
+        "petals": [],
+        "utterance_numbers": [1],
+        "interpretations": [],
+        "confirm_question": "グループの話から生まれた問いかもしれません。合っていますか？",
+    }
+    use_claude(言明への分割={"statements": [candidate]})
+    room = me.post("/api/rooms", json={"kind": "グループ", "member_ids": [users["美穂さん"].id]}).json()
+    me.post(f"/api/rooms/{room['id']}/twin", json={"present": True})
+    login("美穂さん").post(f"/api/rooms/{room['id']}/messages", json={"text": "父は庭が好きです。", "client_key": "m"})
+    assert conn.execute("SELECT COUNT(*) FROM question_logs WHERE asked_on IS NULL").fetchone()[0] == 1
+    fake = use_claude()
+
+    _send(me, "今日は晴れです。")
+
+    assert "グループの話から生まれた問い" not in fake.bodies("ツインの会話")[0]["messages"][0]["content"]
+
+
+def test_ツインとの部屋の発言から作った問いの候補は渡す(conn, me, use_claude):
+    candidate = {
+        "source": "AIの推測",
+        "subject": "誠一さん",
+        "speaker": "ツイン（AI）",
+        "body": "庭が大切なのかもしれません",
+        "period": "今",
+        "theme": "好きなこと",
+        "petals": [],
+        "utterance_numbers": [1],
+        "interpretations": [],
+        "confirm_question": "庭が大切なのかもしれません。合っていますか？",
+    }
+    use_claude(言明への分割={"statements": [candidate]})
+    _send(me, "今朝、庭を見ました。")
+    _close(me)
+    assert conn.execute("SELECT result FROM question_logs WHERE asked_on IS NULL").fetchone()["result"] is None
+    fake = use_claude()
+
+    _send(me, "今日は晴れです。")
+
+    assert "庭が大切なのかもしれません。合っていますか？" in fake.bodies("ツインの会話")[0]["messages"][0]["content"]
+
+
 def test_AIが判定しただけでも問いを続けない(me, use_claude):
     use_claude(ツインの会話=_turn("お話しくださり、ありがとうございます。", "なぜですか？", care="強いつらさ"))
 

@@ -113,20 +113,27 @@ def visible_letter(conn: sqlite3.Connection, viewer: User, letter_id: int) -> Le
     return letter if letter.share_with in visible_scopes(conn, viewer) else None
 
 
-# 立場ごとに、タイムラインで見えるものの説明。_BASE_SCOPES の言葉での表し方。
-_ROLE_SEES: dict[Role, list[str]] = {
-    Role.FAMILY: ["「家族」向けの便りとその写真", "「縁のある人まで」向けの便りとその写真"],
-    Role.CONNECTED: ["「縁のある人まで」向けの便りとその写真"],
-    Role.PROFESSIONAL: [],
+# 共有範囲ごとの、見えるものの説明。
+_SCOPE_WORDS: dict[ShareScope, str] = {
+    ShareScope.FAMILY: "「家族」向けの便りとその写真、「家族」の範囲の記録",
+    ShareScope.CONNECTED: "「縁のある人まで」向けの便りとその写真、「縁のある人まで」の範囲の記録",
+    ShareScope.DECISION_SUPPORT: "「意思決定支援用」の範囲の記録",
 }
 
 
-def role_change_preview(current: Role, new: Role) -> dict[str, list[str]]:
-    """立場を変えると見えるようになるものと、見えなくなるものを言葉で返す。"""
-    before = _ROLE_SEES.get(current, [])
-    after = _ROLE_SEES.get(new, [])
-    sees = [item for item in after if item not in before]
-    stops = [item for item in before if item not in after]
-    if not sees and not stops:
-        sees = ["タイムラインで見えるものは変わりません"]
-    return {"sees": sees, "stops": stops, "same": ["入っている部屋の発言と写真は、部屋にいる間は見えます"]}
+def role_change_preview(conn: sqlite3.Connection, person: User, new: Role) -> dict[str, list[str]]:
+    """立場を変えると見えるようになるものと、見えなくなるものを言葉で返す。
+
+    託す設定も含めて絞り込みと同じ関数から作る。説明と実際の見える範囲を食い違わせないため。
+    """
+    delegated = _has_delegation(conn, person.id)
+    before = scopes_for(person.role, delegated)
+    after = scopes_for(new, delegated)
+    return {
+        "sees": [_SCOPE_WORDS[scope] for scope in _SCOPE_WORDS if scope in after - before],
+        "stops": [_SCOPE_WORDS[scope] for scope in _SCOPE_WORDS if scope in before - after],
+        "same": [
+            *[f"変わらず見えるもの：{_SCOPE_WORDS[scope]}" for scope in _SCOPE_WORDS if scope in after & before],
+            "入っている部屋の発言と写真は、部屋にいる間は見えます",
+        ],
+    }

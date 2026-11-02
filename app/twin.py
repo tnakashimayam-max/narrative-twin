@@ -112,6 +112,13 @@ _NOT_TO_ASK = ("病気", "病院", "薬", "痛み", "痛い", "体調", "具合"
 _ASKS_FOR_SELF = ("本音", "本心", "気持ち", "どう思", "考えて", "思って", "望んで", "したいの", "意思")
 
 _MENTION = re.compile(r"[@＠]\s*ツイン")
+
+# 本人の言葉を伝える言い方。今のところ、本人の言葉を番号で取り出して届ける処理はないので、
+# AI がこの形で書いた文は、原文と照らせるものだけを通す。原則9（本人の言葉は記録の本文そのままだけ）。
+_REPORTED_PAST = re.compile(r"おっしゃいました|おっしゃっていました|おっしゃっています|言っていました|話していました|言っています|話しています")
+_QUOTE_THEN_REPORT = re.compile(r"「([^「」]+)」と(?:おっしゃ|言|話|うかが)")
+_HEARD_RECEIPT = "お話をうかがいました。"
+_FAMILY_WORDS = ("お父さん", "お母さん", "父", "母", "本人", "ご本人")
 _MAX_QUESTIONS_IN_A_ROW = 2
 
 
@@ -141,6 +148,25 @@ def question_is_allowed(question: str, theme: Theme | None, *, resting: set[Them
     if any(word in question for word in _NOT_TO_ASK):
         return False
     return not memory.is_repeated(question, asked)
+
+
+def words_are_real(text: str, sources: list[str]) -> bool:
+    """本人の言葉を伝える文が、原文と照らせるかを返す。
+
+    「〜」と言いました、の中身が今の話か前に聞いた本人の言葉にあれば通す。中身を示さずに
+    「おっしゃっていました」と伝える文は、照らせないので通さない。
+    """
+    joined = "\n".join(sources)
+    quotes = _QUOTE_THEN_REPORT.findall(text)
+    if quotes:
+        return all(quote in joined for quote in quotes)
+    return _REPORTED_PAST.search(text) is None
+
+
+def reports_self(text: str, self_user: User) -> bool:
+    """グループの答えが、本人の考えや発言を伝える文かを返す。"""
+    names = (self_user.name, self_user.display_name, *_FAMILY_WORDS)
+    return _REPORTED_PAST.search(text) is not None and any(name in text for name in names)
 
 
 def mentions_twin(text: str) -> bool:
@@ -294,6 +320,12 @@ def respond_in_twin_room(
         elif memory.questions_in_a_row(conn, conversation_id) >= _MAX_QUESTIONS_IN_A_ROW:
             # 問いが続くと尋問のようになるので、受け止めるだけの回を入れる
             question = None
+    # 本人の言葉を伝える形の文は、原文と照らせるものだけを通す
+    sources = [context["transcript"], *context["self_words"]]
+    if photo is not None:
+        sources.append(result.value.photo_description)
+    if question and not words_are_real(question, sources):
+        question = None
     with ledger.atomic(conn):
         _answer_pending(conn, conversation_id, turn.previous_question_result)
         if photo is not None:
@@ -304,6 +336,8 @@ def respond_in_twin_room(
         reply = turn.reply
         if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
             reply = _CARE_RECEIVE[care]
+        elif not words_are_real(reply, sources):
+            reply = _HEARD_RECEIPT
         _say(conn, room, conversation_id, Place.DIARY_AND_TALK, reply, now)
         if care is not CareKind.NONE:
             _say(conn, room, conversation_id, Place.DIARY_AND_TALK, _CARE_LINES[care], now)
@@ -315,7 +349,7 @@ def respond_in_twin_room(
 def _answer_pending(conn: sqlite3.Connection, conversation_id: int, result: QuestionResult | None) -> None:
     """直前の問いに結果を書く。本人が断ったと読めたら、その話題はお休みになる。"""
     conn.execute(
-        "UPDATE question_logs SET result = ? WHERE conversation_id = ? AND result IS NULL",
+        "UPDATE question_logs SET result = ? WHERE conversation_id = ? AND result IS NULL AND asked_on IS NOT NULL",
         ((result or QuestionResult.ANSWERED).value, conversation_id),
     )
 
@@ -330,7 +364,14 @@ def close_in_twin_room(
     client=None,
 ) -> None:
     """「今日はここまで」の返事を作る。短いお礼と、今日の暮らしに役立つ一言。"""
-    lines = memory.conversation_lines(conn, conversation.id, self_user)
+    lines = memory.conversation_lines(
+        conn,
+        conversation.id,
+        self_user,
+        max_lines=memory.LIMITS["current_utterances"],
+        max_chars=memory.LIMITS["current_chars"],
+        with_photos=True,
+    )
     if not lines:
         return
     target = f"会話 {conversation.id}"
@@ -371,7 +412,7 @@ def group_turn(
         # 本人が書いたら、待っている問いには答えたことにする
         with conn:
             conn.execute(
-                "UPDATE question_logs SET result = ? WHERE room_id = ? AND result IS NULL",
+                "UPDATE question_logs SET result = ? WHERE room_id = ? AND result IS NULL AND asked_on IS NOT NULL",
                 (QuestionResult.ANSWERED.value, room.id),
             )
         pending = False
@@ -380,9 +421,15 @@ def group_turn(
         return
     if not called and (sender.role is Role.SELF or pending):
         return
-    # 渡すのは、ツインが入ったあとのこの部屋の発言だけ
+    # 渡すのは、ツインが入ったあとのこの部屋の発言だけ。写真の説明も渡さない。
     people = room_store.members_of(conn, room.id)
-    lines = memory.conversation_lines(conn, conversation_id, self_user)
+    lines = memory.conversation_lines(
+        conn,
+        conversation_id,
+        self_user,
+        max_lines=memory.LIMITS["current_utterances"],
+        max_chars=memory.LIMITS["current_chars"],
+    )
     roster = "、".join(f"{person.display_name}（{person.role.value}）" for person in people)
     scene = (
         f"{sender.display_name}が @ツイン で呼びました。"
@@ -401,7 +448,14 @@ def group_turn(
         raise
     _log_result(conn, "グループのツイン", result, target)
     turn = result.value
-    if turn.kind is GroupTurnKind.CANNOT:
+    # AI を待つ間に本人がツインをはずしたら、何も書かない
+    presence = room_store.active_presence(conn, room.id)
+    if presence is None or presence.conversation_id != conversation_id:
+        return
+    if turn.kind is GroupTurnKind.CANNOT or (
+        turn.kind is GroupTurnKind.ANSWER and called and reports_self(turn.text, self_user)
+    ):
+        # 本人の考えや発言を伝える答えは、代わりに答えたことになるので書かない
         _say(conn, room, conversation_id, Place.GROUP, prompts.CANNOT_ANSWER_FOR_SELF, now)
     elif turn.kind is GroupTurnKind.ANSWER and called:
         _say(conn, room, conversation_id, Place.GROUP, turn.text, now)
@@ -431,7 +485,7 @@ def thread_turn(
     if author_user_id == self_user.id:
         with conn:
             conn.execute(
-                "UPDATE question_logs SET result = ? WHERE letter_id = ? AND result IS NULL",
+                "UPDATE question_logs SET result = ? WHERE letter_id = ? AND result IS NULL AND asked_on IS NOT NULL",
                 (QuestionResult.ANSWERED.value, letter_id),
             )
         return

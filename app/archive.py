@@ -4,7 +4,7 @@
 4つの極：1. 書く・話す。
 守る原則：5（元の記録を消さない）、10（本人だけが開ける）。
 
-関連するテスト：tests/test_archive.py
+関連するテスト：tests/test_ecomap.py
 """
 
 from __future__ import annotations

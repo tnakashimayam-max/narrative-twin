@@ -25,6 +25,7 @@ from app.schemas import (
     MessageKind,
     Place,
     QuestionResult,
+    Role,
     Room,
     RoomKind,
     RoomMessage,
@@ -112,7 +113,7 @@ def close_conversation(conn: sqlite3.Connection, conversation_id: int, moment: s
         conn.execute("UPDATE conversations SET closed_at = ? WHERE id = ?", (moment, conversation_id))
         # 答えないまま閉じた問いは途中として残す。次の会話で「答えを待っている」扱いにしないため。
         conn.execute(
-            "UPDATE question_logs SET result = ? WHERE conversation_id = ? AND result IS NULL",
+            "UPDATE question_logs SET result = ? WHERE conversation_id = ? AND result IS NULL AND asked_on IS NOT NULL",
             (QuestionResult.PARTIAL.value, conversation_id),
         )
 
@@ -200,7 +201,7 @@ def say_in_ledger(
 
 
 _MESSAGE_QUERY = """
-SELECT m.id, m.rowid AS seq, m.kind, m.sender_user_id, m.is_twin, m.photo_id, m.sent_at, m.client_key,
+SELECT m.id, m.kind, m.sender_user_id, m.is_twin, m.photo_id, m.sent_at, m.client_key,
        m.question_log_id, COALESCE(u.text, m.text) AS body, q.result AS question_result
 FROM room_messages m
 LEFT JOIN utterances u ON u.id = m.utterance_id
@@ -208,17 +209,24 @@ LEFT JOIN question_logs q ON q.id = m.question_log_id
 """
 
 
-def _message_view(row: sqlite3.Row, viewer: User | None) -> dict:
+def _message_view(row: sqlite3.Row, viewer: User | None, seq: int) -> dict:
+    """部屋の行を画面に返す形にする。
+
+    seq は部屋の中の順番にする。表全体の rowid を返すと、ほかの部屋の発言の数が分かるため。
+    質問の記録の番号は通し番号なので、本人にだけ返す。ほかの人には問いかどうかだけを返す。
+    """
+    is_self = viewer is not None and viewer.role is Role.SELF
     return {
         "id": row["id"],
-        "seq": row["seq"],
+        "seq": seq,
         "kind": row["kind"],
         "sender_user_id": row["sender_user_id"],
         "is_twin": bool(row["is_twin"]),
         "text": row["body"],
         "photo_id": row["photo_id"],
-        "question_id": row["question_log_id"],
-        "question_rested": row["question_result"] == QuestionResult.RESTING.value,
+        "is_question": row["question_log_id"] is not None,
+        "question_id": row["question_log_id"] if is_self else None,
+        "question_rested": is_self and row["question_result"] == QuestionResult.RESTING.value,
         "sent_at": row["sent_at"],
         # 送り直しの判定に使う印は、送った本人にだけ返す
         "client_key": row["client_key"] if viewer and row["sender_user_id"] == viewer.id else None,
@@ -226,22 +234,39 @@ def _message_view(row: sqlite3.Row, viewer: User | None) -> dict:
 
 
 def messages_after(conn: sqlite3.Connection, room_id: int, after: int, viewer: User | None) -> list[dict]:
+    """部屋の中の順番が after より後の行を返す。部屋の行は追記だけなので、順番は変わらない。"""
     rows = conn.execute(
-        _MESSAGE_QUERY + " WHERE m.room_id = ? AND m.rowid > ? ORDER BY m.rowid", (room_id, after)
+        _MESSAGE_QUERY + " WHERE m.room_id = ? ORDER BY m.rowid LIMIT -1 OFFSET ?", (room_id, after)
     ).fetchall()
-    return [_message_view(row, viewer) for row in rows]
+    return [_message_view(row, viewer, after + index) for index, row in enumerate(rows, start=1)]
 
 
 def conversation_messages(conn: sqlite3.Connection, conversation_id: int, viewer: User) -> list[dict]:
     rows = conn.execute(
         _MESSAGE_QUERY + " WHERE m.conversation_id = ? ORDER BY m.rowid", (conversation_id,)
     ).fetchall()
-    return [_message_view(row, viewer) for row in rows]
+    return [_message_view(row, viewer, index) for index, row in enumerate(rows, start=1)]
+
+
+def room_length(conn: sqlite3.Connection, room_id: int) -> int:
+    """部屋の行の数を返す。"""
+    return conn.execute("SELECT COUNT(*) FROM room_messages WHERE room_id = ?", (room_id,)).fetchone()[0]
+
+
+def position_of(conn: sqlite3.Connection, message_id: int) -> int:
+    """部屋の中で、その行が何番目かを返す。"""
+    return conn.execute(
+        """
+        SELECT COUNT(*) FROM room_messages x
+        JOIN room_messages m ON m.id = ? AND x.room_id = m.room_id AND x.rowid <= m.rowid
+        """,
+        (message_id,),
+    ).fetchone()[0]
 
 
 def message_view(conn: sqlite3.Connection, message_id: int, viewer: User | None) -> dict:
     row = conn.execute(_MESSAGE_QUERY + " WHERE m.id = ?", (message_id,)).fetchone()
-    return _message_view(row, viewer)
+    return _message_view(row, viewer, position_of(conn, message_id))
 
 
 def find_by_client_key(
@@ -252,10 +277,6 @@ def find_by_client_key(
         (room_id, sender_id, client_key),
     ).fetchone()
     return db.row_to_model(row, RoomMessage) if row else None
-
-
-def rowid_of(conn: sqlite3.Connection, message_id: int) -> int:
-    return conn.execute("SELECT rowid FROM room_messages WHERE id = ?", (message_id,)).fetchone()[0]
 
 
 def last_message(conn: sqlite3.Connection, room_id: int) -> sqlite3.Row | None:

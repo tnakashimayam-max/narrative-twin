@@ -70,7 +70,7 @@ def test_本人を2人にはできない(me):
 def test_同じ名前は登録できない(me):
     me.post("/api/people", json=FULL)
 
-    assert me.post("/api/people", json=FULL).status_code == 409
+    assert me.post("/api/people", json=FULL).status_code == 400
 
 
 def test_呼ばれ方を省くと名前を使う(me):
@@ -135,14 +135,14 @@ def test_立場を変えると見える便りが変わる(conn, me, login, users
 def test_立場を変える前に見えるようになるものを言葉で出す(me, users):
     preview = me.get(f"/api/people/{users['節子さん'].id}/role-preview", params={"role": "家族"}).json()
 
-    assert preview["sees"] == ["「家族」向けの便りとその写真"]
+    assert preview["sees"] == ["「家族」向けの便りとその写真、「家族」の範囲の記録"]
     assert preview["stops"] == []
 
 
 def test_立場を変える前に見えなくなるものも言葉で出す(me, users):
     preview = me.get(f"/api/people/{users['美穂さん'].id}/role-preview", params={"role": "専門職"}).json()
 
-    assert "「家族」向けの便りとその写真" in preview["stops"]
+    assert "「家族」向けの便りとその写真、「家族」の範囲の記録" in preview["stops"]
 
 
 @pytest.mark.parametrize("name", ["美穂さん", "節子さん", "田中さん"])
@@ -224,3 +224,40 @@ def test_本人の登録は1回だけ(mine):
 
 def test_架空用では本人を登録し直せない(login, me):
     assert me.post("/api/self", json={"name": "別の人"}).status_code == 409
+
+
+# ---- 名前でなりすませない ----
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [{"called_name": "誠一さん"}, {"name": "誠一さん"}, {"name": "ツイン（AI）"}, {"called_name": "ツイン"}, {"called_name": "節子さん"}],
+    ids=["本人の呼ばれ方", "本人の名前", "ツインの呼び名", "ツイン", "ほかの人"],
+)
+def test_本人やツインやほかの人の名前には変えられない(login, users, fields):
+    miho = login("美穂さん")
+
+    response = miho.put(f"/api/people/{users['美穂さん'].id}", json=fields)
+
+    assert response.status_code == 400
+    assert miho.get("/api/me").json()["name"] == "美穂さん"
+
+
+def test_自分の名前はそのまま保存し直せる(login, users):
+    response = login("美穂さん").put(
+        f"/api/people/{users['美穂さん'].id}", json={"name": "美穂さん", "called_name": "美穂さん"}
+    )
+
+    assert response.status_code == 200
+
+
+def test_ツインの名前では登録できない(me, mine):
+    assert me.post("/api/people", json={"name": "ツイン", "role": "家族"}).status_code == 400
+    assert mine.post("/api/self", json={"name": "ツイン（AI）"}).status_code == 400
+
+
+def test_託された人の立場を変える説明に意思決定支援用の範囲が出る(me, users):
+    preview = me.get(f"/api/people/{users['美穂さん'].id}/role-preview", params={"role": "専門職"}).json()
+
+    assert any("意思決定支援用" in text for text in preview["same"])
+    assert any("家族" in text for text in preview["stops"])

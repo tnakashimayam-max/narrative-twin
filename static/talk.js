@@ -438,10 +438,8 @@ export function openRoom(container, ctx, roomId) {
         json: { text: pending.text || null, photo_id: pending.photoId || null, client_key: pending.key },
       });
       dropPending(pending.key);
+      // 順番は読み込みの last_seq でだけ進める。ここで進めると、先に届いていた相手の発言を飛ばすため。
       addMessages([result.message, ...result.replies]);
-      for (const item of [result.message, ...result.replies]) {
-        lastSeq = Math.max(lastSeq, item.seq);
-      }
       scrollDown();
     } catch (error) {
       pending.failed = error.message;
@@ -485,9 +483,6 @@ export function openRoom(container, ctx, roomId) {
     try {
       const result = await api(`/rooms/${roomId}/close`, { method: "POST" });
       addMessages(result.replies);
-      for (const item of result.replies) {
-        lastSeq = Math.max(lastSeq, item.seq);
-      }
       if (result.closed) {
         showShare(result.conversation_id);
         scrollDown();

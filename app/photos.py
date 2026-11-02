@@ -67,11 +67,13 @@ def can_see_photo(conn: sqlite3.Connection, viewer: User, photo: Photo) -> bool:
     """この人がこの写真を見てよいかを、参照元から求める。"""
     if photo.owner_user_id == viewer.id:
         return True
-    profile = conn.execute(
-        "SELECT 1 FROM users WHERE photo_id = ? AND removed_at IS NULL LIMIT 1", (photo.id,)
-    ).fetchone()
-    if profile:
-        return True
+    # 全員に見せるのはプロフィールの種類の写真だけ。番号を指しただけでは見えるようにしない。
+    if photo.kind is PhotoKind.PROFILE:
+        profile = conn.execute(
+            "SELECT 1 FROM users WHERE photo_id = ? AND removed_at IS NULL LIMIT 1", (photo.id,)
+        ).fetchone()
+        if profile:
+            return True
     in_room = conn.execute(
         """
         SELECT 1 FROM room_messages m

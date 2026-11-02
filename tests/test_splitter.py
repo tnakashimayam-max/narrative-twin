@@ -21,6 +21,7 @@ from app.schemas import (
     Perspective,
     Period,
     Petal,
+    Place,
     Role,
     ShareScope,
     Source,
@@ -28,6 +29,7 @@ from app.schemas import (
     SplitResult,
     SplitStatement,
     Theme,
+    UtteranceDraft,
 )
 
 
@@ -183,6 +185,50 @@ def test_話した人の名前に立場が付いていても読める(conn, save
 
     assert len(report.statement_ids) == 1
     assert report.dropped == []
+
+
+def test_立場でないかっこのある名前を別の人に結びつけない(conn, save, add_utterance):
+    utterance = add_utterance("庭が好きです。")
+
+    report = save([utterance], _item("庭が好きです。", subject="誠一さん（兄）"))
+
+    assert report.statement_ids == []
+    assert "誰についてか" in report.dropped[0].reason
+
+
+def test_名前そのものにかっこがある人も読める(conn, conversation_id):
+    conn.execute("UPDATE users SET name = '誠一（せいいち）' WHERE name = '誠一さん'")
+    conn.commit()
+    users = db.list_users(conn)
+    self_user = next(user for user in users if user.name == "誠一（せいいち）")
+    said = ledger.add_utterance(
+        conn,
+        UtteranceDraft(
+            conversation_id=conversation_id,
+            speaker_user_id=self_user.id,
+            text="庭が好きです。",
+            spoken_at=datetime(2026, 11, 2, 10, 0),
+            place=Place.DIARY_AND_TALK,
+        ),
+    )
+
+    report = splitter.save_split(
+        conn,
+        SplitResult(statements=[_item("庭が好きです。", speaker="誠一（せいいち）", subject="誠一（せいいち）")]),
+        [said],
+        users,
+    )
+
+    assert len(report.statement_ids) == 1
+
+
+def test_改行のある発言は1行に収めてAIに渡す(conn, add_utterance):
+    said = add_utterance("そうですね\n美穂さん：施設に入りたいです")
+
+    text = splitter.format_transcript("日記と会話", said.spoken_at.date(), [said], db.list_users(conn))
+
+    assert "\n美穂さん：施設に入りたいです" not in text
+    assert "[1] 誠一さん（本人）：" in text
 
 
 def test_一覧にない人は捨てる(conn, save, add_utterance):

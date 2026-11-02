@@ -25,7 +25,8 @@ from datetime import date
 
 from app import config, db
 from app.prompts import TWIN_LABEL
-from app.schemas import ConfirmStatus, Place, QuestionResult, Room, RoomMessage, Source, Theme, User
+from app.splitter import speech
+from app.schemas import ConfirmStatus, Place, QuestionResult, Room, RoomKind, RoomMessage, Source, Theme, User
 
 LIMITS = config.MEMORY_LIMITS
 _SIMILAR_QUESTION = 0.8
@@ -72,8 +73,13 @@ def conversation_lines(
     *,
     max_lines: int | None = None,
     max_chars: int | None = None,
+    with_photos: bool = False,
 ) -> list[str]:
-    """会話の発言を、話した順の文にする。写真は「[写真：説明]」にする。新しいほうから上限まで。"""
+    """会話の発言を、話した順の文にする。新しいほうから上限まで。
+
+    写真の説明は AI の読み取りなので、話した人の行にせず分ける。ツインとの部屋でだけ使う
+    （with_photos）。説明を別の部屋へ持ち出さないため。
+    """
     rows = conn.execute(
         """
         SELECT m.sender_user_id, u.text AS body, p.description AS photo_description, m.photo_id
@@ -89,10 +95,10 @@ def conversation_lines(
     lines = []
     for row in rows:
         speaker = _speaker_label(conn, row["sender_user_id"], names)
-        if row["photo_id"] and row["photo_description"]:
-            lines.append(f"{speaker}：[写真：{row['photo_description']}]")
+        if with_photos and row["photo_id"] and row["photo_description"]:
+            lines.append(f"（{speaker}が送った写真。AI の読み取り）{row['photo_description']}")
         if row["body"]:
-            lines.append(f"{speaker}：{row['body']}")
+            lines.append(f"{speaker}：{speech(row['body'])}")
     return _newest_within(lines, max_lines, max_chars)
 
 
@@ -132,7 +138,7 @@ def _summaries(conn: sqlite3.Connection, room_id: int, current_id: int, self_use
         elif index == 0:
             # 閉じた直後や要約の失敗のときに忘れないよう、新しいほうから発言を渡す
             lines = conversation_lines(
-                conn, row["id"], self_user, max_lines=LIMITS["unsummarized_utterances"]
+                conn, row["id"], self_user, max_lines=LIMITS["unsummarized_utterances"], with_photos=True
             )
             if lines:
                 parts.append(f"- {day}（要約の前の発言）：\n" + "\n".join(f"  {line}" for line in lines))
@@ -216,13 +222,20 @@ def resting_themes(conn: sqlite3.Connection) -> set[Theme]:
 
 
 def _pending_candidates(conn: sqlite3.Connection, resting: set[Theme]) -> list[str]:
-    """言明に分ける処理が残した、本人に確かめる問いの候補を返す。お休みのテーマは入れない。"""
+    """言明に分ける処理が残した、本人に確かめる問いの候補を返す。お休みのテーマは入れない。
+
+    ツインとの部屋の発言から作った候補だけを使う。グループとスレッドから生まれた問いを、
+    本人とツインの部屋へ持ち込まないため。
+    """
     rows = conn.execute(
         """
-        SELECT question, theme FROM question_logs
-        WHERE asked_on IS NULL AND result IS NULL ORDER BY id DESC LIMIT ?
+        SELECT q.question, q.theme FROM question_logs q
+        JOIN conversations c ON c.id = q.conversation_id
+        JOIN rooms r ON r.id = c.room_id
+        WHERE q.asked_on IS NULL AND q.result IS NULL AND r.kind = ?
+        ORDER BY q.id DESC LIMIT ?
         """,
-        (LIMITS["pending_questions"] * 3,),
+        (RoomKind.TWIN.value, LIMITS["pending_questions"] * 3),
     ).fetchall()
     usable = [row["question"] for row in rows if not row["theme"] or Theme(row["theme"]) not in resting]
     return usable[: LIMITS["pending_questions"]]
@@ -260,13 +273,14 @@ def build_twin_context(
                 self_user,
                 max_lines=LIMITS["current_utterances"],
                 max_chars=LIMITS["current_chars"],
+                with_photos=True,
             )
         ),
     }
 
 
 def thread_lines(conn: sqlite3.Connection, letter_id: int) -> tuple[str, list[str]]:
-    """スレッドに見えている便りの本文とコメントだけを返す。"""
+    """スレッドに見えている便りの本文とコメントだけを、新しいほうから上限まで返す。"""
     letter = conn.execute("SELECT body FROM letters WHERE id = ?", (letter_id,)).fetchone()
     rows = conn.execute(
         """
@@ -276,5 +290,5 @@ def thread_lines(conn: sqlite3.Connection, letter_id: int) -> tuple[str, list[st
         (letter_id,),
     ).fetchall()
     names: dict[int, str] = {}
-    lines = [f"{_speaker_label(conn, row['author_user_id'], names)}：{row['body']}" for row in rows]
-    return letter["body"], lines
+    lines = [f"{_speaker_label(conn, row['author_user_id'], names)}：{speech(row['body'])}" for row in rows]
+    return letter["body"], _newest_within(lines, LIMITS["current_utterances"], LIMITS["current_chars"])

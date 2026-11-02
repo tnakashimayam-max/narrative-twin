@@ -12,10 +12,10 @@
 
 | 番号 | 意味 |
 |---|---|
-| 400 | 写真の形式や大きさ、値の中身が受け付けられない |
+| 400 | 写真の形式や大きさ、名前など、値の中身が受け付けられない |
 | 401 | ログインしていない。ログイン画面に戻す |
 | 404 | ない、または見てよい範囲にない。どちらかは区別できない |
-| 409 | もういる人の名前、すでにいる本人など、今の状態と合わない |
+| 409 | すでにいる本人など、今の状態と合わない |
 | 422 | 送った値の形が違う |
 | 503 | AI の呼び出しがうまくいかなかった。もう一度送れる |
 
@@ -43,8 +43,8 @@
 |---|---|---|
 | `GET /api/people` | はずしていない人の一覧（本人を含む） | `{"items": [PersonDetail, ...]}` |
 | `POST /api/people` | 人を登録する。`name`、`called_name`、`role`、`relation`、`residence`、`birth_year`、`gender`、`is_deceased`、`memo`、`photo_id` | 201、`PersonDetail` |
-| `PUT /api/people/{番号}` | 本人はすべての項目を直せる。本人以外は自分の `name`、`called_name`、`photo_id` だけ | `PersonDetail`（本人以外は `Person`） |
-| `GET /api/people/{番号}/role-preview?role=家族` | 立場を変えると見えるようになるものを言葉で返す | `{"sees": [文], "stops": [文]}` |
+| `PUT /api/people/{番号}` | 本人はすべての項目を直せる。本人以外は自分の `name`、`called_name`、`photo_id` だけ。`photo_id` に指定できるのは、操作する人が送ったプロフィールの写真だけ | `PersonDetail`（本人以外は `Person`） |
+| `GET /api/people/{番号}/role-preview?role=家族` | 立場を変えると見えるようになるものを言葉で返す | `{"sees": [文], "stops": [文], "same": [文]}` |
 | `POST /api/people/{番号}/remove` | はずす。消さない。過去の発言は残る。本人ははずせない | 204 |
 
 ## 写真
@@ -85,12 +85,13 @@
 |---|---|
 | `id` | 番号 |
 | `seq` | 部屋の中の順番。`after` に渡す |
+| `is_question` | ツインの問いか |
 | `kind` | 発言／お知らせ |
 | `sender_user_id` | 話した人。ツインのときは `null` |
 | `is_twin` | ツインが話したか |
 | `text` | 本文。写真だけのときは `null` |
 | `photo_id` | 写真の番号。なければ `null` |
-| `question_id` | ツインの問いのとき、問いの記録の番号 |
+| `question_id` | ツインの問いのとき、問いの記録の番号。本人の応答にだけ入る |
 | `question_rested` | その問いをお休みにしたか |
 | `sent_at` | 日時 |
 | `client_key` | 送ったときの `client_key`。本人の発言だけ |
@@ -109,7 +110,7 @@
 |---|---|---|
 | `POST /api/conversations/{番号}/letter-draft` | 便りの下書きを AI が作る。保存しない。本人だけ | `{"body": 文, "photo_ids": [番号]}` |
 | `POST /api/letters` | 「この内容で共有する」。`conversation_id`、`body`、`photo_id`、`share_with`（家族／縁のある人まで）。本人だけ | 201、`TimelineLetter` |
-| `GET /api/timeline` | 見える便りを新しい順に。スレッドつき | `{"items": [TimelineLetter, ...], "people": [Person, ...]}` |
+| `GET /api/timeline` | 見える便りを新しい順に。スレッドつき | `{"items": [TimelineLetter, ...], "people": [Person, ...], "self_id": 本人の番号}` |
 | `POST /api/letters/{番号}/comments` | コメントする。`{"text": 文, "client_key": 文}`。便りを見られない人は 404 | 201、`Message` |
 | `GET /api/letters` | 見える便りの一覧（スレッドなし） | `{"items": [Letter, ...]}` |
 
@@ -162,7 +163,7 @@
 | `POST /api/map/places` | 病院などのつながりを足す。`{"name": 文, "kind": 文}` | 201、`MapPlace` |
 | `POST /api/map/places/{番号}/remove` | つながりをはずす | 204 |
 | `PUT /api/map/links` | 線を決める。`{"user_id": 番号}` か `{"place_id": 番号}` に、`strength`（強い／ふつう／弱い／ストレス）と `direction`（本人から／相手から／お互い／なし） | `MapLink` |
-| `GET /api/genogram` | 家系図の中身 | `{"people": [PersonDetail と generation], "links": [FamilyLink], "self_id": 番号}` |
+| `GET /api/genogram` | 家系図の中身。`links` は図に出る関係、`all_links` は登録した関係のすべて | `{"people": [PersonDetail と generation], "links": [FamilyLink], "all_links": [FamilyLink], "self_id": 番号}` |
 | `POST /api/family-links` | 関係を足す。`{"kind": "親子" か "夫婦", "from_user_id": 親か一方, "to_user_id": 子か他方}` | 201、`FamilyLink` |
 | `DELETE /api/family-links/{番号}` | 関係を消す。間違えて足したときのため | 204 |
 | `GET /api/people/candidates` | 話に出てきた人の候補 | `{"items": [Candidate, ...]}` |

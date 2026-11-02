@@ -38,7 +38,8 @@ from app.room_store import (
     message_view,
     messages_after,
     open_conversation,
-    rowid_of,
+    position_of,
+    room_length,
     say_in_ledger,
     start_conversation,
 )
@@ -192,14 +193,11 @@ def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: U
     people = {member.id: member for member in members_of(conn, room.id)}
     for user_id in speakers - people.keys():
         people[user_id] = db.get_user(conn, user_id)
-    last_seq = conn.execute(
-        "SELECT COALESCE(MAX(rowid), 0) FROM room_messages WHERE room_id = ?", (room.id,)
-    ).fetchone()[0]
     return {
         "room": room_summary(conn, room, viewer),
         "items": items,
         "people": [person_view(person) for person in people.values()],
-        "last_seq": last_seq,
+        "last_seq": room_length(conn, room.id),
         "thinking": room.id in request.app.state.thinking_rooms,
         "shareable_conversation_id": _shareable_conversation_id(conn, room),
     }
@@ -285,7 +283,9 @@ def _usable_photo(conn: sqlite3.Connection, viewer: User, photo_id: int | None, 
     if photo is None or photo.owner_user_id != viewer.id:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     # AI に送るのは会話の写真だけ。プロフィール写真をツインとの部屋に付けさせない。
-    if room.kind is RoomKind.TWIN and photo.kind is not PhotoKind.TALK:
+    # 人どうしの部屋には部屋の写真だけを付ける。会話の写真の説明を別の部屋へ持ち出さないため。
+    wanted = PhotoKind.TALK if room.kind is RoomKind.TWIN else PhotoKind.ROOM
+    if photo.kind is not wanted:
         raise HTTPException(status_code=400, detail="この写真はここに送れません。")
     return photo
 
@@ -318,6 +318,7 @@ def send_message(
 def _send_to_twin(request, background, conn, room, viewer, text, photo, client_key) -> dict:
     app = request.app
     now = clock.now(app)
+    closed_id = None
     with _lock_for(app, room.id):
         message = find_by_client_key(conn, room.id, viewer.id, client_key)
         if message is None:
@@ -325,13 +326,14 @@ def _send_to_twin(request, background, conn, room, viewer, text, photo, client_k
             if conversation is not None and conversation.conversation_date != now.date():
                 # 閉じ忘れは、日付の違いで閉じる。言明に分ける処理は裏で流す。
                 close_conversation(conn, conversation.id, now.isoformat())
-                background.add_task(jobs.after_close, app, conversation.id)
+                closed_id = conversation.id
+                background.add_task(jobs.after_close, app, closed_id)
                 conversation = None
             if conversation is None:
                 conversation = start_conversation(conn, room.id, now.date())
             message = _save_self_message(conn, room, conversation.id, viewer, text, photo, client_key, now)
         else:
-            replies = messages_after(conn, room.id, rowid_of(conn, message.id), viewer)
+            replies = messages_after(conn, room.id, position_of(conn, message.id), viewer)
             if any(item["is_twin"] for item in replies):
                 return {"message": message_view(conn, message.id, viewer), "replies": replies}
         app.state.thinking_rooms.add(room.id)
@@ -345,12 +347,15 @@ def _send_to_twin(request, background, conn, room, viewer, text, photo, client_k
                 photos_dir=app.state.deployment.photos_dir,
             )
         except _AI_ERRORS as error:
+            # 失敗の応答では BackgroundTasks が動かないので、閉じた会話の処理は別に流す
+            if closed_id is not None:
+                threading.Thread(target=jobs.after_close, args=(app, closed_id), daemon=True).start()
             raise HTTPException(status_code=503, detail=AI_FAILED_MESSAGE) from error
         finally:
             app.state.thinking_rooms.discard(room.id)
     return {
         "message": message_view(conn, message.id, viewer),
-        "replies": messages_after(conn, room.id, rowid_of(conn, message.id), viewer),
+        "replies": messages_after(conn, room.id, position_of(conn, message.id), viewer),
     }
 
 
@@ -434,9 +439,7 @@ def close_day(
         conversation = open_conversation(conn, room.id)
         if conversation is None:
             return {"closed": False, "replies": [], "conversation_id": None}
-        before = conn.execute(
-            "SELECT COALESCE(MAX(rowid), 0) FROM room_messages WHERE room_id = ?", (room.id,)
-        ).fetchone()[0]
+        before = room_length(conn, room.id)
         app.state.thinking_rooms.add(room.id)
         try:
             twin.close_in_twin_room(conn, room=room, self_user=viewer, conversation=conversation, now=now)

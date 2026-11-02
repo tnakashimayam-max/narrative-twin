@@ -47,10 +47,12 @@ def normalize(raw: bytes) -> bytes:
             flat = _on_white(upright)
     except PhotoError:
         raise
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError, Image.DecompressionBombError) as error:
+        # 壊れた PNG は SyntaxError になることがある
         raise PhotoError(UNREADABLE_MESSAGE) from error
     output = io.BytesIO()
-    # exif を渡さないので、撮影の位置も日時も書き込まれない
+    # exif を渡さず info も空にするので、撮影の位置、日時、コメント欄は書き込まれない
+    flat.info = {}
     flat.save(output, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
     return output.getvalue()
 

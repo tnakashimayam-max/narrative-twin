@@ -12,7 +12,7 @@
 未処理は次に動いたときと、python -m app の起動のときに流し直す。処理済みの印（split_marks）を
 保存と同じ処理の中で進めるので、途中で止まっても同じ発言からやり直せる。
 
-関連するテスト：tests/test_jobs.py
+関連するテスト：tests/test_twin.py、tests/test_rooms.py、tests/test_timeline.py、tests/test_ecomap.py
 決めた経緯：docs/decisions.md
 """
 
@@ -25,7 +25,8 @@ from app import ai, clock, db, intake, memory, prompts, room_store, splitter, tw
 from app.schemas import CandidateStatus, RoomKind, SplitTargetKind
 
 # 1回の処理で分け直す回数の上限。発言が届き続けても止まるようにする。
-_MAX_ROUNDS = 3
+# 1回に渡す発言には上限があるので（splitter._SPLIT_MAX_LINES）、長い会話は数回に分かれる。
+_MAX_ROUNDS = 10
 _EARLIER_LINES = 10
 
 
@@ -133,12 +134,16 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
     # 候補の続柄も入れる。「和子（妻）」が候補にいるのに「妻」を別の人として出さないため。
     past = conn.execute("SELECT name, relation FROM person_candidates").fetchall()
     known_names = set(known) | {value for row in past for value in (row["name"], row["relation"]) if value}
-    numbered = "\n".join(f"[{index}] {utterance.text}" for index, utterance in enumerate(utterances, start=1))
+    numbered = "\n".join(
+        f"[{index}] {splitter.speech(utterance.text)}" for index, utterance in enumerate(utterances, start=1)
+    )
+    # AI に渡すのは発言に出てくる呼び方だけ。登録した全員の名前と続柄を渡さないため。照合は全員で行う。
+    named_here = sorted(name for name in known_names if name in numbered)
     target = f"会話 {conversation_id}"
     try:
         result = ai.person_candidates(
             system=prompts.person_candidates_system(self_user.display_name),
-            text=prompts.people_user_text(sorted(known_names), numbered),
+            text=prompts.people_user_text(named_here, numbered),
         )
     except twin._SPENT_ERRORS as error:
         twin._log_spent(conn, "人の候補", error, target)

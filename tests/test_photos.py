@@ -297,3 +297,96 @@ def test_保存の関数は撮影の情報を落とした写真だけを書く(t
     )
 
     assert b"Exif" not in (tmp_path / photo.file).read_bytes()[:64]
+
+
+# ---- プロフィールに指定できる写真 ----
+
+
+def test_便りの写真の番号を自分のプロフィールに指しても見えるようにならない(me, login, users):
+    photo_id = _upload(me, kind="便り").json()["id"]
+    me.post("/api/letters", json={"body": "便りです。", "photo_id": photo_id, "share_with": "家族"})
+    miho = login("美穂さん")
+
+    response = miho.put(f"/api/people/{users['美穂さん'].id}", json={"photo_id": photo_id})
+
+    assert response.status_code == 404
+    assert login("節子さん").get(f"/api/photos/{photo_id}").status_code == 404
+
+
+def test_部屋の写真の番号をプロフィールに指しても部屋の外の人には見えない(me, login, users):
+    room = me.post("/api/rooms", json={"kind": "1対1", "member_ids": [users["美穂さん"].id]}).json()
+    photo_id = _upload(me, kind="部屋").json()["id"]
+    me.post(f"/api/rooms/{room['id']}/messages", json={"photo_id": photo_id, "client_key": "p"})
+
+    assert login("美穂さん").put(f"/api/people/{users['美穂さん'].id}", json={"photo_id": photo_id}).status_code == 404
+    assert login("節子さん").get(f"/api/photos/{photo_id}").status_code == 404
+
+
+def test_本人も会話の写真をプロフィールにはできない(me, users):
+    photo_id = _upload(me, kind="会話").json()["id"]
+
+    assert me.put(f"/api/people/{users['誠一さん'].id}", json={"photo_id": photo_id}).status_code == 404
+
+
+def test_ない写真の番号はプロフィールに指せない(me, users):
+    assert me.put(f"/api/people/{users['誠一さん'].id}", json={"photo_id": 123456}).status_code == 404
+
+
+def test_人を登録するときも別の種類の写真は指せない(me):
+    photo_id = _upload(me, kind="会話").json()["id"]
+
+    response = me.post("/api/people", json={"name": "和子さん", "role": "家族", "photo_id": photo_id})
+
+    assert response.status_code == 404
+
+
+def test_本人は家族のプロフィール写真を登録できる(me, login, users):
+    photo_id = _upload(me, kind="プロフィール").json()["id"]
+
+    assert me.put(f"/api/people/{users['美穂さん'].id}", json={"photo_id": photo_id}).status_code == 200
+    assert login("節子さん").get(f"/api/photos/{photo_id}").status_code == 200
+
+
+def test_人どうしの部屋に会話の写真は付けられない(me, users):
+    room = me.post("/api/rooms", json={"kind": "グループ", "member_ids": [users["美穂さん"].id]}).json()
+    photo_id = _upload(me, kind="会話").json()["id"]
+
+    response = me.post(
+        f"/api/rooms/{room['id']}/messages", json={"text": "写真です。", "photo_id": photo_id, "client_key": "p"}
+    )
+
+    assert response.status_code == 400
+
+
+# ---- 写真に残る情報 ----
+
+
+def _with_comment(fmt: str) -> bytes:
+    output = io.BytesIO()
+    image = Image.new("RGB", (300, 200), (120, 160, 90))
+    if fmt == "JPEG":
+        image.save(output, format="JPEG", comment=b"secret-comment")
+    else:
+        from PIL import PngImagePlugin
+
+        info = PngImagePlugin.PngInfo()
+        info.add_text("comment", "secret-comment")
+        image.save(output, format="PNG", pnginfo=info)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize("fmt", ["JPEG", "PNG"])
+def test_写真のコメント欄は保存されない(fmt):
+    source = _with_comment(fmt)
+    assert b"secret-comment" in source
+
+    assert b"secret-comment" not in images.normalize(source)
+
+
+def test_壊れたPNGは読めない写真として止める(me):
+    broken = png_bytes()[:40] + b"\x00" * 60
+
+    response = _upload(me, broken)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == images.UNREADABLE_MESSAGE

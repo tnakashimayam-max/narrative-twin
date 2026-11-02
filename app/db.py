@@ -352,6 +352,8 @@ CREATE TABLE IF NOT EXISTS room_messages (
     CHECK (is_twin = 0 OR sender_user_id IS NULL)
 );
 
+CREATE INDEX IF NOT EXISTS room_messages_room ON room_messages(room_id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS room_messages_once
     ON room_messages(room_id, sender_user_id, client_key) WHERE client_key IS NOT NULL;
 

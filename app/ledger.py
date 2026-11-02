@@ -172,16 +172,24 @@ def add_pending_question(
     theme: Theme | None = None,
     period: Period | None = None,
     petals: list[Petal] | None = None,
+    conversation_id: int | None = None,
+    letter_id: int | None = None,
 ) -> None:
-    """本人に確かめる問いの候補を入れる。まだ聞いていないので、聞いた日と結果は空にする。"""
+    """本人に確かめる問いの候補を入れる。まだ聞いていないので、聞いた日と結果は空にする。
+
+    どの発言から作ったかを残す。グループとスレッドの話を本人とツインの部屋へ持ち込まないため。
+    """
     with atomic(conn):
         conn.execute(
-            "INSERT INTO question_logs (question, theme, period, petals) VALUES (?, ?, ?, ?)",
+            "INSERT INTO question_logs (question, theme, period, petals, conversation_id, letter_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             (
                 question,
                 theme.value if theme else None,
                 period.value if period else None,
                 json.dumps([petal.value for petal in petals or []], ensure_ascii=False),
+                conversation_id,
+                letter_id,
             ),
         )
 

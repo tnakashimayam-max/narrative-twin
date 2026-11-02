@@ -19,11 +19,13 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import clock, consent, db
+from app import clock, consent, db, photos
 from app.auth import NOT_FOUND, current_user, get_conn, person_detail, person_view, require_self
-from app.schemas import Gender, Residence, Role, User
+from app.schemas import Gender, PhotoKind, Residence, Role, User
 
 router = APIRouter(prefix="/api/people")
+
+NAME_NOT_USABLE = "その名前は使えません。別の名前にしてください。"
 
 _CHOOSABLE_ROLES = {Role.FAMILY, Role.CONNECTED, Role.PROFESSIONAL}
 
@@ -66,8 +68,42 @@ class PersonChange(BaseModel):
 _OWN_FIELDS = {"name", "called_name", "photo_id"}
 
 
+def check_profile_photo(conn: sqlite3.Connection, operator: User, photo_id: int | None) -> None:
+    """プロフィールに指定できる写真を確かめる。
+
+    指定できるのは、操作する人が送ったプロフィールの種類の写真だけ。プロフィール写真はログイン中の
+    全員に見えるので、番号を指すだけで、便りや部屋の写真を全員に見せられてしまうのを防ぐ。
+    本人は家族の写真も登録できるので、持ち主は「対象の人」ではなく「操作する人」で確かめる。
+    関連するテスト：tests/test_photos.py
+    """
+    if photo_id is None:
+        return
+    photo = photos.get_photo(conn, photo_id)
+    if photo is None or photo.kind is not PhotoKind.PROFILE or photo.owner_user_id != operator.id:
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+
+
+def check_names(conn: sqlite3.Connection, person_id: int | None, *names: str | None) -> None:
+    """名前と呼ばれ方を確かめる。
+
+    ツインの呼び名と、ほかの人の名前や呼ばれ方は使えない。吹き出しと AI への入力で、本人やツインに
+    なりすませないようにするため。はずした人と亡くなった方の名前とも重ならないようにする。
+    理由を分けないので、断られたことから一覧に出ない人の有無を読むことは完全には防げない。
+    決めた経緯：docs/decisions.md
+    """
+    wanted = {name.strip() for name in names if name and name.strip()}
+    for name in wanted:
+        if "ツイン" in name:
+            raise HTTPException(status_code=400, detail=NAME_NOT_USABLE)
+    rows = conn.execute("SELECT id, name, called_name FROM users").fetchall()
+    for row in rows:
+        if row["id"] != person_id and wanted & {row["name"], row["called_name"]}:
+            raise HTTPException(status_code=400, detail=NAME_NOT_USABLE)
+
+
 def add_person(conn: sqlite3.Connection, draft: PersonDraft) -> User:
     """人を登録する。番号は乱数にする。通し番号だと、はずした人の数が分かるため。"""
+    check_names(conn, None, draft.name, draft.called_name)
     if draft.role not in _CHOOSABLE_ROLES:
         raise HTTPException(status_code=400, detail="本人は1人だけです。立場を選び直してください。")
     name = draft.name.strip()
@@ -86,7 +122,7 @@ def add_person(conn: sqlite3.Connection, draft: PersonDraft) -> User:
         with conn:
             conn.execute(f"INSERT INTO users ({columns}) VALUES ({marks})", list(values.values()))
     except sqlite3.IntegrityError as error:
-        raise HTTPException(status_code=409, detail=f"「{name}」はもう登録されています。") from error
+        raise HTTPException(status_code=400, detail=NAME_NOT_USABLE) from error
     return db.get_user(conn, values["id"])
 
 
@@ -100,9 +136,10 @@ def list_people(
 
 @router.post("", status_code=201)
 def register_person(
-    draft: PersonDraft, _: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
+    draft: PersonDraft, viewer: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
 ) -> dict:
     """人を登録する。本人だけができる。"""
+    check_profile_photo(conn, viewer, draft.photo_id)
     return person_detail(add_person(conn, draft))
 
 
@@ -125,6 +162,9 @@ def change_person(
         raise HTTPException(status_code=400, detail="この立場には変えられません。")
     if target.role is Role.SELF and fields.get("is_deceased"):
         raise HTTPException(status_code=400, detail="本人を亡くなった方にはできません。")
+    if "photo_id" in fields:
+        check_profile_photo(conn, viewer, fields["photo_id"])
+    check_names(conn, person_id, fields.get("name"), fields.get("called_name"))
     if "name" in fields:
         fields["name"] = (fields["name"] or "").strip()
         if not fields["name"]:
@@ -141,7 +181,7 @@ def change_person(
                     f"UPDATE users SET {assignments} WHERE id = ?", [*fields.values(), person_id]
                 )
         except sqlite3.IntegrityError as error:
-            raise HTTPException(status_code=409, detail="その名前はもう登録されています。") from error
+            raise HTTPException(status_code=400, detail=NAME_NOT_USABLE) from error
     updated = db.get_user(conn, person_id)
     return person_detail(updated) if is_self_viewer else person_view(updated)
 
@@ -157,7 +197,7 @@ def role_preview(
     target = db.get_user(conn, person_id)
     if target is None or target.removed_at:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
-    return consent.role_change_preview(target.role, role)
+    return consent.role_change_preview(conn, target, role)
 
 
 @router.post("/{person_id}/remove", status_code=204)
