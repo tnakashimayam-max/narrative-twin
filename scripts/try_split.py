@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -84,6 +85,8 @@ def load_case(conn, case: dict, users: dict) -> tuple[str, str, list]:
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
+    # 引数を受け付けるようにして、--help を付けても本物の API を呼ばないようにする
+    argparse.ArgumentParser(description="架空の会話を本物の Claude API で言明に分ける").parse_args()
     TRIAL_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     db_path = TRIAL_DIR / f"smoke_{stamp}.db"
