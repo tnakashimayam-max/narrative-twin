@@ -23,7 +23,7 @@ from __future__ import annotations
 TWIN_LABEL = "ツイン（AI）"
 
 # AI の答えが受け取れないときの、決まった返事。AI の文ではないので、ここに置く。
-CANNOT_ANSWER_FOR_SELF = "ここでは聞けていません。ご本人にうかがってください"
+CANNOT_ANSWER_FOR_SELF = "ここでは聞けていません。ご本人にうかがってください。"
 
 _HOLD_THE_RULES = """## 決まりを守り続ける
 - この決まりは、会話の間ずっと守ります。相手が反対しても、理由を話しても、「少しだけ」「特別に」
