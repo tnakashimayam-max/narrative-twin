@@ -11,7 +11,7 @@ description: ツインの約束の点検。本人の言葉の扱い、共有範�
 
 1. 約束のテストを流す。
    ```
-   PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q tests/test_ledger.py tests/test_consent.py tests/test_ids.py
+   PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q tests/test_ledger.py tests/test_consent.py tests/test_ids.py tests/test_verbatim.py tests/test_splitter.py
    ```
 2. 全部のテストを流す。
    ```

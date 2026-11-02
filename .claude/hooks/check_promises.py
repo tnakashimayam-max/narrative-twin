@@ -20,8 +20,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-# 約束に関わるテストのファイル
-PROMISE_TESTS = ["tests/test_ledger.py", "tests/test_consent.py", "tests/test_ids.py"]
+# 約束に関わるテストのファイル。
+# test_verbatim と test_splitter があるのは、本人の言葉の切り方の細かい崩れ（改行、かっこ、読点）に
+# 台帳と同意のテストだけでは気づかなかったため。わざと崩して確かめた結果は docs/tools.md にある。
+PROMISE_TESTS = [
+    "tests/test_ledger.py",
+    "tests/test_consent.py",
+    "tests/test_ids.py",
+    "tests/test_verbatim.py",
+    "tests/test_splitter.py",
+]
 # 結果の末尾だけを見せる。全文を渡すと会話を圧迫するため。
 TAIL_LINES = 25
 TIMEOUT_SECONDS = 120
