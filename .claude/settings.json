@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/check_promises.py\"",
+            "timeout": 150,
+            "statusMessage": "ツインの約束のテストを流しています"
+          }
+        ]
+      }
+    ]
+  }
+}
