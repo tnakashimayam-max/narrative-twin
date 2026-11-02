@@ -1,0 +1,3 @@
+# 架空データは生成物として扱う。言語の集計から外し、差分を畳む（コードが埋もれないように）
+data/** linguist-generated=true
+data/README.md linguist-generated=false
