@@ -20,6 +20,8 @@ ENV_PATH = ROOT / ".env"
 DATA_DIR = ROOT / "data"
 DB_PATH = DATA_DIR / "narrative_twin.db"
 PHOTOS_DIR = DATA_DIR / "photos"
+# 開発のログの置き場。data/ の外に置くのは、自分用の記録を data/mine/ の中だけに保つため（app/devlog.py）。
+LOG_DIR = ROOT / "logs"
 STATIC_DIR = ROOT / "static"
 EVAL_CASES_PATH = ROOT / "eval" / "cases.json"
 
@@ -41,6 +43,7 @@ class Deployment:
     db_path: Path
     photos_dir: Path
     label: str
+    log_path: Path
 
 
 def deployment(*, mine: bool = False, data_dir: Path | None = None) -> Deployment:
@@ -48,8 +51,12 @@ def deployment(*, mine: bool = False, data_dir: Path | None = None) -> Deploymen
     base = data_dir if data_dir is not None else DATA_DIR
     if mine:
         folder = base / "mine"
-        return Deployment(True, 8001, folder / "narrative_twin.db", folder / "photos", LABEL_MINE)
-    return Deployment(False, 8000, base / "narrative_twin.db", base / "photos", LABEL_FICTIONAL)
+        return Deployment(
+            True, 8001, folder / "narrative_twin.db", folder / "photos", LABEL_MINE, LOG_DIR / "mine.jsonl"
+        )
+    return Deployment(
+        False, 8000, base / "narrative_twin.db", base / "photos", LABEL_FICTIONAL, LOG_DIR / "fictional.jsonl"
+    )
 
 
 API_KEY_NAME = "ANTHROPIC_API_KEY"

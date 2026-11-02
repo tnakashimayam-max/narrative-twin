@@ -23,10 +23,11 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 
-from app import ai, config, db, ledger, memory, photos, prompts, room_store
+from app import ai, config, db, devlog, ledger, memory, photos, prompts, room_store
 from app.schemas import (
     CareKind,
     Conversation,
@@ -308,6 +309,7 @@ def respond_in_twin_room(
     client=None,
 ) -> None:
     """本人の発言に返事をする。AI が失敗したら例外のまま上げる。本人の発言は保存済み。"""
+    started = time.monotonic()
     conversation_id = message.conversation_id
     said = memory.message_text(conn, message)
     keyword_care = detect_care(said)
@@ -342,22 +344,28 @@ def respond_in_twin_room(
     turn = result.value
     care = _stronger(turn.care, keyword_care)
     question = turn.question
+    # 問いを落とした理由。話した内容が分かるので、架空用のログにだけ入る（app/devlog.py）。
+    dropped_because = None
     if care is not CareKind.NONE or says_goodbye(said):
         question = None
+        dropped_because = "体や命の場面か、終えたそう"
     elif question:
         resting = memory.resting_themes(conn)
         asked = memory.asked_questions(conn, room.id)
         if not question_is_allowed(question, turn.question_theme, resting=resting, asked=asked):
             question = None
+            dropped_because = "聞かない話題か、同じ問い"
         elif memory.questions_in_a_row(conn, conversation_id) >= _MAX_QUESTIONS_IN_A_ROW:
             # 問いが続くと尋問のようになるので、受け止めるだけの回を入れる
             question = None
+            dropped_because = "問いが続いた"
     # 本人の言葉を伝える形の文は、原文と照らせるものだけを通す
     sources = [context["transcript"], *context["self_words"]]
     if photo is not None:
         sources.append(result.value.photo_description)
     if question and not words_are_real(question, sources):
         question = None
+        dropped_because = "原文と照らせない"
     with ledger.atomic(conn):
         _answer_pending(conn, conversation_id, turn.previous_question_result)
         if photo is not None:
@@ -367,7 +375,8 @@ def respond_in_twin_room(
             )
         heard = said + (result.value.photo_description if photo is not None else "")
         fallback = _CARE_RECEIVE[care] if care is not CareKind.NONE else _HEARD_RECEIPT
-        reply = trim_reply(turn.reply, heard) or fallback
+        trimmed = trim_reply(turn.reply, heard)
+        reply = trimmed or fallback
         if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
             reply = _CARE_RECEIVE[care]
         elif not words_are_real(reply, sources):
@@ -378,6 +387,36 @@ def respond_in_twin_room(
         if question:
             _ask(conn, room, conversation_id, Place.DIARY_AND_TALK, question, turn.question_theme, now)
             memory.mark_candidate_used(conn, question, now.date())
+    notes = []
+    if turn.question and not question:
+        notes.append(devlog.QUESTION_DROPPED)
+    if not trimmed or reply != trimmed:
+        notes.append(devlog.REPLY_REPLACED)
+    elif "".join(trimmed.split()) != "".join(turn.reply.split()):
+        notes.append(devlog.REPLY_TRIMMED)
+    # 前の話を読めているかは、要約と本人の言葉の文字数で分かる。care は話の内容が分かるので text に入れる。
+    devlog.record(
+        devlog.TWIN_TURN,
+        outcome=devlog.ASKED if question else devlog.NOT_ASKED,
+        notes=notes,
+        ms=devlog.since(started),
+        said_chars=len(said),
+        reply_chars=len(reply),
+        question_chars=len(question or ""),
+        summaries_chars=sum(len(line) for line in context["summaries"]),
+        self_words_chars=sum(len(line) for line in context["self_words"]),
+        transcript_chars=len(context["transcript"]),
+        text={
+            "発言": said,
+            "返事の元": turn.reply,
+            "返事": reply,
+            "問いの元": turn.question,
+            "問い": question,
+            "問いを落とした理由": dropped_because,
+            "care": care.value,
+            "写真の説明": result.value.photo_description if photo is not None else None,
+        },
+    )
 
 
 def _answer_pending(conn: sqlite3.Connection, conversation_id: int, result: QuestionResult | None) -> None:

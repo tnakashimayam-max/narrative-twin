@@ -6,6 +6,7 @@ __pycache__
 data/trial/
 data/mine/
 data/photos/
+logs/
 *.db-wal
 *.db-shm
 .playwright-mcp/

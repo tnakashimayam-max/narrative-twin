@@ -42,7 +42,7 @@ from typing import Generic, TypeVar
 import anthropic
 from pydantic import BaseModel, ValidationError
 
-from app import config, prompts
+from app import config, devlog, prompts
 from app.schemas import (
     ConversationSummary,
     GroupTurn,
@@ -157,7 +157,64 @@ def _request_params(role: str, system: str, content: str | list, schema: type[Ba
     }
 
 
+def _prompt_text(content: str | list) -> str:
+    """入力の文だけを取り出す。写真のデータはログに入れない。"""
+    if isinstance(content, str):
+        return content
+    return "\n".join(block["text"] for block in content if block.get("type") == "text")
+
+
+def _failure_name(error: Exception) -> str:
+    if isinstance(error, AIRefusedError):
+        return devlog.AI_REFUSED
+    if isinstance(error, AIResultError):
+        return devlog.AI_BAD_ANSWER
+    if isinstance(error, AIUnavailableError):
+        return devlog.AI_UNREACHABLE
+    return devlog.FAILED
+
+
 def call_structured(
+    role: str,
+    *,
+    system: str,
+    content: str | list,
+    schema: type[ResultT],
+    client: anthropic.Anthropic | None = None,
+) -> AIResult[ResultT]:
+    """Claude を呼び、結果を開発のログに残す。呼び出しの中身は _ask_claude にある。"""
+    started = time.monotonic()
+    prompt = _prompt_text(content)
+    try:
+        result = _ask_claude(role, system=system, content=content, schema=schema, client=client)
+    except Exception as error:
+        devlog.record(
+            f"AI：{role}",
+            outcome=_failure_name(error),
+            error=devlog.error_name(error),
+            ms=devlog.since(started),
+            prompt_chars=len(prompt),
+            input_tokens=getattr(error, "input_tokens", 0),
+            output_tokens=getattr(error, "output_tokens", 0),
+            text={"入力": prompt, "失敗の説明": str(error)},
+        )
+        raise
+    answer = result.value.model_dump_json()
+    devlog.record(
+        f"AI：{role}",
+        outcome=devlog.SUCCESS,
+        ms=devlog.since(started),
+        prompt_chars=len(prompt),
+        answer_chars=len(answer),
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        model=result.model,
+        text={"入力": prompt, "答え": answer},
+    )
+    return result
+
+
+def _ask_claude(
     role: str,
     *,
     system: str,

@@ -40,6 +40,12 @@ def keep_real_key_out(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "ENV_PATH", tmp_path / "存在しない.env")
 
 
+@pytest.fixture(autouse=True)
+def keep_real_logs_out(monkeypatch, tmp_path):
+    """開発のログを一時的な場所へ向ける。テストの呼び出しで本物の logs/ を増やさないため。"""
+    monkeypatch.setattr(config, "LOG_DIR", tmp_path / "logs")
+
+
 @pytest.fixture
 def db_path(tmp_path):
     return tmp_path / "test.db"

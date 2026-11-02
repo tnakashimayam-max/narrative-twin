@@ -19,7 +19,22 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import archive, auth, clock, config, db, ecomap, eval_cases, intake, people, photos, records, rooms, timeline
+from app import (
+    archive,
+    auth,
+    clock,
+    config,
+    db,
+    devlog,
+    ecomap,
+    eval_cases,
+    intake,
+    people,
+    photos,
+    records,
+    rooms,
+    timeline,
+)
 
 
 def create_app(
@@ -44,6 +59,9 @@ def create_app(
     app = FastAPI(title="Narrative Twin", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.db_path = path
     app.state.deployment = deployment
+    # 開発のログ。自分用では本文を書かない。決まりは app/devlog.py にある。
+    app.state.devlog = devlog.DevLog(deployment.log_path, mine=deployment.mine)
+    app.add_middleware(devlog.RequestLog)
     app.state.eval_cases_path = Path(eval_cases_path) if eval_cases_path else config.EVAL_CASES_PATH
     app.state.day_offset = timedelta(0)
     # ツインが考えている部屋と、同じ対象を同時に処理しないための鍵。1つのプロセスの中で足りる。

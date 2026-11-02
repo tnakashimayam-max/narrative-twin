@@ -21,8 +21,9 @@ from __future__ import annotations
 import re
 import sqlite3
 import threading
+import time
 
-from app import ai, clock, db, intake, memory, prompts, room_store, splitter, twin
+from app import ai, clock, db, devlog, intake, memory, prompts, room_store, splitter, twin
 from app.schemas import CandidateStatus, RoomKind, SplitTargetKind
 
 # 1回の処理で分け直す回数の上限。発言が届き続けても止まるようにする。
@@ -38,16 +39,30 @@ def _lock_for(app, key: str) -> threading.Lock:
 
 def _guarded(app, job: str, target: str, work) -> None:
     """裏の処理を動かす。失敗しても、ほかの処理を止めず、記録に残す。"""
+    log = app.state.devlog
+    started = time.monotonic()
     conn = db.connect(app.state.db_path)
-    try:
-        work(conn)
-    except Exception as error:  # noqa: BLE001  裏の処理の失敗は、どんな種類でも記録して続ける
+    # 別のスレッドから呼ばれることがあるので、ログの行き先をここで決め直す
+    with devlog.use(log):
         try:
-            db.log_job_failure(conn, job, target, error)
-        except sqlite3.Error:
-            pass
-    finally:
-        conn.close()
+            work(conn)
+        except Exception as error:  # noqa: BLE001  裏の処理の失敗は、どんな種類でも記録して続ける
+            log.write(
+                job,
+                outcome=devlog.FAILED,
+                error=devlog.error_name(error),
+                ms=devlog.since(started),
+                target=target,
+                where=devlog.where(error),
+            )
+            try:
+                db.log_job_failure(conn, job, target, error)
+            except sqlite3.Error:
+                pass
+        else:
+            log.write(job, outcome=devlog.SUCCESS, ms=devlog.since(started), target=target)
+        finally:
+            conn.close()
 
 
 def split_new(app, conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int) -> splitter.SplitReport:
@@ -80,6 +95,12 @@ def split_new(app, conn: sqlite3.Connection, kind: SplitTargetKind, target_id: i
             # 入らなかった言明は理由だけを残す。黙って失われると、原因が追えないため。本文は残さない。
             for dropped in report.dropped:
                 db.log_job_note(conn, "入らなかった言明", f"{kind.value} {target_id}", dropped.reason)
+            if report.dropped:
+                devlog.record(
+                    "言明への分割",
+                    outcome=devlog.STATEMENT_DROPPED,
+                    text={"理由": [dropped.reason for dropped in report.dropped]},
+                )
     return total
 
 
