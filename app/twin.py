@@ -8,6 +8,7 @@
 プロンプトの決まりは AI へのお願いで、守られるとは限らない。次のことはプログラムで決める。
 - 問いは1回に1つまで（型で受け止めと問いを分ける。app/schemas.py）。
 - お休みのテーマ、つらかったことのテーマ、同じ問い、本人が終えたそうなときの問いは落とす。
+- 問いが2回続いたら、次は受け止めるだけにする。尋問のようにしないため。
 - 体の急な不調、命に関わる言葉、強いつらさには問いを続けず、つなぎ先の文をプログラムが添える。
   語の一覧を AI の判定に重ねるのは、AI が断ったり見落としたりしても、つなぎ先を必ず出すため。
 - グループでは、ツインが入ったあとのその部屋の発言だけを渡す。スレッドでは、便りとコメントだけを渡す。
@@ -81,6 +82,8 @@ _CARE_RECEIVE = {
     CareKind.DISTRESS: "お話ししてくださって、ありがとうございます。",
 }
 _CARE_ORDER = [CareKind.NONE, CareKind.DISTRESS, CareKind.BODY, CareKind.LIFE]
+# 句点で終わる問いの形。この場面では原因を聞かないので、受け止めの文に混ざっていたら決まった文に替える。
+_HIDDEN_QUESTION = re.compile(r"(ますか|ませんか|ですか|でしょうか|ありますか)[。！!]?")
 
 # 本人が終えたそうな言葉。問いを落とし、引き留めない。誤って落としても、問わないだけで害は小さい。
 _GOODBYE_WORDS = (
@@ -109,6 +112,7 @@ _NOT_TO_ASK = ("病気", "病院", "薬", "痛み", "痛い", "体調", "具合"
 _ASKS_FOR_SELF = ("本音", "本心", "気持ち", "どう思", "考えて", "思って", "望んで", "したいの", "意思")
 
 _MENTION = re.compile(r"[@＠]\s*ツイン")
+_MAX_QUESTIONS_IN_A_ROW = 2
 
 
 def detect_care(text: str) -> CareKind:
@@ -287,6 +291,9 @@ def respond_in_twin_room(
         asked = memory.asked_questions(conn, room.id)
         if not question_is_allowed(question, turn.question_theme, resting=resting, asked=asked):
             question = None
+        elif memory.questions_in_a_row(conn, conversation_id) >= _MAX_QUESTIONS_IN_A_ROW:
+            # 問いが続くと尋問のようになるので、受け止めるだけの回を入れる
+            question = None
     with ledger.atomic(conn):
         _answer_pending(conn, conversation_id, turn.previous_question_result)
         if photo is not None:
@@ -294,7 +301,10 @@ def respond_in_twin_room(
                 "UPDATE photos SET description = ? WHERE id = ?",
                 (result.value.photo_description[:120], photo.id),
             )
-        _say(conn, room, conversation_id, Place.DIARY_AND_TALK, turn.reply, now)
+        reply = turn.reply
+        if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
+            reply = _CARE_RECEIVE[care]
+        _say(conn, room, conversation_id, Place.DIARY_AND_TALK, reply, now)
         if care is not CareKind.NONE:
             _say(conn, room, conversation_id, Place.DIARY_AND_TALK, _CARE_LINES[care], now)
         if question:

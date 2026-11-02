@@ -1,143 +1,224 @@
-// 役割：名前を選ぶとその人の空の画面に切り替える。
-// 4つの極：特定の極に属さない土台。
-// 守る原則：10（だれが何を見られるかは画面で決めず、サーバーの応答に従う）。
-//
-// サーバーとのやり取りの取り決めは docs/api.md にある。
-"use strict";
+/*
+  役割：画面の入口。起動の種類を読み、ログインと、下のタブの切り替えを行う。
+  4つの極：1. 書く・話す、2. 分かち合う。
+  守る原則：7（催促や数の表示を作らない）、8（画面の隅の表示）、10（見える範囲はサーバーが決める）。
 
-// 役割ごとの見た目。本人と家族と縁のある人は手紙・アルバム風、専門職は白を基調にする。
-const LOOK_BY_ROLE = {
-  本人: "letter",
-  家族: "letter",
-  縁のある人: "letter",
-  専門職: "modern",
-};
+  ログインは名前を押すだけで、切り替えも一度押すだけにする。だれとして使っているかはウィンドウごとに覚える。
+  タブは本人に4つ、本人以外に3つ。「記録」は本人だけが開けるので、本人以外には出さない。
+*/
 
-const loginView = document.getElementById("login-view");
-const homeView = document.getElementById("home-view");
-const userList = document.getElementById("user-list");
-const loginError = document.getElementById("login-error");
-const homeTitle = document.getElementById("home-title");
-const homeRole = document.getElementById("home-role");
-const photoSection = document.getElementById("photo-section");
-const photoInput = document.getElementById("photo-input");
-const photoStatus = document.getElementById("photo-status");
-const photoQuestion = document.getElementById("photo-question");
+import { ApiError, api, currentUserId, forgetUser, rememberUser, uploadPhoto } from "./api.js";
+import { renderHome } from "./home.js";
+import { shrinkPhoto } from "./photo.js";
+import { renderRecords } from "./records.js";
+import { renderTalk } from "./talk.js";
+import { renderTimeline } from "./timeline.js";
+import { avatar, el, tabIcon } from "./ui.js";
 
-// 写真の問いは、本人の画面にだけ出す。問いには必ず「ツイン（AI）」と付ける。
-async function askAboutPhoto(file) {
-  photoQuestion.hidden = true;
-  photoStatus.textContent = "写真を見ています。少しお待ちください。";
-  let message = "つながりませんでした。もう一度お試しください。";
+const view = document.getElementById("view");
+const tabs = document.getElementById("tabs");
+const loginNote = document.getElementById("login-note");
+
+let me = null;
+let leaveCurrent = null;
+let currentTab = "home";
+
+function clearView() {
+  if (leaveCurrent) {
+    leaveCurrent();
+    leaveCurrent = null;
+  }
+  view.className = "view";
+  view.replaceChildren();
+}
+
+const TAB_LABELS = [
+  ["home", "ホーム", renderHome],
+  ["talk", "トーク", renderTalk],
+  ["timeline", "タイムライン", renderTimeline],
+  ["records", "記録", renderRecords],
+];
+
+function showTabs(visible) {
+  tabs.hidden = !visible;
+}
+
+function drawTabs() {
+  const usable = TAB_LABELS.filter(([key]) => key !== "records" || me.role === "本人");
+  tabs.className = usable.length === 3 ? "tabs three" : "tabs";
+  tabs.replaceChildren(
+    ...usable.map(([key, label]) =>
+      el(
+        "button",
+        {
+          type: "button",
+          "aria-current": key === currentTab ? "page" : null,
+          onclick: () => openTab(key),
+        },
+        tabIcon(key),
+        label
+      )
+    )
+  );
+}
+
+/* 部品に渡す入れ物。タブの切り替えや、別のタブを開く操作を持たせる。 */
+function context() {
+  return {
+    me,
+    view,
+    showTabs,
+    openTab,
+    switchUser: logIn,
+    refreshMe: async () => {
+      me = await api("/me");
+      return me;
+    },
+  };
+}
+
+function openTab(key, options = {}) {
+  currentTab = key;
+  clearView();
+  showTabs(true);
+  drawTabs();
+  const entry = TAB_LABELS.find(([name]) => name === key);
+  leaveCurrent = entry[2](view, context(), options) || null;
+}
+
+async function logIn(userId) {
   try {
-    const response = await fetch("/api/photo-question", {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    const body = await response.json();
-    if (response.ok) {
-      photoStatus.textContent = "";
-      photoQuestion.textContent = `ツイン（AI）：${body.question}`;
-      photoQuestion.hidden = false;
-      return;
-    }
-    message = body.detail;
-  } catch {
-    // つながらないときは、上のメッセージのまま出す
-  }
-  photoStatus.textContent = message;
-}
-
-photoInput.addEventListener("change", () => {
-  if (photoInput.files.length > 0) {
-    const file = photoInput.files[0];
-    // 値を消しておくと、失敗のあとに同じ写真を選び直せる
-    photoInput.value = "";
-    askAboutPhoto(file);
-  }
-});
-
-function showError(message) {
-  loginError.textContent = message;
-  loginError.hidden = false;
-}
-
-function showHome(user) {
-  document.body.dataset.look = LOOK_BY_ROLE[user.role];
-  homeTitle.textContent = `${user.name}の画面`;
-  homeRole.textContent = `立場：${user.role}`;
-  photoSection.hidden = user.role !== "本人";
-  photoQuestion.hidden = true;
-  photoStatus.textContent = "";
-  photoInput.value = "";
-  loginView.hidden = true;
-  homeView.hidden = false;
-  // 画面が切り替わったことが、読み上げの機能を使う人にも分かるようにする
-  homeTitle.focus();
-}
-
-function showLogin() {
-  document.body.dataset.look = "letter";
-  homeView.hidden = true;
-  loginView.hidden = false;
-}
-
-async function chooseUser(userId) {
-  loginError.hidden = true;
-  const response = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId }),
-  });
-  if (!response.ok) {
-    showError("選べませんでした。もう一度お試しください。");
+    me = await api("/login", { method: "POST", json: { user_id: userId } });
+  } catch (error) {
+    showLogin(error.message);
     return;
   }
-  showHome(await response.json());
+  rememberUser(me.id);
+  loginNote.hidden = true;
+  openTab("home");
 }
 
-function renderUsers(users) {
-  userList.replaceChildren(
-    ...users.map((user) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = `${user.name}（${user.role}）`;
-      button.addEventListener("click", () => {
-        chooseUser(user.id).catch(() => showError("つながりませんでした。もう一度お試しください。"));
+async function showLogin(message) {
+  clearView();
+  showTabs(false);
+  loginNote.hidden = false;
+  forgetUser();
+  const list = el("div", { class: "user-list" });
+  const panel = el(
+    "section",
+    { class: "panel" },
+    el("h1", { text: "どなたですか？" }),
+    el("p", { text: "お名前を押すと、その人の画面に切り替わります。パスワードはいりません。" }),
+    list,
+    message ? el("p", { class: "error", role: "alert", text: message }) : null
+  );
+  view.append(panel);
+  try {
+    const { items } = await api("/users");
+    list.replaceChildren(
+      ...items.map((user) =>
+        el(
+          "button",
+          { type: "button", class: "user-button", onclick: () => logIn(user.id) },
+          avatar(user),
+          `${user.name}（${user.role}）`
+        )
+      )
+    );
+  } catch (error) {
+    panel.append(el("p", { class: "error", role: "alert", text: error.message }));
+  }
+}
+
+/* 自分用の最初の起動の、本人の登録の画面。 */
+function showSelfRegistration() {
+  clearView();
+  showTabs(false);
+  const form = el("form", { class: "stack" });
+  const name = el("input", { type: "text", required: true, maxLength: 40, autocomplete: "off" });
+  const called = el("input", { type: "text", maxLength: 40, autocomplete: "off" });
+  const year = el("input", { type: "number", min: 1880, max: 2100 });
+  const gender = el(
+    "select",
+    {},
+    el("option", { value: "", text: "選ばない" }),
+    el("option", { value: "男性", text: "男性" }),
+    el("option", { value: "女性", text: "女性" }),
+    el("option", { value: "不明", text: "答えない" })
+  );
+  const photo = el("input", { type: "file", accept: "image/*" });
+  const message = el("p", { class: "error", role: "alert", hidden: true });
+  form.append(
+    el("label", { class: "field" }, "お名前", name),
+    el("label", { class: "field" }, "呼ばれ方（ツインがこう呼びます。例：一郎さん）", called),
+    el("label", { class: "field" }, "生まれた年（なくてもかまいません）", year),
+    el("label", { class: "field" }, "性別（なくてもかまいません）", gender),
+    el("label", { class: "field" }, "プロフィール写真（なくてもかまいません）", photo),
+    message,
+    el("button", { type: "submit", class: "primary wide", text: "はじめる" })
+  );
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    message.hidden = true;
+    try {
+      const created = await api("/self", {
+        method: "POST",
+        json: {
+          name: name.value,
+          called_name: called.value || null,
+          birth_year: year.value ? Number(year.value) : null,
+          gender: gender.value || null,
+        },
       });
-      return button;
-    }),
+      rememberUser(created.id);
+      if (photo.files[0]) {
+        const shrunk = await shrinkPhoto(photo.files[0]);
+        const uploaded = await uploadPhoto(shrunk, "プロフィール");
+        await api(`/people/${created.id}`, { method: "PUT", json: { photo_id: uploaded.id } });
+      }
+      await logIn(created.id);
+    } catch (error) {
+      message.textContent = error.message;
+      message.hidden = false;
+    }
+  });
+  view.append(
+    el(
+      "section",
+      { class: "panel" },
+      el("h1", { text: "はじめまして" }),
+      el("p", { text: "ご本人のことを教えてください。あとから直せます。" }),
+      form
+    )
   );
 }
 
 async function start() {
-  const usersResponse = await fetch("/api/users");
-  if (!usersResponse.ok) {
-    showError("名前の一覧を読み込めませんでした。再読み込みしてください。");
+  let mode;
+  try {
+    mode = await api("/mode");
+  } catch (error) {
+    view.append(el("section", { class: "panel" }, el("p", { class: "error", role: "alert", text: error.message })));
     return;
   }
-  renderUsers((await usersResponse.json()).items);
-
-  // すでに選んだ人がいれば、その人の画面から始める
-  const meResponse = await fetch("/api/me");
-  if (meResponse.ok) {
-    showHome(await meResponse.json());
-  } else {
-    showLogin();
+  document.getElementById("mode-label").textContent = mode.label;
+  if (mode.needs_self) {
+    showSelfRegistration();
+    return;
   }
+  if (currentUserId()) {
+    try {
+      me = await api("/me");
+      loginNote.hidden = true;
+      openTab("home");
+      return;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) {
+        throw error;
+      }
+    }
+  }
+  showLogin();
 }
 
-document.getElementById("logout-button").addEventListener("click", async () => {
-  await fetch("/api/logout", { method: "POST" });
-  showLogin();
-});
-
-fetch("/api/mode")
-  .then((response) => response.json())
-  .then((mode) => {
-    document.getElementById("mode-label").textContent = mode.label;
-  })
-  .catch(() => {});
-
-start().catch(() => showError("つながりませんでした。再読み込みしてください。"));
+start();

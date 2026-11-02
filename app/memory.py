@@ -180,6 +180,32 @@ def asked_questions(conn: sqlite3.Connection, room_id: int) -> list[str]:
     return [row["question"] for row in rows]
 
 
+def questions_in_a_row(conn: sqlite3.Connection, conversation_id: int) -> int:
+    """ツインの返事に問いが何回続いているかを、新しいほうから数える。"""
+    rows = conn.execute(
+        """
+        SELECT is_twin, question_log_id FROM room_messages
+        WHERE conversation_id = ? ORDER BY rowid DESC
+        """,
+        (conversation_id,),
+    ).fetchall()
+    count = 0
+    has_question = False
+    seen_twin_turn = False
+    for row in rows:
+        if row["is_twin"]:
+            seen_twin_turn = True
+            has_question = has_question or row["question_log_id"] is not None
+        elif seen_twin_turn:
+            # 本人の発言で1回の返事が区切られる
+            if not has_question:
+                return count
+            count += 1
+            has_question = False
+            seen_twin_turn = False
+    return count + 1 if has_question else count
+
+
 def resting_themes(conn: sqlite3.Connection) -> set[Theme]:
     """お休みにした話題を返す。"""
     rows = conn.execute(

@@ -237,6 +237,19 @@ def test_同じ問いをくり返さない(me, use_claude):
     assert [item["text"] for item in body["replies"]] == ["はい。"]
 
 
+def test_問いが2回続いたら次は受け止めるだけにする(me, use_claude):
+    questions = ["紫陽花は何色ですか？", "庭は広いですか？", "縁側は南向きですか？", "松もありますか？"]
+    seen = []
+    for index, question in enumerate(questions):
+        use_claude(ツインの会話=_turn("はい。", question, "好きなこと"))
+        seen.append([item["text"] for item in _send(me, f"話の{index}です。").json()["replies"]])
+
+    assert seen[0] == ["はい。", "紫陽花は何色ですか？"]
+    assert seen[1] == ["はい。", "庭は広いですか？"]
+    assert seen[2] == ["はい。"]
+    assert seen[3] == ["はい。", "松もありますか？"]
+
+
 def test_聞いた問いはプロンプトに渡す(me, use_claude):
     use_claude(ツインの会話=_turn("はい。", "どの花がお好きですか？", "好きなこと"))
     _send(me, "今朝、庭を見ました。")
@@ -286,6 +299,15 @@ def test_体と命の言葉には問いを続けず_つなぎ先を必ず添え�
     assert len(replies) == 2
     assert expected in replies[1]
     assert all(item["question_id"] is None for item in body["replies"])
+
+
+def test_体の場面の受け止めに問いが混ざったら決まった文に替える(me, use_claude):
+    use_claude(ツインの会話=_turn("胸が痛いのですね。息が苦しさはありますか。", care="体の不調"))
+
+    replies = [item["text"] for item in _send(me, "さっきから胸が痛い").json()["replies"]]
+
+    assert replies[0] == "それは心配です。"
+    assert "119番" in replies[1]
 
 
 def test_AIが断っても_命の言葉にはつなぎ先を返す(me, use_claude):
@@ -562,6 +584,18 @@ def test_言明への分割の失敗は裏の処理の記録に残り_本文は�
     rows = conn.execute("SELECT job, message FROM job_failures").fetchall()
     assert any(row["job"] == "言明への分割" for row in rows)
     assert all("庭" not in row["message"] for row in rows)
+
+
+def test_入らなかった言明は理由だけを記録に残し_本文は残さない(conn, me, use_claude):
+    bad = _statement_json("原文にない文です。")
+    use_claude(言明への分割={"statements": [bad]})
+    _send(me, "今朝、庭を見ました。")
+
+    _close(me)
+
+    rows = conn.execute("SELECT job, message FROM job_failures WHERE job = '入らなかった言明'").fetchall()
+    assert rows
+    assert all("原文にない文" not in row["message"] for row in rows)
 
 
 def test_失敗した言明への分割は次の処理で流し直せる(conn, me, use_claude, login):

@@ -782,6 +782,15 @@ def log_job_failure(connection: sqlite3.Connection, job: str, target: str | None
         )
 
 
+def log_job_note(connection: sqlite3.Connection, job: str, target: str | None, message: str) -> None:
+    """裏の処理で気づいたことを記録する。入らなかった言明の理由など。本文は入れない。"""
+    with connection:
+        connection.execute(
+            "INSERT INTO job_failures (job, target, message, failed_at) VALUES (?, ?, ?, ?)",
+            (job, target, message, datetime.now().astimezone().isoformat()),
+        )
+
+
 def log_access(connection: sqlite3.Connection, viewer_user_id: int, target: str) -> None:
     """閲覧の記録を残す。誰がいつ何を開いたかを表に追記する。"""
     with connection:

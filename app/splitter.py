@@ -149,11 +149,24 @@ def quote_problems(result: SplitResult, utterances: list[Utterance]) -> list[str
     return problems
 
 
+def _plain_name(name: str) -> str:
+    """AI が人物の一覧の書き方のまま「誠一さん（本人）」と書いても、名前を読めるようにする。
+
+    名前を読み間違えたわけではないのに言明を捨てると、本人の言葉が失われるため。
+    ツインの呼び名には（AI）が入っているので、先に見分ける。
+    """
+    cleaned = name.strip()
+    if cleaned in (TWIN_LABEL, "ツイン"):
+        return TWIN_LABEL
+    return re.sub(r"[（(][^（）()]*[）)]$", "", cleaned).strip()
+
+
 def _resolve_speaker(name: str, users_by_name: dict[str, User]) -> tuple[int | None, bool] | None:
     """話した人の名前を、利用者の番号とツインの印にする。分からなければ None を返す。"""
-    if name == TWIN_LABEL:
+    plain = _plain_name(name)
+    if plain == TWIN_LABEL:
         return None, True
-    user = users_by_name.get(name)
+    user = users_by_name.get(plain)
     return (user.id, False) if user else None
 
 
@@ -163,7 +176,7 @@ def _drop_reason(item: SplitStatement, users_by_name: dict[str, User], picked) -
         return "本人の訂正は、訂正の処理からだけ作れます"
     if picked is None or not picked:
         return "根拠の発言の番号が入力にありません"
-    if item.subject not in users_by_name:
+    if _plain_name(item.subject) not in users_by_name:
         return "誰についてかが、人物の一覧にありません"
     if _resolve_speaker(item.speaker, users_by_name) is None:
         return "話した人が、人物の一覧にありません"
@@ -175,7 +188,7 @@ def _drop_reason(item: SplitStatement, users_by_name: dict[str, User], picked) -
     if item.source is Source.OBSERVATION and picked[0].place is Place.THREAD:
         return "スレッドのコメントは、書いた人の役割の証言にします"
     if item.source is Source.OBSERVATION and picked[0].place is Place.GROUP:
-        speaker = users_by_name.get(item.speaker)
+        speaker = users_by_name.get(_plain_name(item.speaker))
         if speaker is None or speaker.role is not Role.PROFESSIONAL:
             return "グループの発言は、話した人の役割の証言にします"
     return None
@@ -231,7 +244,7 @@ def save_split(
             speaker_user_id, speaker_is_twin = _resolve_speaker(item.speaker, users_by_name)
             draft = StatementDraft(
                 source_utterance_ids=[utterance.id for utterance in picked],
-                subject_user_id=users_by_name[item.subject].id,
+                subject_user_id=users_by_name[_plain_name(item.subject)].id,
                 speaker_user_id=speaker_user_id,
                 speaker_is_twin=speaker_is_twin,
                 source=item.source,

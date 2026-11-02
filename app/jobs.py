@@ -75,6 +75,9 @@ def split_new(app, conn: sqlite3.Connection, kind: SplitTargetKind, target_id: i
             total.question_count += report.question_count
             total.dropped_question_count += report.dropped_question_count
             total.dropped.extend(report.dropped)
+            # 入らなかった言明は理由だけを残す。黙って失われると、原因が追えないため。本文は残さない。
+            for dropped in report.dropped:
+                db.log_job_note(conn, "入らなかった言明", f"{kind.value} {target_id}", dropped.reason)
     return total
 
 

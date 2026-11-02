@@ -1,0 +1,171 @@
+/*
+  役割：ホームの画面。話に出てきた人の候補、つながりの地図、人の管理、切り替えを出す。
+  4つの極：2. 分かち合う。
+  守る原則：1（候補を決めるのは本人）、7（催促や数の表示を作らない）、10（地図と家系図は今は本人だけ）。
+
+  切り替えは名前を一度押すだけにする。
+*/
+
+import { api } from "./api.js";
+import { renderEcomap } from "./ecomap_ui.js";
+import { openGenogram } from "./genogram_ui.js";
+import { openOwnForm, openPersonForm, personRow } from "./people_ui.js";
+import { avatar, el, twinFigure } from "./ui.js";
+
+const ROLE_CHOICES = [
+  ["家族", "家族"],
+  ["縁のある人", "縁のある人"],
+  ["専門職", "専門職"],
+];
+
+function candidateCard(candidate, onDone) {
+  const label = candidate.relation ? `${candidate.name}さん（${candidate.relation}）` : `${candidate.name}さん`;
+  const shown = candidate.name.endsWith("さん") ? label.replace("さんさん", "さん") : label;
+  const message = el("p", { class: "error", role: "alert", hidden: true });
+  const role = el(
+    "select",
+    { "aria-label": "登録するときの立場" },
+    ROLE_CHOICES.map(([value, text]) => el("option", { value, text, selected: value === (["親", "子", "配偶者", "きょうだい"].includes(candidate.relative_kind) ? "家族" : "縁のある人") }))
+  );
+  const decide = (decision) => async () => {
+    try {
+      await api(`/people/candidates/${candidate.id}/decide`, { method: "POST", json: { decision, role: decision === "登録する" ? role.value : null } });
+      onDone();
+    } catch (error) {
+      message.textContent = error.message;
+      message.hidden = false;
+    }
+  };
+  return el(
+    "div",
+    { class: "card" },
+    el("p", {}, `話に出てきた人：${shown}。登録しますか？`),
+    el("p", { class: "candidate-evidence", text: candidate.evidence }),
+    el("label", { class: "field" }, "登録するときの立場", role),
+    message,
+    el(
+      "div",
+      { class: "row" },
+      el("button", { type: "button", class: "primary", text: "登録する", onclick: decide("登録する") }),
+      el("button", { type: "button", text: "ちがう", onclick: decide("ちがう") }),
+      el("button", { type: "button", class: "quiet", text: "今はいい", onclick: decide("今はいい") })
+    )
+  );
+}
+
+export function renderHome(container, ctx) {
+  let alive = true;
+  const panel = el("section", { class: "panel stack" });
+  container.append(panel);
+
+  const switcher = el("section", { class: "card" }, el("h2", { text: "ほかの人に切り替える" }));
+  const switchList = el("div", { class: "switch-list" });
+  switcher.append(switchList);
+
+  async function loadSwitcher() {
+    try {
+      const { items } = await api("/users");
+      if (!alive) {
+        return;
+      }
+      switchList.replaceChildren(
+        ...items
+          .filter((user) => user.id !== ctx.me.id)
+          .map((user) => el("button", { type: "button", class: "quiet", text: user.name, onclick: () => ctx.switchUser(user.id) }))
+      );
+      if (switchList.children.length === 0) {
+        switcher.hidden = true;
+      }
+    } catch {
+      switcher.hidden = true;
+    }
+  }
+
+  async function drawSelfHome() {
+    panel.replaceChildren();
+    panel.append(
+      el(
+        "div",
+        { class: "row" },
+        avatar(ctx.me, "large"),
+        el("h1", { text: `${ctx.me.called_name}の画面` })
+      ),
+      el(
+        "button",
+        {
+          type: "button",
+          class: "user-button",
+          onclick: async () => {
+            const { items } = await api("/rooms");
+            ctx.openTab("talk", { roomId: items[0].id });
+          },
+        },
+        twinFigure(),
+        "ツイン（AI）と話す"
+      )
+    );
+    const candidates = el("section", { class: "stack" });
+    panel.append(candidates);
+    try {
+      const { items } = await api("/people/candidates");
+      if (alive && items.length) {
+        candidates.append(...items.map((item) => candidateCard(item, drawSelfHome)));
+      }
+    } catch {
+      // 候補が読めなくても、ほかの部分は使える
+    }
+    const mapSection = el("section", { class: "card map-card" });
+    panel.append(mapSection);
+    renderEcomap(mapSection, ctx, drawSelfHome);
+    panel.append(
+      el("button", { type: "button", class: "wide", text: "家系図を見る", onclick: () => openGenogram(ctx) })
+    );
+    const peopleSection = el("section", { class: "card" }, el("h2", { text: "家族と知人" }));
+    panel.append(peopleSection);
+    try {
+      const { items } = await api("/people");
+      peopleSection.append(...items.map((person) => personRow(person, ctx, drawSelfHome)));
+    } catch (error) {
+      peopleSection.append(el("p", { class: "error", text: error.message }));
+    }
+    peopleSection.append(
+      el("button", {
+        type: "button",
+        class: "primary wide",
+        style: "margin-top:10px",
+        text: "人を登録する",
+        onclick: () => openPersonForm(ctx, null, drawSelfHome),
+      })
+    );
+    panel.append(switcher);
+    loadSwitcher();
+  }
+
+  function drawOtherHome() {
+    panel.replaceChildren(
+      el("div", { class: "row" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` })),
+      el("p", { class: "hint", text: `立場：${ctx.me.role}` }),
+      el("button", {
+        type: "button",
+        class: "wide",
+        text: "自分のことを直す",
+        onclick: () =>
+          openOwnForm(ctx, async () => {
+            ctx.me = await ctx.refreshMe();
+            drawOtherHome();
+          }),
+      }),
+      switcher
+    );
+    loadSwitcher();
+  }
+
+  if (ctx.me.role === "本人") {
+    drawSelfHome();
+  } else {
+    drawOtherHome();
+  }
+  return () => {
+    alive = false;
+  };
+}

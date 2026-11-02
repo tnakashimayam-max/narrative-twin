@@ -175,6 +175,16 @@ def test_縁のある人の発言を家族の証言にしても入らない(conn
     assert report.statement_ids == []
 
 
+@pytest.mark.parametrize("name", ["誠一さん（本人）", "誠一さん(本人)", " 誠一さん "])
+def test_話した人の名前に立場が付いていても読める(conn, save, add_utterance, name):
+    utterance = add_utterance("庭が好きです。")
+
+    report = save([utterance], _item("庭が好きです。", speaker=name, subject=name))
+
+    assert len(report.statement_ids) == 1
+    assert report.dropped == []
+
+
 def test_一覧にない人は捨てる(conn, save, add_utterance):
     said = add_utterance("庭が好きです。")
 
