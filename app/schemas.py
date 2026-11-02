@@ -13,6 +13,7 @@ Enum の値は画面にもそのまま出る日本語にしている。別名へ
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Annotated
@@ -771,10 +772,17 @@ def _twin_voice(text: str) -> str:
     return cleaned
 
 
+# 「？」を付けない問いの形。文末で見る。「そうですか。」は受け止めなので入れない。
+_HIDDEN_QUESTION = re.compile(r"(?<!そう)(?:でしょうか|ますか|ましたか|ませんか|ですか)[。！!…]*$")
+
+
 def _no_question_mark(text: str) -> str:
     """受け止めの文に問いを混ぜない。問いは1回に1つまでを、型で守るため。"""
     if any(mark in text for mark in "？?"):
         raise ValueError("ここには問いを書かないでください")
+    for sentence in re.split(r"(?<=[。！!])|\n", text):
+        if _HIDDEN_QUESTION.search(sentence.strip()):
+            raise ValueError("ここには問いを書かないでください")
     return text
 
 

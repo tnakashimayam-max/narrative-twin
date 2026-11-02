@@ -814,6 +814,11 @@ label.check input {
 .diagram text {
   font-family: var(--plain);
   fill: var(--ink);
+  /* 線の上でも名前が読めるように、文字のまわりを地の色で縁取る */
+  paint-order: stroke;
+  stroke: var(--card);
+  stroke-width: 4px;
+  stroke-linejoin: round;
 }
 
 /* 地図は枠の内側いっぱいに広げ、幅360pxでも文字が16px以上になるようにする */

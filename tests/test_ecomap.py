@@ -174,6 +174,14 @@ def test_登録している人は候補にしない(me, use_claude):
     assert me.get("/api/people/candidates").json()["items"] == []
 
 
+def test_同じ続柄の人を別の候補にしない(me, use_claude):
+    use_claude(人の候補={"people": [_candidate("和子"), _candidate("妻")]})
+
+    _talk_and_close(me, "妻の和子と縁側でお茶を飲みました。")
+
+    assert [item["name"] for item in me.get("/api/people/candidates").json()["items"]] == ["和子"]
+
+
 def test_候補を抜き出すのは本人の発言だけ(me, use_claude):
     fake = use_claude(ツインの会話={"reply": "ツインが言った佐藤さんの話です。"})
 

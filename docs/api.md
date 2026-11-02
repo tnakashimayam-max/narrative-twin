@@ -69,6 +69,8 @@
 | `POST /api/rooms/{番号}/close` | ツインとの部屋で「今日はここまで」。本人だけ | `{"closed": 真偽, "replies": [Message, ...], "conversation_id": 番号}` |
 | `POST /api/rooms/{番号}/twin` | グループにツインを入れる、はずす。`{"present": 真偽}`。本人だけ | `RoomView` |
 | `POST /api/questions/{番号}/rest` | 問いの話題をお休みにする。本人だけ | 204 |
+| `GET /api/resting-themes` | お休みにしている話題。本人だけ | `{"items": [テーマ, ...]}` |
+| `POST /api/resting-themes/resume` | 話題のお休みをやめる。`{"theme": テーマ}`。本人だけ | 204 |
 
 - `client_key` は画面が作る文字列です。同じ `client_key` で送り直しても、発言は増えません。発言が保存されたあとに返事だけが失敗したときは、送り直すと返事だけを作り直します。
 - ツインとの部屋で AI が失敗すると 503 を返します。そのときも本人の発言は保存されています。

@@ -130,8 +130,9 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
         return
     people = db.list_users(conn)
     known = sorted({name for person in people for name in (person.name, person.display_name, person.relation) if name})
-    past = conn.execute("SELECT name FROM person_candidates").fetchall()
-    known_names = set(known) | {row["name"] for row in past}
+    # 候補の続柄も入れる。「和子（妻）」が候補にいるのに「妻」を別の人として出さないため。
+    past = conn.execute("SELECT name, relation FROM person_candidates").fetchall()
+    known_names = set(known) | {value for row in past for value in (row["name"], row["relation"]) if value}
     numbered = "\n".join(f"[{index}] {utterance.text}" for index, utterance in enumerate(utterances, start=1))
     target = f"会話 {conversation_id}"
     try:
@@ -152,6 +153,8 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
             if not name or name not in evidence.text or name in known_names:
                 continue
             known_names.add(name)
+            if person.relation:
+                known_names.add(person.relation)
             conn.execute(
                 """
                 INSERT INTO person_candidates (name, relation, relative_kind, related_to_name, is_deceased,

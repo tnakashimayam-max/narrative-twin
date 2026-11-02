@@ -73,12 +73,19 @@ def _turn(reply="そうなのですね。", question=None, theme=None, care="な
         {"reply": "はい。", "question": "庭が好きです。"},
         {"reply": "はい。", "question": "私は庭が好きですか？"},
         {"reply": "。"},
+        {"reply": "にぎやかだったでしょうか。"},
+        {"reply": "庭ですね。お好きですか。"},
     ],
-    ids=["受け止めに問い", "私は", "問いが2つ", "問いでない", "問いに私は", "言葉がない"],
+    ids=["受け止めに問い", "私は", "問いが2つ", "問いでない", "問いに私は", "言葉がない", "でしょうか", "ですか"],
 )
 def test_問いが2つ以上と本人になりきる文は型で止める(fields):
     with pytest.raises(ValidationError):
         TwinTurn(**fields)
+
+
+@pytest.mark.parametrize("reply", ["そうですか。", "そうでしたか。よかったです。", "庭が好きなのですね。"])
+def test_受け止めの言葉は問いと間違えない(reply):
+    assert TwinTurn(reply=reply).reply == reply
 
 
 def test_今日はここまでの返事には問いを入れられない():
@@ -208,6 +215,28 @@ def test_お休みの話題はプロンプトにも渡す(conn, me, use_claude):
 
     text = fake.bodies("ツインの会話")[0]["messages"][0]["content"]
     assert "お休みの話題（聞きません）\n家族" in text
+
+
+def test_本人はお休みをやめられる(conn, me, use_claude):
+    use_claude(ツインの会話=_turn("はい。", "ご家族はお元気ですか？", "家族"))
+    question_id = _send(me, "今朝、庭を見ました。").json()["replies"][1]["question_id"]
+    me.post(f"/api/questions/{question_id}/rest")
+    assert me.get("/api/resting-themes").json()["items"] == ["家族"]
+
+    assert me.post("/api/resting-themes/resume", json={"theme": "家族"}).status_code == 204
+
+    assert me.get("/api/resting-themes").json()["items"] == []
+    use_claude(ツインの会話=_turn("はい。", "お孫さんはいますか？", "家族"))
+    assert len(_send(me, "別の話です。").json()["replies"]) == 2
+
+
+@pytest.mark.parametrize("name", ["美穂さん", "節子さん", "田中さん"])
+def test_本人以外はお休みの話題を開けない(login, name):
+    other = login(name)
+
+    assert other.get("/api/resting-themes").status_code == 404
+    assert other.post("/api/resting-themes/resume", json={"theme": "家族"}).status_code == 404
+    assert other.post("/api/questions/1/rest").status_code == 404
 
 
 def test_つらかったことのテーマの問いは落とす(me, use_claude):

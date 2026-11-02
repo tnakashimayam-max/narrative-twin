@@ -13,8 +13,8 @@ import { openPersonForm } from "./people_ui.js";
 // 幅360pxの画面で図が約0.86倍になるので、19 の文字が16px以上になる
 const SIZE = 380;
 const CENTER = SIZE / 2;
-const INNER = 98;
-const OUTER = 158;
+const INNER = 90;
+const OUTER = 162;
 const BADGE = 26;
 const FONT = 19;
 const INK = "#27477a";
@@ -125,6 +125,30 @@ function badge({ x, y, label, sublabel, photoId, shape = "circle", ring = false,
   return group;
 }
 
+/* 外側の輪の始まりの角度を選ぶ。内側のバッジと、その下の名前に近づきすぎないようにする。 */
+function bestStart(count, inner) {
+  let best = -Math.PI / 2;
+  let bestGap = -1;
+  for (let step = 0; step < 36; step += 1) {
+    const start = -Math.PI / 2 + (step * Math.PI) / 18;
+    let gap = Infinity;
+    for (let index = 0; index < count; index += 1) {
+      const angle = start + (2 * Math.PI * index) / Math.max(count, 1);
+      const x = CENTER + OUTER * Math.cos(angle);
+      const y = CENTER + OUTER * Math.sin(angle);
+      for (const spot of inner) {
+        // 名前はバッジの下に出るので、下にずらした位置との距離も見る
+        gap = Math.min(gap, Math.hypot(x - spot.x, y - spot.y), Math.hypot(x - spot.x, y - (spot.y + BADGE + 16)));
+      }
+    }
+    if (gap > bestGap) {
+      bestGap = gap;
+      best = start;
+    }
+  }
+  return best;
+}
+
 function linePicker(target, onDone) {
   const current = target.link || {};
   let strength = current.strength || "ふつう";
@@ -204,8 +228,9 @@ export async function renderEcomap(section, ctx, refresh) {
     svg(
       "defs",
       {},
-      svg("marker", { id: "map-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto" }, svg("path", { d: "M0 0 L10 5 L0 10 z", fill: INK })),
-      svg("marker", { id: "map-arrow-back", viewBox: "0 0 10 10", refX: "1", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto" }, svg("path", { d: "M10 0 L0 5 L10 10 z", fill: INK }))
+      // 矢印の大きさは線の太さに合わせず固定する。太い線で矢印だけが大きくなりすぎないようにするため。
+      svg("marker", { id: "map-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "13", markerHeight: "13", markerUnits: "userSpaceOnUse", orient: "auto" }, svg("path", { d: "M0 0 L10 5 L0 10 z", fill: INK })),
+      svg("marker", { id: "map-arrow-back", viewBox: "0 0 10 10", refX: "1", refY: "5", markerWidth: "13", markerHeight: "13", markerUnits: "userSpaceOnUse", orient: "auto" }, svg("path", { d: "M10 0 L0 5 L10 10 z", fill: INK }))
     ),
     svg("circle", { cx: CENTER, cy: CENTER, r: INNER, fill: "none", stroke: "#d5ccb6", "stroke-dasharray": "3 6" }),
     svg("circle", { cx: CENTER, cy: CENTER, r: OUTER, fill: "none", stroke: "#d5ccb6", "stroke-dasharray": "3 6" })
@@ -219,7 +244,9 @@ export async function renderEcomap(section, ctx, refresh) {
   // ツインは内側の輪の最初に置く。本人のそばで、人と重ならないようにするため。
   const inner = place([{ twin: true }, ...family], INNER, -Math.PI / 2 + 0.9);
   const twinSpot = inner[0];
-  const placed = [...inner.slice(1), ...place(outerItems, OUTER, -Math.PI / 2 + 0.25)];
+  // 外側の輪は、内側のバッジと名前からいちばん離れる角度を選ぶ
+  const outerStart = bestStart(outerItems.length, inner);
+  const placed = [...inner.slice(1), ...place(outerItems, OUTER, outerStart)];
 
   // 線を先に描き、バッジで線の端を隠さないようにする
   for (const { item, x, y } of placed) {

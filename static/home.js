@@ -19,8 +19,9 @@ const ROLE_CHOICES = [
 ];
 
 function candidateCard(candidate, onDone) {
-  const label = candidate.relation ? `${candidate.name}さん（${candidate.relation}）` : `${candidate.name}さん`;
-  const shown = candidate.name.endsWith("さん") ? label.replace("さんさん", "さん") : label;
+  // 続柄だけで呼ばれた人（父、孫など）には「さん」を付けない
+  const honored = candidate.name === candidate.relation || candidate.name.endsWith("さん") ? candidate.name : `${candidate.name}さん`;
+  const shown = candidate.relation && candidate.relation !== candidate.name ? `${honored}（${candidate.relation}）` : honored;
   const message = el("p", { class: "error", role: "alert", hidden: true });
   const role = el(
     "select",
@@ -113,6 +114,39 @@ export function renderHome(container, ctx) {
       }
     } catch {
       // 候補が読めなくても、ほかの部分は使える
+    }
+    const resting = el("section", { class: "stack" });
+    panel.append(resting);
+    try {
+      const { items } = await api("/resting-themes");
+      if (alive && items.length) {
+        resting.append(
+          el(
+            "div",
+            { class: "card" },
+            el("h2", { text: "お休みにしている話題" }),
+            el("p", { class: "hint", text: "ツイン（AI）はこの話題を聞きません。" }),
+            ...items.map((theme) =>
+              el(
+                "div",
+                { class: "person-row" },
+                el("div", { class: "person-text", text: theme }),
+                el("button", {
+                  type: "button",
+                  class: "quiet",
+                  text: "お休みをやめる",
+                  onclick: async () => {
+                    await api("/resting-themes/resume", { method: "POST", json: { theme } });
+                    drawSelfHome();
+                  },
+                })
+              )
+            )
+          )
+        );
+      }
+    } catch {
+      // 読めなくても、ほかの部分は使える
     }
     const mapSection = el("section", { class: "card map-card" });
     panel.append(mapSection);

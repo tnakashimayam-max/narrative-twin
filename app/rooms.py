@@ -21,7 +21,7 @@ import threading
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import ai, clock, config, db, jobs, ledger, photos, twin
+from app import ai, clock, config, db, jobs, ledger, memory, photos, twin
 from app.auth import NOT_FOUND, current_user, get_conn, person_view, require_self
 from app.prompts import TWIN_LABEL
 from app.room_store import (
@@ -51,6 +51,7 @@ from app.schemas import (
     Room,
     RoomKind,
     RoomMessage,
+    Theme,
     User,
 )
 
@@ -499,6 +500,34 @@ def set_twin_presence(
             )
         background.add_task(jobs.split_quietly, app=request.app, conversation_id=presence.conversation_id)
     return _room_view(request, conn, room, viewer, 0)
+
+
+class ResumeInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    theme: Theme
+
+
+@router.get("/resting-themes")
+def list_resting_themes(
+    _: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
+) -> dict[str, list[str]]:
+    """お休みにしている話題の一覧。本人だけが開ける。"""
+    return {"items": sorted(theme.value for theme in memory.resting_themes(conn))}
+
+
+@router.post("/resting-themes/resume", status_code=204)
+def resume_theme(
+    body: ResumeInput,
+    _: User = Depends(require_self),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> None:
+    """話題のお休みをやめる。決めるのは本人なので、本人が戻せるようにする。"""
+    with conn:
+        conn.execute(
+            "UPDATE question_logs SET result = ? WHERE result = ? AND theme = ?",
+            (QuestionResult.LATER.value, QuestionResult.RESTING.value, body.theme.value),
+        )
 
 
 @router.post("/questions/{question_id}/rest", status_code=204)
