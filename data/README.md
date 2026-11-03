@@ -30,6 +30,17 @@ python -m fiction.consolidate_story         # 固める（月は Sonnet 5.5、�
 
 保存した JSON は、AI を呼ばずに読み込めます（`fiction/load.py`）。AI が作った文に英語が1か所混ざっていたので、`log_2036.json` と `split_2036.json` の同じ文を手で直しました（`tests/test_fiction.py` で確かめます）。物語を差し替えるときは `fiction/plan.py` を直し、変わった会話の鍵を JSON から除いて、上を流し直します。プロンプトは `fiction/generate.py` と `app/prompts.py` にあります。
 
+## script.jsonl から記録を作る
+
+決まりは [docs/script-format.md](../docs/script-format.md)、道具は `fiction/run_script.py` です。今ある API を順に呼ぶので、記録は画面から入れたものと同じ処理を通ります。結果は `--folder` の下に入り、`data/narrative_twin.db` と `data/story/` には触れません。
+
+```
+python -m fiction.run_script script.jsonl --check
+python -m fiction.run_script script.jsonl --folder data/trial/script_run --budget 10
+```
+
+試しのファイルは `fiction/sample_script.jsonl`（24行）です。流すと約 $0.10 かかりました。
+
 ## 「10年後へ進む」の前へ戻す
 
 デモを撮り直すための道具です（`fiction/snapshot.py`）。架空用の保存先（`data/narrative_twin.db` と `data/photos/`）だけを扱います。自分用の記録の置き場は写さず、変えません。場所を指定する引数はありません。
