@@ -244,7 +244,7 @@
 | `GET /api/advocacy/overview` | 今の様子と、本人が範囲を決めた日 | `{"self_name": 文, "now": [Now, ...], "decided_on": 日付, "themes": [テーマ]}` |
 | `GET /api/advocacy/elements` | 見える意思モデルの要素。花びらは専門職にだけ返す | `{"items": [Element, ...]}` |
 | `GET /api/advocacy/elements/{番号}` | 要素の根拠を、言明と発言の原文までたどる。見えない要素は 404 | `{"element_id": 番号, "body": 文, "kind": 文, "evidence": [Quote に utterances を足したもの]}` |
-| `POST /api/observations` | 今の様子を入れる。`{"text": 文, "theme": テーマ}` | 201、`{"statement_id": 番号}` |
+| `POST /api/observations` | 今の様子を入れる。`{"text": 文, "theme": テーマ, "at_meeting": 会議の画面から入れたか}`。`at_meeting` が真なら発言の場所を「会議」にする | 201、`{"statement_id": 番号}` |
 | `GET /api/statements/{番号}/interpretations` | 言明の4つの視点の仮説。専門職だけ | `{"items": [{"perspective", "body", "confidence", "caution", "status"}]}` |
 
 `Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`（`Now` の配列）、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`changed`（届けた言葉が時期によって変わっているか、証言と食い違っているか）、`estimate`（`Estimate`。なければ `null`）、`elements`（届けた言葉を根拠に持つ要素。`element_id`、`body`、`kind`、`unit`、`valid_from`、`confirmed`）

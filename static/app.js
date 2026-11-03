@@ -16,6 +16,7 @@ import { shrinkPhoto } from "./photo.js";
 import { renderProRecords } from "./prorecords.js";
 import { renderRecords } from "./records.js";
 import { renderTalk } from "./talk.js";
+import { renderMeeting } from "./meeting.js";
 import { renderTimeline } from "./timeline.js";
 import { avatar, el, setTwinLevels, tabIcon, twinDrawing } from "./ui.js";
 
@@ -55,6 +56,7 @@ const PLATES = {
   records: ["RECORDS", "これまでの記録"],
   advocate: ["ASK", "ツインに聞く"],
   prorecords: ["RECORDS", "記録"],
+  meeting: ["MEETING", "ケア会議"],
 };
 
 const TAB_LABELS = [
@@ -64,6 +66,7 @@ const TAB_LABELS = [
   ["records", "記録", renderRecords],
   ["advocate", "ツインに聞く", renderAdvocate],
   ["prorecords", "記録", renderProRecords],
+  ["meeting", "ケア会議", renderMeeting],
 ];
 
 /* 立場ごとのタブ。専門職は「ツインと話す」を先にし、託された家族には足す。 */
@@ -152,7 +155,8 @@ function openTab(key, options = {}) {
   clearView();
   document.body.dataset.screen = "";
   setPlate(...PLATES[key]);
-  showTabs(true);
+  // 会議の画面はみんなで見るので、下のタブを出さず、今の様子とツインを大きくする
+  showTabs(key !== "meeting");
   drawTabs();
   const entry = TAB_LABELS.find(([name]) => name === key);
   leaveCurrent = entry[2](view, context(), options) || null;

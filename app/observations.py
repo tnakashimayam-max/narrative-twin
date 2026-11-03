@@ -47,6 +47,8 @@ class ObservationInput(BaseModel):
 
     text: str = Field(min_length=1, max_length=2000)
     theme: Theme = Theme.HOME
+    # 会議の画面から入れたか。発言の場所に残し、会議で見た様子だと後からたどれるようにする
+    at_meeting: bool = False
 
 
 def can_use_supporter_screen(conn: sqlite3.Connection, viewer: User) -> bool:
@@ -57,7 +59,13 @@ def can_use_supporter_screen(conn: sqlite3.Connection, viewer: User) -> bool:
 
 
 def save_observation(
-    conn: sqlite3.Connection, speaker: User, self_user: User, text: str, theme: Theme, at: datetime
+    conn: sqlite3.Connection,
+    speaker: User,
+    self_user: User,
+    text: str,
+    theme: Theme,
+    at: datetime,
+    place: Place = Place.CHAT,
 ) -> Statement:
     """今の様子を、会話、発言、言明の順に1つの処理で入れる。"""
     with ledger.atomic(conn):
@@ -78,7 +86,7 @@ def save_observation(
                 speaker_user_id=speaker.id,
                 text=text,
                 spoken_at=at,
-                place=Place.CHAT,
+                place=place,
             ),
         )
         return ledger.append_statement(
@@ -101,6 +109,8 @@ def save_observation(
 def now_view(conn: sqlite3.Connection, viewer: User, limit: int) -> list[dict]:
     """今の様子を新しい順に返す。見える範囲は consent が決める。"""
     items = [item for item in consent.visible_statements(conn, viewer) if item.source is Source.OBSERVATION]
+    # 台帳は入れた順に返る。先に逆にしてから日付で並べると、同じ日は新しく入れた様子が先になる（原則2）
+    items.reverse()
     items.sort(key=lambda item: item.effective_date, reverse=True)
     views = []
     for item in items[:limit]:
@@ -133,5 +143,6 @@ def add_observation(
     if not text:
         raise HTTPException(status_code=400, detail="今の様子を入れてください。")
     self_user = db.self_user(conn)
-    statement = save_observation(conn, viewer, self_user, text, body.theme, clock.now(request.app))
+    place = Place.MEETING if body.at_meeting else Place.CHAT
+    statement = save_observation(conn, viewer, self_user, text, body.theme, clock.now(request.app), place)
     return {"statement_id": statement.id}

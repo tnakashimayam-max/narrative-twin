@@ -1890,3 +1890,230 @@ body[data-look="modern"] .source-card.self .quote {
   background-image: radial-gradient(color-mix(in srgb, var(--sun) 30%, transparent) 1px, transparent 1.2px);
   background-size: 18px 18px;
 }
+
+/* ---- ケア会議：今の様子とツインを大きく。字幕はいちばん大きい文字にする ---- */
+
+.meeting-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 今の様子を上に固定するので、上の余白を詰める */
+  padding-top: 0;
+}
+
+/* 幅の狭い画面でも、今の様子はいつも見えるように上に固定する（原則2）。大きな画面では字幕と一緒に見える */
+.meeting-now {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 6px 12px;
+  border-left: 8px solid var(--src-now);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.meeting-now h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.meeting-now-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.meeting-now-latest {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.meeting-now-line {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+/* だれの記録かを本文と別の行にする。同じ行だと、本文の折り返しが不ぞろいになるため */
+.meeting-now-latest .hint,
+.meeting-now-line .hint {
+  display: block;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.meeting-stage,
+.meeting-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.meeting-twin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.meeting-reading {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.meeting-question {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meeting-changed {
+  margin: 0;
+}
+
+/* 届いた言葉の日付。押すと字幕が替わる。新しい順に並べ、幅が足りなければ横に動かす */
+.meeting-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.meeting-chips button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.meeting-chips button[aria-pressed="true"] {
+  border: 2px solid var(--frame);
+  background: var(--sun-soft);
+  font-weight: 700;
+}
+
+.meeting-caption {
+  padding: 14px 16px;
+  border: 2px solid var(--frame);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.meeting-lead-in {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.meeting-quote {
+  margin: 0 0 12px;
+  font-size: 26px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.meeting-speak {
+  min-width: 8rem;
+  margin-top: 10px;
+}
+
+.meeting-waiting {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* 字幕の枠の中では、もう1つ枠を重ねない */
+.meeting-caption .not-yet {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 24px;
+}
+
+.meeting-next {
+  margin: 8px 0 0;
+  font-size: 18px;
+}
+
+.meeting-rule {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 幅の狭い画面では字幕の場所を空けるため見出しを出さない。入力欄の名前は読み上げ用に持っている */
+.meeting-ask-label {
+  display: none;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.meeting-close {
+  align-self: flex-start;
+}
+
+/* 大きな画面：今の様子を上に全幅で、その下にツインと字幕を横に並べる。文字は画面に合わせて大きくする */
+@media (min-width: 900px) {
+  .meeting-panel {
+    max-width: min(92vw, 100rem);
+  }
+
+  .meeting-now {
+    position: static;
+    padding: 10px 14px;
+  }
+
+  .meeting-ask-label {
+    display: block;
+  }
+
+  .meeting-now h2 {
+    font-size: 22px;
+  }
+
+  .meeting-now-latest {
+    font-size: clamp(24px, 2vw, 40px);
+  }
+
+  .meeting-stage {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .meeting-twin {
+    flex: none;
+    flex-direction: column;
+    width: clamp(170px, 14vw, 260px);
+    text-align: center;
+  }
+
+  .meeting-panel .twin-figure.large {
+    width: clamp(160px, 13vw, 240px);
+    height: clamp(160px, 13vw, 240px);
+  }
+
+  .meeting-main {
+    flex: 1;
+  }
+
+  .meeting-lead-in {
+    font-size: clamp(20px, 1.6vw, 30px);
+  }
+
+  .meeting-panel .meeting-quote {
+    font-size: clamp(34px, 3vw, 60px);
+  }
+
+  .meeting-panel .advocate-composer textarea {
+    font-size: 18px;
+  }
+
+  .meeting-panel .advocate-composer .primary {
+    min-width: 7rem;
+  }
+}

@@ -10,45 +10,14 @@
 */
 
 import { api } from "./api.js";
+import { speak, stopSpeaking } from "./speech.js";
 import { el, openSheet, twinFigure } from "./ui.js";
 
 const TWIN_NAME = "ツイン（AI）";
 
-function dateWords(iso) {
+export function dateWords(iso) {
   const [year, month, day] = iso.split("T")[0].split("-").map(Number);
   return `${year}年${month}月${day}日`;
-}
-
-let speakingButton = null;
-
-function stopSpeaking() {
-  window.speechSynthesis?.cancel();
-  if (speakingButton) {
-    speakingButton.textContent = "読み上げる";
-    speakingButton = null;
-  }
-}
-
-/* 押すと読み上げ、もう一度押すと止める。読み上げ中は、何が起きているかをボタンの言葉で見せる。 */
-function speak(text, button) {
-  if (!window.speechSynthesis) {
-    return;
-  }
-  const wasThis = speakingButton === button;
-  stopSpeaking();
-  if (wasThis) {
-    return;
-  }
-  const voice = new SpeechSynthesisUtterance(text);
-  voice.lang = "ja-JP";
-  voice.onend = () => {
-    if (speakingButton === button) {
-      stopSpeaking();
-    }
-  };
-  speakingButton = button;
-  button.textContent = "読み上げ中（押すと止める）";
-  window.speechSynthesis.speak(voice);
 }
 
 /* 記録を1枚のカードにする。線の形でも出どころが分かるようにする。 */
@@ -122,14 +91,14 @@ function selfWords(items) {
   return section;
 }
 
-function group(title, items, kind, options) {
+export function group(title, items, kind, options) {
   if (!items?.length) {
     return "";
   }
   return el("section", { class: "answer-group" }, el("h3", { text: title }), ...items.map((item) => sourceCard(item, kind, options)));
 }
 
-function estimateFrame(estimate) {
+export function estimateFrame(estimate) {
   if (!estimate) {
     return "";
   }
@@ -341,6 +310,11 @@ export function renderAdvocate(container, ctx) {
             class: "primary",
             text: "入れる",
             onclick: async () => {
+              if (!text.value.trim()) {
+                message.textContent = "今の様子を入れてください。";
+                message.hidden = false;
+                return;
+              }
               try {
                 await api("/observations", { method: "POST", json: { text: text.value } });
                 close();
@@ -366,6 +340,10 @@ export function renderAdvocate(container, ctx) {
         ? data.now.map((item) => sourceCard(item, "now"))
         : [el("p", { text: "今の様子は、まだ入っていません。" })]),
       el("button", { type: "button", class: "quiet", text: "今の様子を入れる", onclick: () => openObservation(drawTop) }),
+      // みんなで同じ画面を見るので、専門職だけが開ける。家族にだけ見える記録を専門職の目に入れないため
+      ctx.me?.role === "専門職"
+        ? el("button", { type: "button", class: "wide", style: "margin-top:10px", text: "会議の画面を開く", onclick: () => ctx.openTab("meeting") })
+        : "",
       data.decided_on
         ? el("p", { class: "hint scope-note", text: `見えるのは、${dateWords(data.decided_on)}に${data.self_name}が決めた範囲です。` })
         : el("p", { class: "hint scope-note", text: `${data.self_name}は、まだ範囲を決めていません。` })

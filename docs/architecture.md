@@ -190,6 +190,10 @@ AI に渡す処理は `utterances` しか読みません。人だけの部屋の
 
 関連するテスト：`tests/test_timeline.py`
 
+## ケア会議の画面
+
+`static/meeting.js`。3人が同じ画面を見るので、開けるのは専門職だけです。答えは `POST /api/advocacy/ask` で作り、「ツインに聞く」と同じ処理を通ります。画面は、サーバーが返した前置きと記録の本文だけを字幕に出し、読み上げます（`static/speech.js`）。推定は別の枠のままで、読み上げません。今の様子は `POST /api/observations` に `at_meeting` を付けて入れ、発言の場所を「会議」にします（`tests/test_meeting.py`）。
+
 ## 写真
 
 - 画面で長い辺を1568pxほどに縮めて送り、サーバーでも開き直して JPEG にし、撮影の情報を落とす（`images.normalize`）。
