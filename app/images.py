@@ -31,11 +31,14 @@ class PhotoError(ValueError):
     """写真を受け取れないとき。メッセージはそのまま画面に出す。"""
 
 
-def normalize(raw: bytes) -> bytes:
-    """写真を読み直し、保存してよい JPEG の中身を返す。読めなければ PhotoError にする。"""
+def normalize(raw: bytes, *, max_bytes: int = MAX_UPLOAD_BYTES) -> bytes:
+    """写真を読み直し、保存してよい JPEG の中身を返す。読めなければ PhotoError にする。
+
+    max_bytes を変えるのは fiction/prepare_photos.py だけ。カメラの元の写真を直接読むため。
+    """
     if not raw:
         raise PhotoError(EMPTY_MESSAGE)
-    if len(raw) > MAX_UPLOAD_BYTES:
+    if len(raw) > max_bytes:
         raise PhotoError(TOO_LARGE_MESSAGE)
     try:
         with Image.open(io.BytesIO(raw)) as opened:
