@@ -172,14 +172,18 @@ def save_handover(
 
 def _review_view(conn: sqlite3.Connection, statement: Statement) -> dict:
     origin = None
+    origin_is_self = False
     # 推測には、もとの発言を添える。日付だけでは、本人が何の話か思い出せないため
     if statement.source is Source.AI_GUESS and statement.source_utterance_ids:
         utterance = ledger.get_utterance(conn, statement.source_utterance_ids[0])
         origin = utterance.text if utterance else None
+        # 推測のもとは家族のコメントのこともある。札は話した人から決める（原則3）
+        origin_is_self = utterance is not None and utterance.speaker_user_id == statement.subject_user_id
     return {
         "id": statement.id,
         "body": statement.body,
         "origin": origin,
+        "origin_is_self": origin_is_self,
         "source": statement.source.value,
         "effective_date": statement.effective_date.isoformat(),
         "is_guess": statement.source is Source.AI_GUESS,

@@ -1,10 +1,12 @@
 /*
   役割：画面を組み立てる小さな部品。文字の入った要素、人のアイコン、ツインの姿、日付の表示など。
   4つの極：特定の極に属さない土台。
-  守る原則：12（ツインは AI の相棒で、本人にも実在の人にも似せない）、13（色はのせない）。
+  守る原則：12（ツインは AI の相棒で、本人にも実在の人にも似せない）、13（色がのるのは花びらだけ。数字を出さない）。
 
   文字は textContent で入れる。人の言葉や AI の文を HTML として解釈させないため。
-  ツインの姿は丸みのある花の形の鉛筆の下書きで、性別や年齢が分からない形にしている。
+  ツインの姿は「花の子」。頭のまわりに5枚の花びらを開いた形で、性別や年齢が分からず、人間そのものに見えない。
+  背景、体、顔の色はいつも出る。色がのるのは花びらだけで、本人が確かめた分だけ濃くなる（原則13）。
+  色がのる前の花びらは、白い面に細い線で描く。
   ここに写真を入れる道は作らない。
 */
 
@@ -89,8 +91,8 @@ export function svg(tag, attributes = {}, ...children) {
   return node;
 }
 
-/* ツインの色。花びらの順に、濃さの言葉だけを受け取る。名前も数も出さない（原則13）。 */
-const PETAL_COLORS = ["#7fa7c9", "#d9929f", "#e3b061", "#86b57f", "#a78cc4"];
+/* ツインの色。花びらの順に、濃さの言葉だけを受け取る。名前も数も出さない（原則13）。
+   色は index.html の pw0〜pw4（藍、朱、山吹、若竹、藤）にある。 */
 const LEVEL_OPACITY = { なし: 0, うすい: 0.26, 中くらい: 0.5, こい: 0.82 };
 let twinLevels = null;
 
@@ -98,71 +100,125 @@ export function setTwinLevels(levels) {
   twinLevels = levels;
 }
 
-/* ツインの姿。鉛筆の線の下に、本人が確かめた分だけ水彩の色をのせる。 */
-export function twinDrawing(size = 100, levels = twinLevels) {
-  const pencil = { fill: "none", stroke: "#6f6a60", "stroke-width": "1.6", "stroke-linecap": "round" };
-  const faint = { fill: "none", stroke: "#a39d90", "stroke-width": "1", "stroke-linecap": "round" };
-  const petals = [];
-  const washes = [];
-  for (let index = 0; index < 5; index += 1) {
-    const angle = index * 72;
-    const opacity = LEVEL_OPACITY[levels?.[index]] ?? 0;
-    if (opacity > 0) {
-      washes.push(
-        svg("ellipse", {
-          cx: "50",
-          cy: "23",
-          rx: "15",
-          ry: "19.5",
-          fill: PETAL_COLORS[index],
-          "fill-opacity": String(opacity),
-          filter: "url(#twin-wash)",
-          transform: `rotate(${angle} 50 50)`,
-        })
-      );
-    }
-    petals.push(svg("ellipse", { cx: "50", cy: "23", rx: "15", ry: "19.5", transform: `rotate(${angle} 50 50)`, ...pencil }));
-    petals.push(svg("ellipse", { cx: "51", cy: "24", rx: "14", ry: "18.5", transform: `rotate(${angle + 2.5} 50 50)`, ...faint }));
+const PETAL_SHAPE = "M0 0C-13-16-35-44-32-70C-29-92-9-102 3-100C25-97 37-80 33-60C29-38 11-16 0 0Z";
+const PETAL_VEIN = "M0-6C-3-32-4-58-1-86M-1-40C-9-52-14-62-16-74M-1-46C7-56 12-66 15-76";
+const PETAL_LIGHT = "M-20-62C-21-76-13-88-3-90C-12-82-17-72-20-62Z";
+const TWIN_LINE = { stroke: "#6E5E50", "stroke-width": "1", "vector-effect": "non-scaling-stroke" };
+
+/* 花びら1枚。表示の大きさで描き分ける。小さいときに細かい線を描くと、つぶれて読めないため。 */
+function twinPetal(index, opacity, px) {
+  const transform = `translate(50 46) rotate(${index * 72}) scale(0.46 0.41)`;
+  const parts = [svg("path", { transform, d: PETAL_SHAPE, fill: "url(#pbase)" })];
+  if (opacity > 0) {
+    parts.push(
+      svg(
+        "g",
+        { filter: px >= 64 ? "url(#wc)" : undefined },
+        svg("path", { transform, d: PETAL_SHAPE, fill: `url(#pw${index})`, "fill-opacity": String(opacity) })
+      )
+    );
+  }
+  if (px >= 44) {
+    parts.push(
+      svg("path", {
+        transform,
+        d: PETAL_VEIN,
+        fill: "none",
+        ...TWIN_LINE,
+        stroke: "#7A6A5A",
+        opacity: opacity > 0 ? "0.22" : "0.3",
+        "stroke-linecap": "round",
+      })
+    );
+  }
+  if (px >= 64) {
+    parts.push(svg("path", { transform, d: PETAL_LIGHT, fill: "#fff", opacity: "0.55" }));
+  }
+  parts.push(
+    svg("path", {
+      transform,
+      d: PETAL_SHAPE,
+      fill: "none",
+      ...TWIN_LINE,
+      "stroke-width": px <= 32 ? "0.7" : "1",
+      opacity: opacity >= 0.5 ? "0.5" : "0.8",
+      "stroke-linejoin": "round",
+    })
+  );
+  return parts;
+}
+
+/* 顔。小さいときは目と口を大きくし、28px以下では口を省く。 */
+function twinFace(px) {
+  const eyeScale = px <= 28 ? 1.4 : px <= 44 ? 1.18 : 1;
+  const radius = 2.8 * eyeScale;
+  const eye = (x) => [
+    svg("ellipse", { cx: x, cy: 45, rx: radius, ry: radius * 1.14, fill: "#2A2730" }),
+    svg("circle", { cx: x + radius * 0.32, cy: 45 - radius * 0.42, r: radius * 0.38, fill: "#fff" }),
+  ];
+  const cheekScale = px <= 28 ? 1.2 : 1;
+  const cheek = (x) =>
+    svg("ellipse", { cx: x, cy: 51.2, rx: 3.6 * cheekScale, ry: 2.3 * cheekScale, fill: "#F08A78", opacity: "0.55" });
+  const parts = [eye(42.4), eye(57.6), cheek(37.4), cheek(62.6)];
+  if (px > 28) {
+    const mouthScale = px <= 44 ? 1.15 : 1;
+    const half = 2.7 * mouthScale;
+    parts.push(
+      svg("path", {
+        d: `M${50 - half} 51.2Q50 ${51.2 + half * 0.95} ${50 + half} 51.2`,
+        fill: "none",
+        stroke: "#6B4438",
+        "stroke-width": String(1.15 * mouthScale),
+        "stroke-linecap": "round",
+      })
+    );
+  }
+  return parts;
+}
+
+/* ツインの姿。戻り値は <svg> のまま。地図の図の中に入れるので、外を包まない。
+   free は背景の丸なしの姿で、入口の主役に使う。 */
+export function twinDrawing(size = 100, levels = twinLevels, { free = false } = {}) {
+  const figure = [
+    svg("path", { d: "M20 102C20 82 33 72 50 72S80 82 80 102Z", fill: "url(#leafG)", ...TWIN_LINE, "stroke-opacity": "0.5" }),
+    [0, 1, 2, 3, 4].map((index) => twinPetal(index, LEVEL_OPACITY[levels?.[index]] ?? 0, size)),
+    svg("circle", { cx: "50", cy: "46", r: "20.5", fill: "url(#skin)", ...TWIN_LINE, "stroke-opacity": "0.55" }),
+    twinFace(size),
+  ].flat(Infinity);
+  const attributes = { viewBox: "0 0 100 100", width: String(size), height: String(size), role: "img", "aria-label": "ツイン（AI）の姿" };
+  if (free) {
+    return svg("svg", attributes, figure);
   }
   return svg(
     "svg",
-    { viewBox: "0 0 100 100", width: String(size), height: String(size), role: "img", "aria-label": "ツイン（AI）の姿" },
-    svg(
-      "defs",
-      {},
-      svg(
-        "filter",
-        { id: "twin-wash", x: "-20%", y: "-20%", width: "140%", height: "140%" },
-        svg("feTurbulence", { type: "fractalNoise", baseFrequency: "0.09", numOctaves: "2", seed: "4", result: "noise" }),
-        svg("feDisplacementMap", { in: "SourceGraphic", in2: "noise", scale: "3" })
-      )
-    ),
-    washes,
-    petals,
-    svg("circle", { cx: "50", cy: "50", r: "21", fill: "#fbf7ec", stroke: "#6f6a60", "stroke-width": "1.6" }),
-    svg("circle", { cx: "50.6", cy: "50.4", r: "20", ...faint }),
-    svg("path", { d: "M41 47 q2 -2.4 4 0", ...pencil }),
-    svg("path", { d: "M55 47 q2 -2.4 4 0", ...pencil }),
-    svg("path", { d: "M44 56 q6 4.6 12 0", ...pencil })
+    attributes,
+    svg("circle", { cx: "50", cy: "50", r: "50", fill: "url(#twbg)" }),
+    svg("g", { "clip-path": "url(#twc)" }, figure),
+    svg("circle", { cx: "50", cy: "50", r: "49.4", fill: "none", stroke: "#fff", "stroke-width": size <= 32 ? "1" : "1.6", "vector-effect": "non-scaling-stroke" })
   );
 }
 
-export function twinFigure({ large = false, thinking = false } = {}) {
+export function twinFigure({ large = false, small = false, thinking = false } = {}) {
   const classes = ["twin-figure"];
   if (large) {
     classes.push("large");
   }
+  if (small) {
+    classes.push("small");
+  }
   if (thinking) {
     classes.push("thinking");
   }
-  return el("span", { class: classes.join(" ") }, twinDrawing());
+  // 表示の大きさを渡す。描き分けは表示の大きさで決まるため
+  return el("span", { class: classes.join(" ") }, twinDrawing(large ? 96 : small ? 36 : 44));
 }
 
 /* 人のアイコン。写真がなければ、名前の頭文字の丸にする。 */
 export function avatar(person, size = "") {
   const label = person?.called_name || person?.name || "？";
   const initial = Array.from(label.trim())[0] || "？";
-  const node = el("span", { class: `avatar ${size}`.trim(), "aria-hidden": "true" }, initial);
+  const classes = ["avatar", size, person?.role === "本人" ? "me" : ""].filter(Boolean).join(" ");
+  const node = el("span", { class: classes, "aria-hidden": "true" }, initial);
   if (person?.photo_id) {
     photoUrl(person.photo_id).then((url) => {
       if (url) {

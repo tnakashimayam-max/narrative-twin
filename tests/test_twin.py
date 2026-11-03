@@ -69,19 +69,28 @@ def _turn(reply="そうなのですね。", question=None, theme=None, care="な
     [
         {"reply": "どの花ですか？"},
         {"reply": "私は庭が好きです。"},
-        {"reply": "はい。", "question": "庭ですか？花ですか？"},
-        {"reply": "はい。", "question": "庭が好きです。"},
-        {"reply": "はい。", "question": "私は庭が好きですか？"},
         {"reply": "。"},
         {"reply": "にぎやかだったでしょうか。"},
         {"reply": "お好きですか。"},
         {"reply": "腰の具合は大丈夫でしたか。"},
     ],
-    ids=["受け止めに問い", "私は", "問いが2つ", "問いでない", "問いに私は", "言葉がない", "でしょうか", "ですか", "でしたか"],
+    ids=["受け止めに問い", "私は", "言葉がない", "でしょうか", "ですか", "でしたか"],
 )
-def test_問いが2つ以上と本人になりきる文は型で止める(fields):
+def test_受け止めが問いだけの文と本人になりきる文は型で止める(fields):
     with pytest.raises(ValidationError):
         TwinTurn(**fields)
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["庭ですか？花ですか？", "庭が好きです。", "私は庭が好きですか？"],
+    ids=["問いが2つ", "問いでない", "問いに私は"],
+)
+def test_決まりに合わない問いは落として受け止めを返す(question):
+    turn = TwinTurn(reply="はい。", question=question)
+
+    assert turn.reply == "はい。"
+    assert turn.question is None
 
 
 @pytest.mark.parametrize("reply", ["そうですか。", "そうでしたか。よかったです。", "庭が好きなのですね。"])

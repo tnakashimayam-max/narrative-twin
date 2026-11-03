@@ -97,12 +97,9 @@ export function reviewSection(ctx, onChange) {
     return el(
       "article",
       { class: `review-item${item.is_guess ? " guess" : ""}` },
-      el(
-        "div",
-        { class: "hint" },
-        item.is_guess ? el("span", { class: "guess-tag", text: "ツイン（AI）の推測" }) : "",
-        ` ${dateWords(item.effective_date)}の話から`
-      ),
+      item.is_guess ? el("span", { class: "guess-tag", text: "ツイン（AI）の推測" }) : "",
+      el("div", { class: "hint", text: `${dateWords(item.effective_date)}の話から` }),
+      item.origin_is_self ? el("span", { class: "source-tag self", text: "本人の言葉" }) : "",
       item.origin ? el("p", { class: "review-origin hand", text: item.origin }) : "",
       el("p", { class: item.is_guess ? "" : "hand", text: item.is_guess ? `${item.body} 合っていますか？` : item.body }),
       buttons,
@@ -120,6 +117,7 @@ export function reviewSection(ctx, onChange) {
       const more = el("button", {
         type: "button",
         class: "quiet",
+        style: "margin-top:10px",
         text: "ほかの話も見る",
         hidden: rest.length === 0,
         onclick: () => {

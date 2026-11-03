@@ -151,6 +151,28 @@ def test_今日うかがったことは今日の話を先に_次に推測を出�
     assert ids.index(today_words.id) < ids.index(guess.id) < ids.index(old_words.id)
 
 
+@pytest.mark.parametrize(("speaker", "expected"), [("誠一さん", True), ("美穂さん", False)])
+def test_確かめの推測のもとの発言は_話したのが本人のときだけ本人の言葉と分かる(
+    login, make_draft, add_utterance, conn, speaker, expected
+):
+    origin = add_utterance("庭の話をしていました。", speaker=speaker)
+    ledger.append_statement(
+        conn,
+        make_draft(
+            [origin.id],
+            "庭が大切なのかもしれません。",
+            source=Source.AI_GUESS,
+            speaker_user_id=None,
+            speaker_is_twin=True,
+        ),
+    )
+
+    item = login("誠一さん").get("/api/review").json()["items"][0]
+
+    assert item["origin"] == "庭の話をしていました。"
+    assert item["origin_is_self"] is expected
+
+
 @pytest.mark.parametrize("name", ["美穂さん", "田中さん"])
 def test_今日うかがったことは本人だけが開ける(login, name):
     assert login(name).get("/api/review").status_code == 404

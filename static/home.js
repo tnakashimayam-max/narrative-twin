@@ -34,7 +34,7 @@ function otherGuide(me) {
   if (me.can_use_supporter_screen) {
     return "便りはタイムラインで、部屋の話はトークで読めます。本人が託した範囲の記録は、ツイン（AI）に聞いて読めます。";
   }
-  return "便りはタイムラインで、部屋の話はトークで読めます。下のタブを押してください。";
+  return "本人がツイン（AI）と話した中から、本人が選んだ便りがタイムラインに届きます。部屋の話はトークで読めます。下のタブを押してください。";
 }
 
 /* ケアマネジャーを招く。招けないときは何も出さない。出すかどうかはサーバーが日付と立場で決める。 */
@@ -175,7 +175,7 @@ export function renderHome(container, ctx) {
         "button",
         {
           type: "button",
-          class: "user-button",
+          class: "user-button lead",
           onclick: async () => {
             const { items } = await api("/rooms");
             ctx.openTab("talk", { roomId: items[0].id });
@@ -247,7 +247,7 @@ export function renderHome(container, ctx) {
     peopleSection.append(
       el("button", {
         type: "button",
-        class: "primary wide",
+        class: "wide",
         style: "margin-top:10px",
         text: "人を登録する",
         onclick: () => openPersonForm(ctx, null, drawSelfHome),

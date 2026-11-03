@@ -16,9 +16,11 @@ const CENTER = SIZE / 2;
 const INNER = 108;
 const OUTER = 172;
 const BADGE = 26;
-const FONT = 20;
-const INK = "#27477a";
-const STRESS = "#9b1c1c";
+// 地図は幅318pxほどで表示されるので、縮んでも16px以上になる大きさにする
+const FONT = 21;
+// 暗い表示でも同じ図を使うので、色は style.css の変数で渡す
+const INK = "var(--ink)";
+const STRESS = "var(--error)";
 
 const STRENGTHS = [
   ["強い", "太い線。よく支え合っている"],
@@ -59,7 +61,7 @@ function linePath(x1, y1, x2, y2, zigzag) {
 
 function lineAttributes(link) {
   if (!link) {
-    return { stroke: "#a89a7f", "stroke-width": "1.5", "stroke-dasharray": "2 6", fill: "none" };
+    return { stroke: "var(--ink-soft)", "stroke-width": "2", "stroke-dasharray": "1 6", "stroke-linecap": "round", fill: "none" };
   }
   const base = { fill: "none", stroke: link.strength === "ストレス" ? STRESS : INK };
   if (link.strength === "強い") {
@@ -96,11 +98,11 @@ function badge({ x, y, label, sublabel, photoId, shape = "circle", ring = false,
     }
   });
   if (shape === "square") {
-    group.append(svg("rect", { x: x - BADGE, y: y - BADGE, width: BADGE * 2, height: BADGE * 2, rx: 10, fill: "#fdfaf1", stroke: INK, "stroke-width": "2" }));
+    group.append(svg("rect", { x: x - BADGE, y: y - BADGE, width: BADGE * 2, height: BADGE * 2, rx: 10, fill: "var(--card)", stroke: "var(--sun)", "stroke-width": "2" }));
   } else {
-    group.append(svg("circle", { cx: x, cy: y, r: BADGE, fill: "#dfe6f1", stroke: INK, "stroke-width": "2" }));
+    group.append(svg("circle", { cx: x, cy: y, r: BADGE, fill: "var(--sun-soft)", stroke: ring ? "var(--frame)" : "var(--sun)", "stroke-width": "2.5" }));
     if (ring) {
-      group.append(svg("circle", { cx: x, cy: y, r: BADGE + 5, fill: "none", stroke: INK, "stroke-width": "2" }));
+      group.append(svg("circle", { cx: x, cy: y, r: BADGE + 5, fill: "none", stroke: "var(--sun)", "stroke-width": "2" }));
     }
   }
   const initial = Array.from(label)[0] || "？";
@@ -183,6 +185,7 @@ function linePicker(target, onDone) {
   return el(
     "div",
     { class: "stack" },
+    target.link ? "" : el("p", { class: "hint", text: "線はまだ選んでいません。選んで「この線にする」を押すと決まります。" }),
     el("h3", { text: "線の種類" }),
     group("map-strength", STRENGTHS, strength, (word) => {
       strength = word;
@@ -192,20 +195,24 @@ function linePicker(target, onDone) {
       direction = word;
     }),
     message,
-    el("button", {
-      type: "button",
-      class: "primary wide",
-      text: "この線にする",
-      onclick: async () => {
-        try {
-          await api("/map/links", { method: "PUT", json: { ...target.key, strength, direction } });
-          onDone();
-        } catch (error) {
-          message.textContent = error.message;
-          message.hidden = false;
-        }
-      },
-    })
+    el(
+      "div",
+      { class: "sheet-actions" },
+      el("button", {
+        type: "button",
+        class: "primary wide",
+        text: "この線にする",
+        onclick: async () => {
+          try {
+            await api("/map/links", { method: "PUT", json: { ...target.key, strength, direction } });
+            onDone();
+          } catch (error) {
+            message.textContent = error.message;
+            message.hidden = false;
+          }
+        },
+      })
+    )
   );
 }
 
@@ -218,7 +225,7 @@ function legend() {
     el("li", {}, sample(lineAttributes({ strength: "強い" })), "太い線：強いつながり"),
     el("li", {}, sample(lineAttributes({ strength: "ふつう" })), "ふつうの線：ふつうのつながり"),
     el("li", {}, sample(lineAttributes({ strength: "弱い" })), "点線：弱いつながり"),
-    el("li", {}, sample(lineAttributes({ strength: "ストレス" }), true), "ぎざぎざの線：ストレスのあるつながり"),
+    el("li", {}, sample(lineAttributes({ strength: "ストレス" }), true), "ぎざぎざの線：気を使うつながり"),
     el("li", {}, sample(lineAttributes(null)), "細い点の線：まだ選んでいません"),
     el("li", {}, "矢印は支えの向きです。")
   );
@@ -247,9 +254,7 @@ export async function renderEcomap(section, ctx, refresh) {
       // 矢印の大きさは線の太さに合わせず固定する。太い線で矢印だけが大きくなりすぎないようにするため。
       svg("marker", { id: "map-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "13", markerHeight: "13", markerUnits: "userSpaceOnUse", orient: "auto" }, svg("path", { d: "M0 0 L10 5 L0 10 z", fill: INK })),
       svg("marker", { id: "map-arrow-back", viewBox: "0 0 10 10", refX: "1", refY: "5", markerWidth: "13", markerHeight: "13", markerUnits: "userSpaceOnUse", orient: "auto" }, svg("path", { d: "M10 0 L0 5 L10 10 z", fill: INK }))
-    ),
-    svg("circle", { cx: CENTER, cy: CENTER, r: INNER, fill: "none", stroke: "#d5ccb6", "stroke-dasharray": "3 6" }),
-    svg("circle", { cx: CENTER, cy: CENTER, r: OUTER, fill: "none", stroke: "#d5ccb6", "stroke-dasharray": "3 6" })
+    )
   );
 
   const place = (items, radius, start) =>
@@ -277,6 +282,19 @@ export async function renderEcomap(section, ctx, refresh) {
         d: linePath(CENTER + ux * startGap, CENTER + uy * startGap, x - ux * endGap, y - uy * endGap, zigzag),
         ...lineAttributes(item.link),
         ...arrowEnds(item.link),
+      })
+    );
+  }
+
+  // ツインは本人のそばにいることだけを、細い点の線で示す。関係の強さは選ばない
+  {
+    const length = Math.hypot(twinSpot.x - CENTER, twinSpot.y - CENTER);
+    const ux = (twinSpot.x - CENTER) / length;
+    const uy = (twinSpot.y - CENTER) / length;
+    drawing.append(
+      svg("path", {
+        d: linePath(CENTER + ux * (BADGE + 7), CENTER + uy * (BADGE + 7), twinSpot.x - ux * (BADGE + 6), twinSpot.y - uy * (BADGE + 6), false),
+        ...lineAttributes(null),
       })
     );
   }

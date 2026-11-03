@@ -15,7 +15,7 @@ from datetime import datetime
 import pytest
 from PIL import Image
 
-from app import ai, images, photos
+from app import ai, config, db, images, photos
 from app.schemas import Photo, PhotoKind
 from tests.fake_claude import RoleClaude
 
@@ -217,6 +217,97 @@ def test_ログインしていなければ写真は見えない(db_path, conn):
     from app.main import create_app
 
     assert TestClient(create_app(db_path)).get("/api/photos/1").status_code == 401
+
+
+# ---- 入口の顔 ----
+
+
+def _profile_photo(conn, tmp_path, user_id, kind=PhotoKind.PROFILE):
+    """保存先を決めて、写真を1枚入れる。"""
+    with conn:
+        photo_id = db.insert_row(
+            conn, "photos", {"file": "face.jpg", "owner_user_id": user_id, "kind": kind.value, "created_at": "2026-11-03T00:00:00"}
+        )
+    return photo_id
+
+
+@pytest.fixture
+def entrance(tmp_path):
+    """架空用か自分用の保存先に、写真のファイルを置いたアプリを作る。"""
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    def _make(mine=False):
+        deployment = config.deployment(mine=mine, data_dir=tmp_path)
+        app = create_app(deployment=deployment)
+        deployment.photos_dir.mkdir(parents=True, exist_ok=True)
+        (deployment.photos_dir / "face.jpg").write_bytes(jpeg_bytes())
+        connection = db.connect(deployment.db_path)
+        return TestClient(app), connection
+
+    return _make
+
+
+def _first_user(connection):
+    return db.list_users(connection)[0]
+
+
+def test_入口の顔は_架空用ではログインの前に読めて_一覧に番号が出る(entrance):
+    client, connection = entrance()
+    user = _first_user(connection)
+    photo_id = _profile_photo(connection, None, user.id)
+    with connection:
+        connection.execute("UPDATE users SET photo_id = ? WHERE id = ?", (photo_id, user.id))
+
+    items = client.get("/api/users").json()["items"]
+
+    assert next(item for item in items if item["id"] == user.id)["photo_id"] == photo_id
+    assert client.get(f"/api/photos/{photo_id}").status_code == 200
+    connection.close()
+
+
+def test_入口の顔は_自分用の起動ではログインの前に読めず_一覧にも番号が出ない(entrance):
+    client, connection = entrance(mine=True)
+    created = client.post("/api/self", json={"name": "山田一郎"}).json()
+    photo_id = _profile_photo(connection, None, created["id"])
+    with connection:
+        connection.execute("UPDATE users SET photo_id = ? WHERE id = ?", (photo_id, created["id"]))
+
+    assert all(item["photo_id"] is None for item in client.get("/api/users").json()["items"])
+    assert client.get(f"/api/photos/{photo_id}").status_code == 401
+    connection.close()
+
+
+def test_入口の顔でも_はずした人の写真はログインの前に読めない(entrance):
+    client, connection = entrance()
+    user = db.list_users(connection)[-1]
+    photo_id = _profile_photo(connection, None, user.id)
+    with connection:
+        connection.execute("UPDATE users SET photo_id = ?, removed_at = '2026-11-03' WHERE id = ?", (photo_id, user.id))
+
+    assert client.get(f"/api/photos/{photo_id}").status_code == 401
+    connection.close()
+
+
+@pytest.mark.parametrize("kind", [PhotoKind.TALK, PhotoKind.ROOM, PhotoKind.LETTER])
+def test_入口の顔でも_会話や部屋の写真はログインの前に読めない(entrance, kind):
+    client, connection = entrance()
+    user = _first_user(connection)
+    photo_id = _profile_photo(connection, None, user.id, kind=kind)
+    with connection:
+        connection.execute("UPDATE users SET photo_id = ? WHERE id = ?", (photo_id, user.id))
+
+    assert client.get(f"/api/photos/{photo_id}").status_code == 401
+    connection.close()
+
+
+def test_プロフィールの種類でも_だれの顔でもない写真はログインの前に読めない(entrance):
+    client, connection = entrance()
+    photo_id = _profile_photo(connection, None, _first_user(connection).id)
+
+    assert client.get(f"/api/photos/{photo_id}").status_code == 401
+    connection.close()
 
 
 # ---- AI に送る写真 ----

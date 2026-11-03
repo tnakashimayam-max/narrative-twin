@@ -3,7 +3,8 @@
   4つの極：1. 書く・話す、2. 分かち合う。
   守る原則：7（催促や連続の数の表示を作らない）、8（画面の隅の表示）、10（見える範囲はサーバーが決める）。
 
-  ログインは名前を押すだけで、切り替えも一度押すだけにする。だれとして使っているかはウィンドウごとに覚える。
+  ログインは名前か顔を押すだけで、切り替えも一度押すだけにする。だれとして使っているかはウィンドウごとに覚える。
+  入口のツインは色がそろった固定の絵。ログインの前は、だれの記録の色か決まらないため。
   タブは本人に4つ、本人以外に3つ。「記録」は本人だけが開けるので、本人以外には出さない。
   トークのタブには、人どうしの新しい発言の数を出す。画面の中だけの表示で、通知はしない。
 */
@@ -16,13 +17,16 @@ import { renderProRecords } from "./prorecords.js";
 import { renderRecords } from "./records.js";
 import { renderTalk } from "./talk.js";
 import { renderTimeline } from "./timeline.js";
-import { avatar, el, setTwinLevels, tabIcon } from "./ui.js";
+import { avatar, el, setTwinLevels, tabIcon, twinDrawing } from "./ui.js";
 
 const view = document.getElementById("view");
 const tabs = document.getElementById("tabs");
-const loginNote = document.getElementById("login-note");
+const plateLabel = document.getElementById("plate-label");
+const plateTitle = document.getElementById("plate-title");
+const ENTRANCE_TWIN_LEVELS = ["こい", "こい", "こい", "こい", "こい"];
 
 let me = null;
+let modeLabel = "";
 let leaveCurrent = null;
 let currentTab = "home";
 let unreadTotal = 0;
@@ -36,6 +40,22 @@ function clearView() {
   view.className = "view";
   view.replaceChildren();
 }
+
+/* 見出しの札。英字は飾りなので読み上げない。 */
+function setPlate(label, title) {
+  plateLabel.textContent = label;
+  plateLabel.hidden = !label;
+  plateTitle.textContent = title;
+}
+
+const PLATES = {
+  home: ["HOME", "ホーム"],
+  talk: ["TALK", "トーク"],
+  timeline: ["TIMELINE", "タイムライン"],
+  records: ["RECORDS", "これまでの記録"],
+  advocate: ["ASK", "ツインに聞く"],
+  prorecords: ["RECORDS", "記録"],
+};
 
 const TAB_LABELS = [
   ["home", "ホーム", renderHome],
@@ -118,6 +138,7 @@ function context() {
     showTabs,
     openTab,
     switchUser: logIn,
+    setPlate,
     refreshMe: async () => {
       me = await api("/me");
       await afterLogin();
@@ -129,6 +150,8 @@ function context() {
 function openTab(key, options = {}) {
   currentTab = key;
   clearView();
+  document.body.dataset.screen = "";
+  setPlate(...PLATES[key]);
   showTabs(true);
   drawTabs();
   const entry = TAB_LABELS.find(([name]) => name === key);
@@ -145,34 +168,63 @@ async function logIn(userId) {
     showLogin(error.message);
     return;
   }
-  loginNote.hidden = true;
   openTab(tabsFor(me)[0]);
+}
+
+/* 文字で組んだロゴ。1行で並べ、NT は小さくする。 */
+function wordmark() {
+  return el(
+    "div",
+    { class: "logo-band" },
+    el(
+      "span",
+      { class: "wordmark", role: "img", "aria-label": "Narrative Twin" },
+      el("span", { class: "wm-nt", "aria-hidden": "true" }, "N", el("span", { text: "T" })),
+      el("span", { "aria-hidden": "true", text: "Narrative" }),
+      el("span", { class: "wm-twin", "aria-hidden": "true", text: "Twin" })
+    )
+  );
+}
+
+/* 入口の藍の面。ツインは面の斜めの縁からのぞく。札の言葉は起動の種類をそのまま出す（原則8）。 */
+function entranceHero() {
+  return el(
+    "div",
+    { class: "hero-panel" },
+    el("div", { class: "hero-tag" }, el("span", { class: "tag", text: modeLabel })),
+    el("p", { class: "hero-title" }, "本人の言葉を、", el("br"), "本人が直しながら", el("br"), "残す。"),
+    el("p", { class: "hero-role" }, "話を聞く相棒", el("br"), el("b", { text: "ツイン（AI）" })),
+    el("span", { class: "hero-sun", "aria-hidden": "true" }),
+    el("span", { class: "hero-twin" }, twinDrawing(176, ENTRANCE_TWIN_LEVELS, { free: true }))
+  );
 }
 
 async function showLogin(message) {
   clearView();
   showTabs(false);
-  loginNote.hidden = false;
+  document.body.dataset.screen = "login";
   forgetUser();
-  const list = el("div", { class: "user-list" });
+  const list = el("div", { class: "person-grid" });
   const panel = el(
     "section",
-    { class: "panel" },
+    { class: "login-choice" },
     el("h1", { text: "どなたですか？" }),
-    el("p", { text: "お名前を押すと、その人の画面に切り替わります。パスワードはいりません。" }),
+    el("p", { class: "hint" }, "お名前を押すと、その人の画面になります。", el("br"), "パスワードはいりません。"),
     list,
-    message ? el("p", { class: "error", role: "alert", text: message }) : null
+    message ? el("p", { class: "error", role: "alert", text: message }) : null,
+    el("p", { class: "hint login-note", text: "デモ用の簡易ログイン" })
   );
-  view.append(panel);
+  view.append(el("div", { class: "login-screen" }, wordmark(), entranceHero(), panel));
   try {
     const { items } = await api("/users");
     list.replaceChildren(
       ...items.map((user) =>
         el(
           "button",
-          { type: "button", class: "user-button", onclick: () => logIn(user.id) },
-          avatar(user),
-          `${user.name}（${user.role}）`
+          { type: "button", class: user.role === "本人" ? "person-card first" : "person-card", onclick: () => logIn(user.id) },
+          avatar(user, "portrait"),
+          el("b", { text: user.name }),
+          el("span", { class: "person-role", text: user.role })
         )
       )
     );
@@ -185,6 +237,7 @@ async function showLogin(message) {
 function showSelfRegistration() {
   clearView();
   showTabs(false);
+  setPlate("", "はじめまして");
   const form = el("form", { class: "stack" });
   const name = el("input", { type: "text", required: true, maxLength: 40, autocomplete: "off" });
   const called = el("input", { type: "text", maxLength: 40, autocomplete: "off" });
@@ -252,6 +305,7 @@ async function start() {
     view.append(el("section", { class: "panel" }, el("p", { class: "error", role: "alert", text: error.message })));
     return;
   }
+  modeLabel = mode.label;
   document.getElementById("mode-label").textContent = mode.label;
   if (mode.needs_self) {
     showSelfRegistration();
@@ -261,7 +315,6 @@ async function start() {
     try {
       me = await api("/me");
       await afterLogin();
-      loginNote.hidden = true;
       openTab(tabsFor(me)[0]);
       return;
     } catch (error) {

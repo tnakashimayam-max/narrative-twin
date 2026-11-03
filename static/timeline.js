@@ -3,11 +3,11 @@
   4つの極：2. 分かち合う。
   守る原則：10（見える便りはサーバーが絞る）、14（いいねの数、通知、既読、おすすめ表示を作らない）。
 
-  スレッドの吹き出しはトークと同じ部品を使う。開いている間は新しいコメントを取りに行く。
+  カードは囲まず白い面を積み、コメントは山吹の線でスレッドにする。開いている間は新しいコメントを取りに行く。
 */
 
 import { api } from "./api.js";
-import { bubble, dateDivider, newDateTracker, personName } from "./bubbles.js";
+import { personName, threadComment } from "./bubbles.js";
 import { avatar, dateLabel, el, photoImage } from "./ui.js";
 
 const POLL_MS = 5000;
@@ -20,11 +20,11 @@ export function renderTimeline(container, ctx) {
   const list = el("div", {});
   const emptyNote = el("p", { class: "hint", hidden: true });
   const message = el("p", { class: "error", role: "alert", hidden: true });
-  container.append(el("section", { class: "panel" }, el("h1", { text: "タイムライン" }), emptyNote, message, list));
+  container.append(el("section", { class: "panel feed" }, emptyNote, message, list));
 
   function drawCard(letter, selfId) {
     const author = people.get(selfId);
-    const thread = el("div", {});
+    const thread = el("div", { class: "letter-thread" });
     const replyBox = el("textarea", { rows: 1, placeholder: "コメントを書く", "aria-label": "コメント" });
     const replyStatus = el("p", { class: "error", role: "alert", hidden: true });
     const sendButton = el("button", { type: "button", class: "primary", text: "コメントする" });
@@ -53,40 +53,33 @@ export function renderTimeline(container, ctx) {
     const card = el(
       "article",
       { class: "letter-card" },
+      avatar(author),
       el(
         "div",
-        { class: "letter-head" },
-        avatar(author),
+        { class: "letter-main" },
         el(
           "div",
-          {},
+          { class: "letter-head" },
           el("strong", { text: personName(author) }),
-          el("div", { class: "hint", text: `${dateLabel(letter.shared_at)}・${letter.share_with}に見せています` })
-        )
-      ),
-      letter.photo_id ? photoImage(letter.photo_id, "letter-photo", "便りの写真") : null,
-      el("div", { class: "letter-body", text: letter.body }),
-      el("p", { class: "hint letter-note", text: `ツイン（AI）の下書きを、${personName(author)}が確かめて共有しました。` }),
-      el(
-        "div",
-        { class: "letter-thread" },
+          el("span", { class: "hint", text: dateLabel(letter.shared_at) }),
+          el("div", { class: "hint letter-scope", text: `${letter.share_with}に見せています` })
+        ),
+        letter.photo_id ? photoImage(letter.photo_id, "letter-photo", "便りの写真") : null,
+        el("div", { class: "letter-body", text: letter.body }),
+        el("p", { class: "hint letter-note", text: `ツイン（AI）の下書きを、${personName(author)}が確かめて共有しました。` }),
         thread,
         replyStatus,
         el("div", { class: "letter-reply" }, replyBox, sendButton)
       )
     );
-    return { card, thread, shown: new Set(), tracker: newDateTracker() };
+    return { card, thread, shown: new Set() };
   }
 
   function updateThread(entry, letter) {
     for (const item of letter.thread) {
       if (!entry.shown.has(item.id)) {
         entry.shown.add(item.id);
-        const divider = dateDivider(entry.tracker, item.sent_at);
-        if (divider) {
-          entry.thread.append(divider);
-        }
-        entry.thread.append(bubble(item, { viewerId: ctx.me.id, people }));
+        entry.thread.append(threadComment(item, { people }));
       }
     }
   }

@@ -1,26 +1,55 @@
 /*
-  役割：すべての画面の見た目。生成り色の和紙のような地と、藍色のアクセント。
+  役割：すべての画面の見た目。「藍と陽だまり」。骨組みは藍、地は陽だまりの色、印は山吹、主ボタンは朱。
   4つの極：1. 書く・話す、2. 分かち合う（本人と家族・縁のある人の画面）。
   守る原則：8（画面の隅の表示）、12（ツインの表示）、14（SNS の仕掛けを作らない）。
 
   幅360pxを第一に作る。本文は16px以上、ボタンは高さ44px以上にする。高齢の本人が迷わず押せるようにするため。
+  見出しの札の英字だけは飾りで、読み上げない。
   人の言葉は手書き風の文字にし、ツインの言葉はふつうの文字のままにする。だれの言葉かを見分けやすくするため。
   外部のフォントは読み込まない。使う人の機器にある教科書体を使う。
-  評価の画面（eval.html）は body の data-look="modern" で白を基調にする。
+  顔を黒い面や四角い枠で囲まない。遺影に見えるため。線だけの絵にもしない。
+  ダークは端末の設定に合わせる。専門職と評価の画面（body の data-look="modern"）は白を基調のまま変えない。
+  色は変数に置く。朱は主ボタンと小さな印にだけ使う。
 */
 
-:root {
-  --paper: #f5efe0;
-  --paper-deep: #ebe2cd;
-  --card: #fdfaf1;
-  --ink: #2b2a27;
-  --ink-soft: #5d584d;
-  --line: #a89a7f;
-  --accent: #27477a;
-  --accent-soft: #dfe6f1;
+:root,
+body[data-look="modern"] {
+  color-scheme: light;
+  --paper: #fff9ea;
+  --paper-deep: #f7efd9;
+  --card: #ffffff;
+  --input: #ffffff;
+  --ink: #22304a;
+  --ink-soft: #4f5d75;
+  --line: #cdbf98;
+  --line-soft: #e9dfc4;
+  --accent: #27507f;
+  --accent-soft: #e3ebf5;
   --accent-ink: #ffffff;
-  --error: #9b1c1c;
-  --warn-bg: #fbf0d9;
+  --error: #b34327;
+  --warn-bg: #fdefc8;
+  --rail: #27507f;
+  --rail-text: #d6e3f2;
+  --rail-current: #1f4269;
+  --sun: #f0b73a;
+  --sun-soft: #fdefc8;
+  --frame: #27507f;
+  --me-bubble: #27507f;
+  --me-bubble-text: #ffffff;
+  --shu: #c6401f;
+  --shu-hover: #a93518;
+  --shu-mark: #de4a26;
+  --src-self: #27507f;
+  --src-self-line: #27507f;
+  --src-testimony: #7a5c3e;
+  --src-testimony-line: #7a5c3e;
+  --src-guess: #6b6b6b;
+  --src-guess-line: #6b6b6b;
+  --src-now: #2f7d5b;
+  --src-estimate: #8a4b6b;
+  --estimate-bg: #fbf4f8;
+  --hero: linear-gradient(135deg, #2c5b90 0, #27507f 55%, #1f4269 100%);
+  --hero-sun: radial-gradient(circle at 38% 32%, #fff9e6 0, #ffeec0 52%, #fbdb8c 100%);
   --hand: "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho NK-R", "UD デジタル 教科書体 N-R",
     "Yu Kyokasho", "YuKyokasho", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --plain: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
@@ -29,10 +58,48 @@
 
 body[data-look="modern"] {
   --paper: #ffffff;
-  --card: #ffffff;
+  --paper-deep: #f4f6fb;
   --ink: #1f2933;
   --line: #9aa5b1;
-  --accent: #1f4e79;
+  --line-soft: #dfe3e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #16263f;
+    --paper-deep: #253b5e;
+    --card: #1f3352;
+    --input: #1f3352;
+    --ink: #fbf7ec;
+    --ink-soft: #b6c4d8;
+    --line: #4f6a93;
+    --line-soft: #334a6d;
+    --accent: #f6c858;
+    --accent-soft: #2b4468;
+    --accent-ink: #1b2a44;
+    --error: #f7ad96;
+    --warn-bg: #3f3a2a;
+    --rail: #0f1d33;
+    --rail-text: #bfcee3;
+    --rail-current: #1b2e4d;
+    --sun: #f6c858;
+    --sun-soft: #3f3a2a;
+    --frame: #f6c858;
+    --me-bubble: #f8dc8e;
+    --me-bubble-text: #1b2a44;
+    --src-self: #3c6ba5;
+    --src-self-line: #8fb3de;
+    --src-testimony: #8a6a4a;
+    --src-testimony-line: #d2b08c;
+    --src-guess: #6f7a8c;
+    --src-guess-line: #b6c4d8;
+    --src-now: #2f7d5b;
+    --src-estimate: #c989a9;
+    --estimate-bg: #33293f;
+    --hero: linear-gradient(135deg, #1b3050 0, #0f1d33 70%);
+    --hero-sun: radial-gradient(circle at 38% 32%, #fdf0cc 0, #f8e0a4 52%, #efc878 100%);
+  }
 }
 
 * {
@@ -47,19 +114,28 @@ body {
 body {
   margin: 0;
   background-color: var(--paper);
-  /* 和紙の繊維のような、ごく薄い模様 */
-  background-image: radial-gradient(rgba(120, 100, 60, 0.05) 1px, transparent 1px),
-    radial-gradient(rgba(120, 100, 60, 0.04) 1px, transparent 1px);
-  background-size: 23px 23px, 37px 37px;
-  background-position: 0 0, 11px 17px;
   color: var(--ink);
   font-family: var(--plain);
   font-size: 18px;
   line-height: 1.7;
 }
 
-body[data-look="modern"] {
-  background-image: none;
+/* 日本語を文節で折り返す。「かま/いません」のように言葉の途中で折れないようにするため。
+   対応していないブラウザでは、今までどおりの折り返しになる */
+html {
+  word-break: auto-phrase;
+}
+
+/* 入力欄の案内は、何を書くかを示す唯一の言葉なので、既定の薄い色にしない */
+::placeholder {
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
+/* 藍の帯の上では、選んでいる場所の枠を山吹にする */
+.composer :focus-visible,
+.tabs :focus-visible {
+  outline-color: var(--sun);
 }
 
 /* [hidden] を display の指定より強くする。切り替えた画面が残らないようにするため。 */
@@ -103,10 +179,10 @@ button,
   gap: 6px;
   min-height: 44px;
   padding: 6px 14px;
-  border: 2px solid var(--accent);
+  border: 1.5px solid var(--line);
   border-radius: 10px;
   background: var(--card);
-  color: var(--accent);
+  color: var(--ink);
   font: inherit;
   font-size: 16px;
   font-weight: 700;
@@ -134,13 +210,15 @@ button:disabled {
   cursor: default;
 }
 
+/* 主ボタンは朱。暗い表示でも同じ色 */
 button.primary {
-  background: var(--accent);
-  color: var(--accent-ink);
+  border-color: var(--shu);
+  background: var(--shu);
+  color: #ffffff;
 }
 
 button.primary:hover {
-  background: #1d3760;
+  background: var(--shu-hover);
 }
 
 button.wide {
@@ -149,6 +227,7 @@ button.wide {
 
 button.quiet {
   border-color: var(--line);
+  background: transparent;
   color: var(--ink);
 }
 
@@ -169,6 +248,7 @@ input[type="file"] {
 }
 
 input[type="text"],
+input[type="search"],
 input[type="number"],
 select,
 textarea {
@@ -177,7 +257,7 @@ textarea {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--input);
   color: var(--ink);
   font: inherit;
   font-size: 16px;
@@ -226,7 +306,7 @@ label.check input {
 .card {
   margin: 0 0 12px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   background: var(--card);
 }
@@ -264,14 +344,74 @@ label.check input {
 .site-header {
   flex: none;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 12px;
-  padding: 4px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper-deep);
+  gap: 8px;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
   font-size: 16px;
+}
+
+/* 入口は藍の面に札を出すので、見出しの札を出さない */
+body[data-screen="login"] .site-header {
+  display: none;
+}
+
+/* 見出しの札。右の縁を -9 度で切る（tan 9度 = 0.158） */
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 28px 6px 12px;
+  background: var(--rail);
+  color: #ffffff;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+}
+
+.app-icon {
+  flex: none;
+  display: grid;
+  grid-auto-flow: column;
+  place-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: #fff9ea;
+  color: #22304a;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.app-icon span {
+  color: var(--shu);
+}
+
+.plate-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 飾りの英字。読み上げず、読めなくても困らないので、本文の16pxの決まりの外に置く */
+.plate-label {
+  color: var(--sun);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.plate-title {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .brand {
@@ -286,10 +426,11 @@ label.check input {
 
 .tag {
   padding: 0 8px;
-  border: 1px solid var(--ink);
-  border-radius: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
   background: var(--card);
   font-size: 16px;
+  white-space: nowrap;
 }
 
 .view {
@@ -304,32 +445,33 @@ label.check input {
   flex-direction: column;
 }
 
+/* 「ツインに聞く」「タイムライン」は長いので、言葉の長さに合わせて幅を分ける */
 .tabs {
   flex: none;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.45fr 1fr;
+  display: flex;
   height: var(--tab-height);
-  border-top: 1px solid var(--line);
-  background: var(--paper-deep);
-}
-
-.tabs.three {
-  grid-template-columns: 1fr 1fr 1.45fr;
+  background: var(--rail);
 }
 
 .tabs button {
+  flex: 1 1 auto;
+  min-width: 0;
   height: 100%;
   min-height: 44px;
-  padding: 0;
+  padding: 0 2px;
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--ink);
+  color: var(--rail-text);
   display: flex;
   flex-direction: column;
   gap: 0;
   font-size: 16px;
   font-weight: 700;
+}
+
+.tabs button:hover {
+  background: var(--rail-current);
 }
 
 .tabs button svg {
@@ -338,9 +480,20 @@ label.check input {
 }
 
 .tabs button[aria-current="page"] {
-  background: var(--card);
-  color: var(--accent);
-  box-shadow: inset 0 3px 0 var(--accent);
+  background: var(--rail-current);
+  color: #ffffff;
+}
+
+/* いまいる所の印。山吹の線を -9 度に傾ける */
+.tabs button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 3px;
+  background: var(--sun);
+  transform: skewX(-9deg);
 }
 
 /* ---- ログイン ---- */
@@ -361,6 +514,13 @@ label.check input {
   text-align: left;
 }
 
+/* ホームでいちばん使う入口なので、陽だまりの面にする */
+.user-button.lead {
+  border: 2px solid var(--sun);
+  background: var(--sun-soft);
+  font-weight: 700;
+}
+
 .switch-list {
   display: flex;
   flex-wrap: wrap;
@@ -376,13 +536,18 @@ label.check input {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1.5px solid var(--accent);
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--sun-soft);
+  box-shadow: 0 0 0 2px var(--sun);
+  color: var(--ink);
   font-weight: 700;
   font-size: 18px;
   overflow: hidden;
+}
+
+/* 本人は藍の輪と山吹の輪の二重 */
+.avatar.me {
+  box-shadow: 0 0 0 2px var(--frame), 0 0 0 4px var(--card), 0 0 0 5.5px var(--sun);
 }
 
 .avatar img {
@@ -397,13 +562,14 @@ label.check input {
   font-size: 16px;
 }
 
-.avatar.large {
+.avatar.large,
+.avatar.portrait {
   width: 72px;
   height: 72px;
   font-size: 28px;
 }
 
-/* ---- ツインの姿：丸みのある鉛筆の下書き。考えている間だけ、周りの光がゆっくり動く ---- */
+/* ---- ツインの姿：花の子。考えている間だけ、周りの光がゆっくり動く ---- */
 
 .twin-figure {
   position: relative;
@@ -423,6 +589,11 @@ label.check input {
 .twin-figure.large {
   width: 96px;
   height: 96px;
+}
+
+.twin-figure.small {
+  width: 36px;
+  height: 36px;
 }
 
 .twin-figure::before {
@@ -475,7 +646,7 @@ label.check input {
   min-height: 68px;
   padding: 10px 12px;
   border: none;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
   border-radius: 0;
   background: transparent;
   color: var(--ink);
@@ -512,8 +683,8 @@ label.check input {
   min-width: 28px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--accent, #7a5c3e);
-  color: #fff;
+  background: var(--shu);
+  color: #ffffff;
   font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
@@ -531,8 +702,8 @@ label.check input {
 }
 
 .new-divider span {
-  background: var(--accent, #7a5c3e);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .read-mark {
@@ -552,8 +723,12 @@ label.check input {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper-deep);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
+}
+
+.room-header > span {
+  display: flex;
 }
 
 .room-header .room-title {
@@ -566,6 +741,13 @@ label.check input {
   text-overflow: ellipsis;
 }
 
+/* 幅の狭い画面では、部屋の名前は見出しの札で読む。帯は操作だけにする */
+@media (max-width: 480px) {
+  .room-header .room-title {
+    visibility: hidden;
+  }
+}
+
 .room-banner {
   flex: none;
   display: flex;
@@ -574,7 +756,7 @@ label.check input {
   justify-content: space-between;
   gap: 4px 10px;
   padding: 4px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
   background: var(--warn-bg);
   font-size: 16px;
   line-height: 1.4;
@@ -584,9 +766,9 @@ label.check input {
   align-self: flex-start;
   margin-top: 4px;
   padding: 0 8px;
-  border: 1px dotted var(--accent);
+  border: 3px double var(--frame);
   border-radius: 4px;
-  color: var(--accent);
+  color: var(--ink);
   font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
@@ -696,6 +878,14 @@ label.check input {
   align-items: flex-end;
 }
 
+.bubble-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-bottom: 2px;
+}
+
 .bubble-name {
   font-size: 16px;
   font-weight: 700;
@@ -715,7 +905,7 @@ label.check input {
 
 .bubble {
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: 4px 16px 16px 16px;
   background: var(--card);
   overflow-wrap: anywhere;
@@ -729,15 +919,21 @@ label.check input {
 }
 
 .bubble-row.mine .bubble {
-  border-color: var(--accent);
+  border-color: var(--me-bubble);
   border-radius: 16px 4px 16px 16px;
-  background: var(--accent-soft);
+  background: var(--me-bubble);
+  color: var(--me-bubble-text);
+}
+
+.bubble.guess {
+  border: 4px double var(--frame);
+  background: var(--sun-soft);
 }
 
 .bubble.question {
   margin-top: 6px;
-  border: 2px solid var(--accent);
-  background: #f4f6fb;
+  border: 2px solid var(--frame);
+  background: var(--card);
 }
 
 .bubble-photo {
@@ -766,11 +962,16 @@ label.check input {
   margin-top: 4px;
 }
 
+/* 入力の帯は藍。中の文字欄だけ白い */
 .composer {
   flex: none;
-  border-top: 1px solid var(--line);
-  background: var(--paper-deep);
-  padding: 6px 8px;
+  background: var(--rail);
+  padding: 8px;
+}
+
+.composer .error,
+.composer .hint {
+  color: #ffffff;
 }
 
 .composer-inner {
@@ -797,6 +998,13 @@ label.check input {
 .composer .photo-button {
   flex: none;
   padding: 6px 10px;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #ffffff;
+}
+
+.composer .photo-button:hover {
+  background: var(--rail-current);
 }
 
 .composer .send-button {
@@ -838,25 +1046,44 @@ label.check input {
 /* ---- タイムライン ---- */
 
 .letter-card {
-  margin: 0 0 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 12px 16px 14px 14px;
+  border-block: 1px solid var(--line-soft);
   background: var(--card);
-  overflow: hidden;
+}
+
+/* タイムラインは余白なしで、白い面を積む */
+.panel.feed {
+  padding: 0 0 24px;
+}
+
+/* 記録の中の便りは、アイコンがないので2列にしない */
+.rail-item .letter-card {
+  display: block;
+  padding: 8px 12px;
 }
 
 .letter-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px 4px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding-bottom: 6px;
+}
+
+.letter-scope {
+  flex-basis: 100%;
 }
 
 /* 便りはツイン（AI）の下書きを本人が確かめたもの。人が書いた言葉の手書き風にはしない（原則3） */
 .letter-body {
-  padding: 4px 14px 10px;
+  padding: 8px 0;
   font-family: var(--plain);
-  font-size: 19px;
+  font-size: 18px;
+  line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -865,25 +1092,90 @@ label.check input {
   display: block;
   width: 100%;
   max-height: 420px;
+  border-radius: 8px;
   object-fit: contain;
   background: var(--paper-deep);
 }
 
 .letter-thread {
-  padding: 4px 10px 10px;
-  border-top: 1px solid var(--line);
-  background: rgba(235, 226, 205, 0.4);
+  margin-top: 8px;
+  padding-left: 12px;
+  border-left: 3px solid var(--sun);
+}
+
+.letter-thread:empty {
+  display: none;
+}
+
+.comment {
+  padding: 2px 0 10px;
+}
+
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* 人の言葉は手書き風。ツインの言葉はふつうの文字（原則3、12） */
+.comment-text {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.comment-text.person {
+  font-family: var(--hand);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.comment-text.question {
+  padding: 8px 12px;
+  border: 3px solid var(--frame);
+  border-radius: 10px;
+  background: var(--sun-soft);
+}
+
+.comment-time {
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+/* 出どころの札：本人は実線、証言は破線、問いは太線。色だけに頼らない（原則3） */
+.source-tag {
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.source-tag.self {
+  border: 2px solid var(--frame);
+}
+
+.source-tag.testimony {
+  border: 2px dashed var(--ink-soft);
+}
+
+.source-tag.question {
+  border: 3px solid var(--frame);
+  font-weight: 700;
 }
 
 .letter-reply {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .letter-reply textarea {
-  flex: 1;
+  flex: 1 1 120px;
   min-width: 0;
   min-height: 44px;
   resize: none;
@@ -983,7 +1275,7 @@ label.check input {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(30, 30, 30, 0.4);
+  background: rgba(15, 29, 51, 0.45);
 }
 
 .sheet-inner {
@@ -994,6 +1286,10 @@ label.check input {
   padding: 14px 16px 20px;
   border-radius: 16px 16px 0 0;
   background: var(--card);
+}
+
+.sheet-inner > * + * {
+  margin-top: 12px;
 }
 
 @media (min-width: 720px) {
@@ -1020,7 +1316,7 @@ label.check input {
   padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fffef9;
+  background: var(--input);
   font-size: 16px;
 }
 
@@ -1029,7 +1325,7 @@ label.check input {
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .person-row .person-text {
@@ -1089,9 +1385,10 @@ label.check input {
 
 .review-item.guess {
   padding: 10px;
-  border: 3px double var(--line);
+  border: 4px double var(--frame);
   border-radius: 8px;
   margin-top: 8px;
+  background: var(--sun-soft);
 }
 
 .review-item textarea {
@@ -1123,20 +1420,20 @@ label.check input {
 }
 
 .source-card.self {
-  border: 2px solid #27477a;
+  border: 2px solid var(--src-self-line);
 }
 
 .source-card.testimony {
-  border: 2px dashed #7a5c3e;
+  border: 2px dashed var(--src-testimony-line);
 }
 
 .source-card.guess {
-  border: 4px double #6b6b6b;
+  border: 4px double var(--src-guess-line);
 }
 
 .source-card.now {
-  border: 1px solid var(--line);
-  border-left: 8px solid #2f7d5b;
+  border: 1px solid var(--line-soft);
+  border-left: 8px solid var(--src-now);
 }
 
 .source-card .lead-in {
@@ -1166,19 +1463,19 @@ label.check input {
 }
 
 .source-label.self {
-  background: #27477a;
+  background: var(--src-self);
 }
 
 .source-label.testimony {
-  background: #7a5c3e;
+  background: var(--src-testimony);
 }
 
 .source-label.guess {
-  background: #6b6b6b;
+  background: var(--src-guess);
 }
 
 .source-label.now {
-  background: #2f7d5b;
+  background: var(--src-now);
 }
 
 .turn {
@@ -1218,9 +1515,9 @@ label.check input {
 .estimate-frame {
   margin: 12px 0;
   padding: 12px;
-  border: 6px double #8a4b6b;
+  border: 6px double var(--src-estimate);
   border-radius: 10px;
-  background: #fbf4f8;
+  background: var(--estimate-bg);
 }
 
 .estimate-meter {
@@ -1231,8 +1528,8 @@ label.check input {
   margin-left: 4px;
   padding: 2px 12px;
   border-radius: 999px;
-  background: #8a4b6b;
-  color: #fff;
+  background: var(--src-estimate);
+  color: #ffffff;
 }
 
 .estimate-grounds .source-card {
@@ -1252,7 +1549,7 @@ label.check input {
 .now-lines .now-line {
   margin: 2px 0;
   padding: 2px 0 2px 10px;
-  border-left: 6px solid #2f7d5b;
+  border-left: 6px solid var(--src-now);
 }
 
 /* 答えが長くても、聞く欄をいつでも使えるようにする。スクロールするのは .view なので、その下端に固定する */
@@ -1265,22 +1562,12 @@ label.check input {
 }
 
 .turn {
-  scroll-margin-top: 64px;
+  scroll-margin-top: 8px;
 }
 
 /* 同じ説明を答えごとに繰り返さない。最新の答えにだけ出す */
 .turn:not(:last-child) .turn-note {
   display: none;
-}
-
-/* だれのツインに聞いているかが、答えを読んでいる間も見えるようにする */
-.advocate-panel > h1 {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  margin: 0;
-  padding: 8px 0;
-  background: var(--paper);
 }
 
 .now-lines > summary,
@@ -1304,7 +1591,7 @@ label.check input {
 
 .letter-note {
   margin: 0;
-  padding: 0 14px 8px;
+  padding-bottom: 8px;
 }
 
 body[data-look="modern"] .source-card.self .quote {
@@ -1328,7 +1615,7 @@ body[data-look="modern"] .source-card.self .quote {
 .ai-reading {
   margin: 8px 0;
   padding: 8px 10px;
-  border: 4px double #6b6b6b;
+  border: 4px double var(--src-guess-line);
   border-radius: 8px;
 }
 
@@ -1356,4 +1643,250 @@ body[data-look="modern"] .source-card.self .quote {
 
 .hand {
   font-family: var(--hand);
+}
+
+/* ---- 入口 ---- */
+
+.login-screen {
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.logo-band {
+  padding: 9px 0 10px 20px;
+}
+
+/* 文字で組んだロゴ。1行で並べ、NT は小さくする */
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+  font-family: var(--plain);
+  font-size: 27px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wm-nt {
+  margin-right: 0.15em;
+  font-size: 0.62em;
+}
+
+.wm-nt span,
+.wm-twin {
+  color: var(--shu-mark);
+}
+
+/* 藍の面。下の縁を幅に合わせて -9 度で切る（tan 9度 = 0.1584）。.login-screen の最大幅で頭打ちにする */
+.hero-panel {
+  position: relative;
+  min-height: 248px;
+  padding: 0 0 64px 18px;
+  overflow: hidden;
+  background: var(--hero);
+  color: #ffffff;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - min(15.84vw, 81px)), 0 100%);
+}
+
+.hero-tag {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 12px 4px;
+}
+
+.hero-tag .tag {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #ffffff;
+}
+
+.hero-title {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding-right: 160px;
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 1.6;
+}
+
+.hero-role {
+  position: relative;
+  z-index: 2;
+  margin: 6px 0 0;
+  padding-right: 160px;
+  color: #d6e3f2;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.hero-role b {
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.hero-sun {
+  position: absolute;
+  right: -8px;
+  bottom: 30px;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  background: var(--hero-sun);
+  box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.07), 0 0 0 30px rgba(255, 255, 255, 0.04);
+}
+
+.hero-twin {
+  position: absolute;
+  right: -8px;
+  bottom: 23px;
+  z-index: 1;
+}
+
+.hero-twin svg {
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(8, 20, 44, 0.32));
+}
+
+.login-choice {
+  padding: 4px 16px 24px;
+  text-align: center;
+}
+
+.login-choice h1 {
+  margin-bottom: 4px;
+}
+
+.login-note {
+  margin: 12px 0 0;
+}
+
+.person-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 写真の札。1段3枚 */
+.person-card {
+  position: relative;
+  flex: 0 0 calc((100% - 16px) / 3);
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  padding: 12px 2px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.person-card:hover {
+  background: var(--sun-soft);
+}
+
+.person-card b {
+  display: block;
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.person-role {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+/* 本人の札だけ陽だまりの面に、朱の -9 度の印 */
+.person-card.first {
+  background: var(--sun-soft);
+}
+
+.person-card.first::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 4px;
+  height: 22px;
+  background: var(--shu-mark);
+  transform: skewX(-9deg);
+}
+
+/* ---- 記録：藍の年の札と、縦のレール ---- */
+
+.year-plate {
+  width: fit-content;
+  margin: 12px 0 4px;
+  padding: 2px 22px 2px 12px;
+  background: var(--rail);
+  color: #ffffff;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 16px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+.rail-item {
+  position: relative;
+  margin-left: 8px;
+  padding: 2px 0 2px 16px;
+  border-left: 3px solid var(--frame);
+}
+
+/* レールの山吹の点。開いている日は朱の印にする */
+.rail-item::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 16px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--frame);
+  border-radius: 50%;
+  background: var(--sun);
+}
+
+.rail-item[open]::before {
+  left: -7px;
+  top: 12px;
+  width: 8px;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: var(--shu-mark);
+  transform: skewX(-9deg);
+}
+
+.rail-item > summary {
+  flex-wrap: wrap;
+  gap: 0 10px;
+  color: var(--ink);
+}
+
+.rail-date {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.rail-kinds {
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* ---- 地図と家系図：山吹の点の方眼 ---- */
+
+.map-card .diagram,
+.sheet .diagram {
+  background-image: radial-gradient(color-mix(in srgb, var(--sun) 30%, transparent) 1px, transparent 1.2px);
+  background-size: 18px 18px;
 }

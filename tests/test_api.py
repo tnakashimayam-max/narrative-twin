@@ -108,9 +108,10 @@ def test_最初の画面にデモと架空データの表示がある(client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "デモ用の簡易ログイン" in response.text
     assert "架空データ" in response.text
     assert 'lang="ja"' in response.text
+    # 入口の札の下に出す。入口は app.js が組み立てる
+    assert "デモ用の簡易ログイン" in client.get("/app.js").text
 
 
 @pytest.mark.parametrize("path", ["/app.js", "/style.css"])

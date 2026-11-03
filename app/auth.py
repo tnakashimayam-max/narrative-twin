@@ -86,6 +86,13 @@ def current_user(request: Request, conn: sqlite3.Connection = Depends(get_conn))
     return user
 
 
+def optional_user(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> User | None:
+    """ログイン中の人を返す。だれでもなければ None を返す。入口の顔を読むときにだけ使う。"""
+    user_id = _user_id_from_header(request.headers.get(USER_HEADER, ""))
+    user = db.get_user(conn, user_id) if user_id is not None else None
+    return user if can_log_in(user, request.app) else None
+
+
 def self_only(viewer: User) -> None:
     """本人だけが使える道。本人以外には、道がないのと同じ応答にする。"""
     if viewer.role is not Role.SELF:
@@ -135,10 +142,20 @@ def mode(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict
 
 @router.get("/users")
 def list_users(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[dict]]:
-    """ログイン画面に出す名前の一覧。プロフィール写真はログインのあとで読む。"""
+    """入口に出す名前の一覧。架空用の起動では、札に出す顔写真の番号も返す。
+
+    自分用の起動では返さない。本物の家族の顔を、ログインの前に出さないため。決めた経緯：docs/decisions.md
+    """
+    show_faces = not request.app.state.deployment.mine
     return {
         "items": [
-            {"id": user.id, "name": user.name, "called_name": user.display_name, "role": user.role.value}
+            {
+                "id": user.id,
+                "name": user.name,
+                "called_name": user.display_name,
+                "role": user.role.value,
+                "photo_id": user.photo_id if show_faces else None,
+            }
             for user in db.login_users(conn)
             if can_log_in(user, request.app)
         ]

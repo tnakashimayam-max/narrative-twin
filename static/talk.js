@@ -64,6 +64,7 @@ export function renderTalk(container, ctx, options = {}) {
     el(
       "div",
       { class: "panel" },
+      el("p", { class: "hint", text: "家族や知人と話す部屋です。ツイン（AI）は招かれた部屋だけを読みます。" }),
       el("button", {
         type: "button",
         class: "wide",
@@ -195,7 +196,8 @@ export function openRoom(container, ctx, roomId) {
     bannerText,
     el("div", { class: "row room-actions" }, twinToggle, removeButton, leaveButton)
   );
-  const messagesInner = el("div", { class: "messages-inner" });
+  const emptyNote = el("p", { class: "room-notice", text: "写真やひとことを送ってみてください。", hidden: true });
+  const messagesInner = el("div", { class: "messages-inner" }, emptyNote);
   const pendingArea = el("div", {});
   const thinkingArea = el("div", {});
   const shareArea = el("div", {});
@@ -267,6 +269,8 @@ export function openRoom(container, ctx, roomId) {
   function setRoom(info) {
     room = info;
     title.textContent = room.name;
+    // 幅の狭い画面では帯に入りきらないので、見出しの札に部屋の名前を出す
+    ctx.setPlate("TALK", room.name);
     if (room.kind === "ツイン") {
       headerIcon.replaceChildren(twinFigure());
       closeDayButton.hidden = false;
@@ -456,6 +460,8 @@ export function openRoom(container, ctx, roomId) {
         firstLoad = false;
       }
       addMessages(data.items);
+      // 発言がないと入力欄しか見えず、何をする場所か分からないので案内を出す
+      emptyNote.hidden = seen.size > 0 || pendings.size > 0;
       lastSeq = Math.max(lastSeq, data.last_seq);
       if (data.others_read_seqs) {
         drawReadMarks(data.others_read_seqs);
@@ -592,6 +598,7 @@ export function openRoom(container, ctx, roomId) {
   }
 
   async function send() {
+    emptyNote.hidden = true;
     const text = textBox.value.trim();
     if (sending || (!text && !attached)) {
       return;
@@ -721,6 +728,8 @@ export function openRoom(container, ctx, roomId) {
       const data = await api(`/rooms/${roomId}/twin`, { method: "POST", json: { present: !room.twin_present } });
       setRoom(data.room);
       addMessages(data.items);
+      // 発言がないと入力欄しか見えず、何をする場所か分からないので案内を出す
+      emptyNote.hidden = seen.size > 0 || pendings.size > 0;
       lastSeq = Math.max(lastSeq, data.last_seq);
     } catch (error) {
       showStatus(error.message);
@@ -735,5 +744,6 @@ export function openRoom(container, ctx, roomId) {
     clearTimeout(timer);
     document.removeEventListener("visibilitychange", sendRead);
     ctx.showTabs(true);
+    ctx.setPlate("TALK", "トーク");
   };
 }

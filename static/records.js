@@ -5,7 +5,7 @@
 */
 
 import { api } from "./api.js";
-import { bubble } from "./bubbles.js";
+import { bubble, personName } from "./bubbles.js";
 import { dateLabel, el, photoImage } from "./ui.js";
 
 export function renderRecords(container, ctx) {
@@ -19,8 +19,14 @@ export function renderRecords(container, ctx) {
     el(
       "section",
       { class: "panel" },
-      el("h1", { text: "これまでの記録" }),
-      el("p", { class: "hint", text: "日付を押すと開きます。この一覧を開けるのはご本人だけです。便りは選んだ相手に見えます。託す人と範囲で選んだテーマの話は、託した人と招いた専門職にも見えます。" }),
+      el("p", { class: "hint", text: "ツイン（AI）と話したことと便りを、日付ごとに残しています。日付を押すと開きます。" }),
+      // 見える範囲の説明は消さない。長いので畳み、開けば全文を読めるようにする
+      el(
+        "details",
+        { class: "fold" },
+        el("summary", { text: "だれに見えるか" }),
+        el("p", { class: "hint", text: "この一覧を開けるのはご本人だけです。便りは選んだ相手に見えます。託す人と範囲で選んだテーマの話は、託した人と招いた専門職にも見えます。" })
+      ),
       empty,
       message,
       list,
@@ -28,11 +34,23 @@ export function renderRecords(container, ctx) {
     )
   );
   const people = new Map([[ctx.me.id, ctx.me]]);
+  let lastYear = "";
 
   /* 日付だけを並べ、押すと開く。長い記録でも目当ての日を探せるようにするため。写真も開いたときに読む。 */
   function drawDay(day) {
     const body = el("div", {});
-    const section = el("details", { class: "card day-fold" }, el("summary", { text: dateLabel(`${day.date}T12:00:00`) }), body);
+    // 話題の題は記録にないので、日付と、何があった日かの札だけを出す
+    const kinds = [
+      day.conversations.length ? "会話" : "",
+      day.conversations.some((conversation) => conversation.items.some((item) => item.photo_id)) || day.letters.some((letter) => letter.photo_id) ? "写真" : "",
+      day.letters.length ? "便り" : "",
+    ].filter(Boolean);
+    const section = el(
+      "details",
+      { class: "day-fold rail-item" },
+      el("summary", {}, el("span", { class: "rail-date", text: dateLabel(`${day.date}T12:00:00`) }), el("span", { class: "rail-kinds", text: kinds.join("・") })),
+      body
+    );
     let drawn = false;
     section.addEventListener("toggle", () => {
       if (!section.open || drawn) {
@@ -53,7 +71,7 @@ export function renderRecords(container, ctx) {
             { class: "letter-card" },
             letter.photo_id ? photoImage(letter.photo_id, "letter-photo", "便りの写真") : null,
             el("div", { class: "letter-body", text: letter.body }),
-            el("p", { class: "hint", style: "padding:0 14px 8px", text: `便り（${letter.share_with}に見せています）` })
+            el("p", { class: "hint letter-note", text: `ツイン（AI）の下書きを、${personName(ctx.me)}が確かめて共有した便りです。${letter.share_with}に見せています。` })
           )
         );
       }
@@ -69,10 +87,18 @@ export function renderRecords(container, ctx) {
         return;
       }
       const firstLoad = list.children.length === 0;
-      list.append(...data.days.map(drawDay));
+      for (const day of data.days) {
+        const year = day.date.slice(0, 4);
+        if (year !== lastYear) {
+          lastYear = year;
+          list.append(el("div", { class: "year-plate", text: year }));
+        }
+        list.append(drawDay(day));
+      }
       // いちばん新しい日だけ、最初から開いておく
-      if (firstLoad && list.children[0]) {
-        list.children[0].open = true;
+      const newest = list.querySelector(".rail-item");
+      if (firstLoad && newest) {
+        newest.open = true;
       }
       nextBefore = data.next_before;
       more.hidden = !nextBefore;

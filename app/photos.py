@@ -22,7 +22,7 @@ from pathlib import Path as FilePath
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 
 from app import clock, consent, db, images
-from app.auth import NOT_FOUND, current_user, get_conn
+from app.auth import NOT_FOUND, can_log_in, current_user, get_conn, optional_user
 from app.schemas import Photo, PhotoKind, Role, User
 
 router = APIRouter(prefix="/api/photos")
@@ -121,16 +121,31 @@ async def upload_photo(
     return {"id": photo.id}
 
 
+def is_entrance_face(conn: sqlite3.Connection, app, photo: Photo | None) -> bool:
+    """入口の札に出す顔かを返す。架空用の起動の、入口に出る人のプロフィールの写真だけ。
+
+    自分用の起動では、本物の家族の顔をログインの前に出さない。会話や便りの写真の見える範囲は変えない。
+    関連するテスト：tests/test_photos.py の test_入口の顔
+    """
+    if app.state.deployment.mine or photo is None or photo.kind is not PhotoKind.PROFILE:
+        return False
+    row = conn.execute("SELECT id FROM users WHERE photo_id = ?", (photo.id,)).fetchall()
+    return any(can_log_in(db.get_user(conn, item["id"]), app) for item in row)
+
+
 @router.get("/{photo_id}")
 def read_photo(
     request: Request,
     photo_id: int = Path(ge=1, le=db.MAX_ID),
-    viewer: User = Depends(current_user),
+    viewer: User | None = Depends(optional_user),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> Response:
-    """写真の中身を返す。見てよくない写真と、ない写真は同じ 404 にする。"""
+    """写真の中身を返す。見てよくない写真と、ない写真は同じ 404 にする。ログインの前は入口の顔だけ。"""
     photo = get_photo(conn, photo_id)
-    if photo is None or not can_see_photo(conn, viewer, photo):
+    if viewer is None:
+        if not is_entrance_face(conn, request.app, photo):
+            raise HTTPException(status_code=401, detail="名前を選んでください")
+    elif photo is None or not can_see_photo(conn, viewer, photo):
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     data = read_photo_bytes(request.app.state.deployment.photos_dir, photo)
     return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})

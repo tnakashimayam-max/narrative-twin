@@ -297,13 +297,11 @@ export function renderAdvocate(container, ctx) {
   const thinking = el("p", { class: "hint", role: "status", hidden: true, text: "ツイン（AI）が記録を読んでいます" });
   const box = el("textarea", { rows: 2, "aria-label": "ツインに聞くこと", placeholder: "例：これからの暮らしを、どう話していましたか", maxLength: 2100 });
   const send = el("button", { type: "button", class: "primary", text: "聞く" });
-  const heading = el("h1", { text: "ツイン（AI）に聞く" });
   container.append(
     el(
       "section",
       { class: "panel advocate-panel" },
-      heading,
-      el("p", { class: "hint", text: "記録にある言葉を、そのままお届けします。判断するのは、ご本人とご家族と専門職です。" }),
+      el("p", { class: "hint", text: "ツイン（AI）が、記録にある言葉をそのままお届けします。判断するのは、ご本人とご家族と専門職です。" }),
       top,
       log,
       el("div", { class: "advocate-composer" }, thinking, status, el("div", { class: "composer-row" }, box, send))
@@ -361,7 +359,7 @@ export function renderAdvocate(container, ctx) {
 
   async function drawTop() {
     const data = await api("/advocacy/overview");
-    heading.textContent = `${data.self_name}のツイン（AI）に聞く`;
+    ctx.setPlate("ASK", `${data.self_name}のツインに聞く`);
     top.replaceChildren(
       el("h2", { text: "今の様子" }),
       ...(data.now.length

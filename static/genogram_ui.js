@@ -14,10 +14,13 @@ const CELL = 112;
 const ROW = 138;
 const SIZE = 25;
 const MARGIN = 40;
-const INK = "#2b2a27";
+const MIN_WIDTH = 328;
+// 暗い表示でも同じ図を使うので、色は style.css の変数で渡す
+const INK = "var(--ink)";
 
 function shape(person, x, y) {
-  const base = { fill: "#fdfaf1", stroke: INK, "stroke-width": "2" };
+  // 本人は濃い線の二重の枠、ほかの人は山吹の線。どちらも形で男性・女性を示す
+  const base = { fill: "var(--card)", stroke: person.is_self ? "var(--frame)" : "var(--sun)", "stroke-width": person.is_self ? "2" : "2.5" };
   const outer = (gap = 0) => {
     const half = SIZE + gap;
     if (person.gender === "男性") {
@@ -72,15 +75,18 @@ function layout(data) {
     }
   }
   const columns = Math.max(...[...rows.values()].map((row) => row.length), 1);
-  const width = Math.max(columns * CELL + MARGIN * 2, 360);
+  // 幅360pxの画面の窓の内側に収める。3人並ぶ世代があるときだけ、図の中で横に動かす
+  const width = Math.max(columns * CELL + MARGIN * 2, MIN_WIDTH);
   const positions = new Map();
-  for (const [generation, row] of rows) {
+  // 人がいる世代の分だけ縦に並べる。1人だけのときに図の真ん中へぽつんと出さないため
+  const usedRows = [...rows.values()].filter((row) => row.length > 0);
+  usedRows.forEach((row, rowIndex) => {
     const start = (width - (row.length - 1) * CELL) / 2;
     row.forEach((person, index) => {
-      positions.set(person.id, { x: start + index * CELL, y: MARGIN + 20 + (generation + 1) * ROW, person });
+      positions.set(person.id, { x: start + index * CELL, y: MARGIN + 20 + rowIndex * ROW, person });
     });
-  }
-  return { positions, width, height: MARGIN * 2 + 3 * ROW, people };
+  });
+  return { positions, width, height: MARGIN + 20 + (usedRows.length - 1) * ROW + SIZE + 45, people };
 }
 
 function draw(data) {
@@ -100,7 +106,7 @@ function draw(data) {
     const right = Math.max(...points.map((p) => p.x)) + SIZE + 18;
     const top = Math.min(...points.map((p) => p.y)) - SIZE - 14;
     const bottom = Math.max(...points.map((p) => p.y)) + SIZE + 34;
-    drawing.append(svg("rect", { x: left, y: top, width: right - left, height: bottom - top, rx: 14, fill: "none", stroke: "#27477a", "stroke-width": "2", "stroke-dasharray": "8 6" }));
+    drawing.append(svg("rect", { x: left, y: top, width: right - left, height: bottom - top, rx: 14, fill: "var(--sun-soft)", stroke: "var(--frame)", "stroke-width": "2", "stroke-dasharray": "8 6" }));
   }
   const line = { stroke: INK, "stroke-width": "2", fill: "none" };
   const spousePairs = [];
@@ -135,6 +141,8 @@ function draw(data) {
   for (const { x, y, person } of positions.values()) {
     drawing.append(
       ...shape(person, x, y),
+      // 写真がない人は、地図と同じく頭文字を置く
+      svg("text", { x, y: y + 6, "text-anchor": "middle", "font-size": "17", "font-weight": "700" }, Array.from(person.called_name || person.name)[0]),
       svg("text", { x, y: y + SIZE + 26, "text-anchor": "middle", "font-size": "17" }, Array.from(person.called_name || person.name).slice(0, 7).join(""))
     );
   }
@@ -225,9 +233,10 @@ export async function openGenogram(ctx) {
       inner.replaceChildren(
         el("div", { class: "row spread" }, el("h2", { text: "家系図" }), el("button", { type: "button", class: "quiet", text: "閉じる", onclick: close })),
         el("p", { class: "hint", text: "親子と夫婦の関係から、3世代を描きます。この図は本人だけに見えます。" }),
+        data.all_links.length ? "" : el("p", { class: "hint", text: "まだ関係がありません。下の「関係を足す」から足せます。" }),
         el("div", { style: "overflow-x:auto" }, draw(data)),
         legend(),
-        data.all_links.length ? words : el("p", { class: "hint", text: "まだ関係がありません。下から足せます。" }),
+        data.all_links.length ? words : "",
         form
       );
     }

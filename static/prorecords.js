@@ -158,7 +158,6 @@ export function renderProRecords(container) {
     el(
       "section",
       { class: "panel" },
-      el("h1", { text: "記録" }),
       el("h2", { text: "今の様子" }),
       nowBox,
       el("h2", { text: "記録の一つひとつ" }),

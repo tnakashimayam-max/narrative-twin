@@ -888,9 +888,17 @@ class TwinTurn(_Base):
     @field_validator("question")
     @classmethod
     def _check_question(cls, value: str | None) -> str | None:
+        """決まりに合わない問いは落とす。問いはなくても会話は続くので、送信を失敗させないため。
+
+        問いが2つある、「？」で終わらない、「私は」を含む、のどれでも画面に出さない（原則12、AIの話し方）。
+        関連するテスト：tests/test_twin.py の test_決まりに合わない問いは落として受け止めを返す
+        """
         if value is None or not value.strip():
             return None
-        return _one_question(value)
+        try:
+            return _one_question(value)
+        except ValueError:
+            return None
 
     @model_validator(mode="after")
     def _check_question_in_reply(self) -> "TwinTurn":
