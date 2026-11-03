@@ -186,6 +186,24 @@ def _review_view(conn: sqlite3.Connection, statement: Statement) -> dict:
     }
 
 
+def _varied(items: list[Statement]) -> list[Statement]:
+    """同じテーマが続かないよう、順を保ったままテーマごとに1件ずつ取り出す。
+
+    ほぼ同じ趣旨の推測に何度も答えることにならないようにするため（原則6）。
+    関連するテスト：tests/test_handover.py の test_確かめの一覧は同じテーマが続かない
+    """
+    groups: dict[Theme, list[Statement]] = {}
+    for item in items:
+        groups.setdefault(item.theme, []).append(item)
+    varied: list[Statement] = []
+    while groups:
+        for theme in list(groups):
+            varied.append(groups[theme].pop(0))
+            if not groups[theme]:
+                del groups[theme]
+    return varied
+
+
 @router.get("/review")
 def read_review(
     request: Request, _: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
@@ -203,7 +221,7 @@ def read_review(
         key=lambda item: (item.effective_date == today, item.source is Source.AI_GUESS, item.effective_date),
         reverse=True,
     )
-    return {"items": [_review_view(conn, item) for item in items[:_REVIEW_LIMIT]]}
+    return {"items": [_review_view(conn, item) for item in _varied(items)[:_REVIEW_LIMIT]]}
 
 
 def _reviewable(conn: sqlite3.Connection, statement_id: int) -> Statement:

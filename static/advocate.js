@@ -80,19 +80,46 @@ function nowLead(item) {
   return `${dateWords(item.date)}、${item.speaker_label || item.speaker}の記録です`;
 }
 
-/* 答えの中の今の様子。毎回いちばん上に出す（原則2）が、答えを押し下げないよう1件1行にする。 */
+/* 答えの中の今の様子。毎回いちばん上に出す（原則2）が、答えを押し下げないよう1件1行にし、前の答えでは畳む。 */
 function nowLines(items) {
   if (!items?.length) {
     return "";
   }
   return el(
-    "section",
-    { class: "answer-group now-lines" },
-    el("h3", { text: "今の様子（観察）" }),
+    "details",
+    { class: "answer-group now-lines", open: true },
+    el("summary", { text: "今の様子（観察）" }),
     ...items.map((item) =>
       el("p", { class: "now-line" }, el("span", { class: "hint", text: `${dateWords(item.date)}、${item.speaker_label || item.speaker}：` }), item.body)
     )
   );
+}
+
+/* 本人の言葉。問いに近い言葉を先に見せ、残りは開いたときに出す。 */
+function selfWords(items) {
+  if (!items?.length) {
+    return "";
+  }
+  const first = items.filter((item) => item.top);
+  const rest = items.filter((item) => !item.top);
+  const shown = first.length ? first : items;
+  const others = first.length ? rest : [];
+  const section = el(
+    "section",
+    { class: "answer-group" },
+    el("h3", { text: "本人の言葉" }),
+    ...shown.map((item) => sourceCard(item, "self", { canSpeak: true }))
+  );
+  if (others.length) {
+    const more = el("button", {
+      type: "button",
+      class: "quiet",
+      text: "ほかの言葉も見る",
+      onclick: () => more.replaceWith(...others.map((item) => sourceCard(item, "self", { canSpeak: true }))),
+    });
+    section.append(more);
+  }
+  return section;
 }
 
 function group(title, items, kind, options) {
@@ -106,6 +133,22 @@ function estimateFrame(estimate) {
   if (!estimate) {
     return "";
   }
+  const frame = estimateBody(estimate);
+  // 確からしさがとても低い推定は、開いたときだけ出す。「まだ聞けていません」より目立たせないため
+  if (estimate.confidence === "とても低い") {
+    return el(
+      "details",
+      { class: "estimate-fold" },
+      el("summary", { text: "AIの推定を見る（確からしさ：とても低い）" }),
+      frame
+    );
+  }
+  return frame;
+}
+
+function estimateBody(estimate) {
+  // 反対の根拠が少ないときは1列にする。左右に並べると片方が空くため
+  const twoColumns = estimate.counter.length >= 2;
   return el(
     "section",
     { class: "estimate-frame" },
@@ -117,7 +160,7 @@ function estimateFrame(estimate) {
     el("p", { text: estimate.how_to_confirm }),
     el(
       "div",
-      { class: "estimate-grounds" },
+      { class: twoColumns ? "estimate-grounds two" : "estimate-grounds" },
       el("div", {}, el("h4", { text: "根拠" }), ...estimate.evidence.map((item) => sourceCard(item, cardKind(item)))),
       el(
         "div",
@@ -139,24 +182,36 @@ function cardKind(item) {
 }
 
 /* 要素の根拠を、言明と発言の原文までたどる。 */
+const TRACE_FIRST = 5;
+
 export async function openTrace(elementId) {
   const data = await api(`/advocacy/elements/${elementId}`);
+  const card = (item) =>
+    el(
+      "div",
+      {},
+      sourceCard(item, cardKind(item)),
+      ...item.utterances
+        // 本文と同じ文の原文は、二重に出さない
+        .filter((utterance) => utterance.text !== item.body)
+        .map((utterance) => el("p", { class: "hint", text: `発言の原文（${dateWords(utterance.spoken_at)}）：${utterance.text}` }))
+    );
   openSheet((inner, close) => {
+    const first = data.evidence.slice(0, TRACE_FIRST);
+    const rest = data.evidence.slice(TRACE_FIRST);
+    const more = el("button", {
+      type: "button",
+      class: "wide",
+      text: "もっと見る",
+      hidden: rest.length === 0,
+      onclick: () => more.replaceWith(...rest.map(card)),
+    });
     inner.append(
-      el("h2", { text: "根拠をたどる" }),
-      el("p", { class: "hint", text: "AI の読み取り：" }),
+      el("div", { class: "sheet-top" }, el("h2", { text: "根拠をたどる" }), el("button", { type: "button", class: "quiet", text: "閉じる", onclick: close })),
+      el("p", { class: "hint", text: "AI がまとめた文：" }),
       el("p", { text: data.body }),
-      ...data.evidence.map((item) =>
-        el(
-          "div",
-          {},
-          sourceCard(item, cardKind(item)),
-          ...item.utterances.map((utterance) =>
-            el("p", { class: "hint", text: `発言の原文（${dateWords(utterance.spoken_at)}）：${utterance.text}` })
-          )
-        )
-      ),
-      el("button", { type: "button", class: "quiet", text: "閉じる", onclick: close })
+      ...first.map(card),
+      more
     );
   });
 }
@@ -184,7 +239,7 @@ function foldedElements(elements) {
           "div",
           { class: "person-text" },
           el("span", { class: "source-label guess", text: "AI のまとめ" }),
-          ` ${element.valid_from ? `${dateWords(element.valid_from)}からの話。` : ""}${element.body}（${element.confirmed ? "本人が確かめた記録から" : "本人がまだ確かめていない記録から"}）`
+          ` ${element.valid_from ? `${element.valid_from.slice(0, 4)}年ごろからの話。` : ""}${element.body}（${element.confirmed ? "本人が確かめた記録を含む" : "本人がまだ確かめていない記録から"}）`
         ),
         el("button", { type: "button", class: "quiet", text: "根拠をたどる", onclick: () => openTrace(element.element_id) })
       )
@@ -192,12 +247,15 @@ function foldedElements(elements) {
   );
 }
 
-function drawTurn(turn) {
+function drawTurn(turn, me) {
   const body = el("div", { class: "answer-body" });
   if (turn.notice) {
     body.append(el("p", { class: "notice", text: turn.notice }));
   }
   body.append(nowLines(turn.now));
+  if (turn.lead) {
+    body.append(el("p", { class: "twin-lead" }, el("span", { class: "hint", text: "ツイン（AI）の案内：" }), turn.lead));
+  }
   if (turn.not_yet) {
     body.append(el("p", { class: "not-yet", text: turn.not_yet }));
   }
@@ -205,16 +263,19 @@ function drawTurn(turn) {
     body.append(el("p", { class: "notice", text: "時期によって言葉が変わっています。今の思いはご本人に確かめてください。" }));
   }
   body.append(
-    group("本人の言葉", turn.self_words, "self", { canSpeak: true }),
+    selfWords(turn.self_words),
     group("家族と縁のある人の証言", turn.testimony, "testimony"),
     group("AIの推測", turn.guesses, "guess")
   );
-  if (turn.lead) {
-    body.append(el("p", { class: "twin-lead", text: turn.lead }));
-  }
   body.append(estimateFrame(turn.estimate));
   body.append(
-    el("p", { class: "hint", text: "ツイン（AI）が読むのは記録をまとめた文です。ここにない話が、記録のどこかにあることもあります。「記録」のタブで確かめられます。" })
+    el("p", {
+      class: "hint turn-note",
+      text:
+        me?.role === "専門職"
+          ? "ツイン（AI）が読むのは記録をまとめた文です。ここにない話が、記録のどこかにあることもあります。「記録」のタブで探せます。"
+          : "ツイン（AI）が読むのは記録をまとめた文です。ここにない話が、記録のどこかにあることもあります。ご本人やケアマネジャーに確かめてください。",
+    })
   );
   if (turn.elements?.length) {
     body.append(foldedElements(turn.elements));
@@ -245,11 +306,20 @@ export function renderAdvocate(container, ctx) {
       el("p", { class: "hint", text: "記録にある言葉を、そのままお届けします。判断するのは、ご本人とご家族と専門職です。" }),
       top,
       log,
-      thinking,
-      status,
-      el("div", { class: "advocate-composer" }, el("div", { class: "composer-row" }, box, send))
+      el("div", { class: "advocate-composer" }, thinking, status, el("div", { class: "composer-row" }, box, send))
     )
   );
+
+  /* 前の答えの今の様子を畳む。最新の答えだけ開いておく */
+  function foldOlder() {
+    const turns = [...log.children];
+    turns.forEach((turn, index) => {
+      const lines = turn.querySelector(".now-lines");
+      if (lines) {
+        lines.open = index === turns.length - 1;
+      }
+    });
+  }
 
   /* 最新の問いが画面の上に来るまで動かす。入れる欄が下に固定なので、答えが長くても問いから読める。 */
   function showLatest() {
@@ -309,7 +379,8 @@ export function renderAdvocate(container, ctx) {
       await drawTop();
       const { items } = await api("/advocacy/turns");
       if (alive) {
-        log.replaceChildren(...items.map(drawTurn));
+        log.replaceChildren(...items.map((turn) => drawTurn(turn, ctx.me)));
+        foldOlder();
         showLatest();
       }
     } catch (error) {
@@ -332,17 +403,23 @@ export function renderAdvocate(container, ctx) {
     send.disabled = true;
     thinking.hidden = false;
     status.hidden = true;
+    // 答えを待つ間も、何を聞いたかを見せる。失敗したら消して、聞く欄の言葉はそのまま残す
+    const waiting = el("div", { class: "turn" }, el("div", { class: "bubble-row mine" }, el("div", { class: "bubble-body" }, el("div", { class: "bubble", text: question }))));
+    log.append(waiting);
+    showLatest();
     try {
       const { turn } = await api("/advocacy/ask", {
         method: "POST",
         json: { question, client_key: crypto.randomUUID() },
       });
       if (alive) {
-        log.append(drawTurn(turn));
+        waiting.replaceWith(drawTurn(turn, ctx.me));
+        foldOlder();
         box.value = "";
         showLatest();
       }
     } catch (error) {
+      waiting.remove();
       status.textContent = error.message;
       status.hidden = false;
     } finally {

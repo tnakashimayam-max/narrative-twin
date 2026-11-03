@@ -120,6 +120,16 @@ def test_今日うかがったことは未確認の本人の言葉と推測を�
     assert [item["body"] for item in items] == ["毎朝庭を見ます。"]
 
 
+def test_確かめの一覧は同じテーマが続かない(login, add_statement):
+    for number in range(3):
+        add_statement(f"家族の話{number}です。", theme=Theme.FAMILY)
+    add_statement("庭の話です。", theme=Theme.HOME, effective_date=date(2026, 1, 1))
+
+    items = login("誠一さん").get("/api/review").json()["items"]
+
+    assert any(item["body"] == "庭の話です。" for item in items[:2])
+
+
 def test_今日うかがったことは今日の話を先に_次に推測を出す(login, add_statement, make_draft, add_utterance, conn):
     old_words = add_statement("去年の話です。", effective_date=date(2020, 1, 1))
     guess_utterance = add_utterance("話の元です。")

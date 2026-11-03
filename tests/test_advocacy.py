@@ -321,7 +321,42 @@ def test_推定に記録がないという言い切りがあれば出さない(l
     assert turn["estimate"] is None
 
 
-def test_本人の言葉の根拠がない推定は_確からしさをとても低いにする(conn, login, users, add_utterance, make_draft, wish, claude):
+def test_推定に鉤括弧があれば出さない(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": "「遠くはもう行かない」と思っているかもしれません。", "evidence_numbers": [1], "confidence": 0.3, "how_to_confirm": "本人に聞きます。"}
+
+    turn = _ask(login("田中さん"), "泊まりのことは").json()["turn"]
+
+    assert turn["estimate"] is None
+
+
+def test_選ばれた順の先頭3件に印を付け_表示は新しい順のまま(conn, login, add_statement, claude):
+    statements = [
+        add_statement(f"畑の話その{number}です。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME, effective_date=date(2030 + number, 1, 1))
+        for number in range(5)
+    ]
+    _element(conn, [item.id for item in statements], body="誠一さんは畑を大切にしている。")
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = None
+
+    turn = _ask(login("田中さん"), "畑のことは").json()["turn"]
+
+    years = [item["date"][:4] for item in turn["self_words"]]
+    assert years == sorted(years, reverse=True)
+    assert sum(1 for item in turn["self_words"] if item["top"]) == config.MODEL_LIMITS["quotes_first_shown"]
+
+
+def test_言葉を選ぶ係が食い違いを示すと_言葉が変わっていることを知らせる(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = {**_words(self_numbers=[1]), "words_differ": True}
+
+    turn = _ask(login("田中さん"), "施設のことは").json()["turn"]
+
+    assert turn["changed"] is True
+
+
+def test_本人の言葉の根拠がない推定は_確からしさをとても低いにする(conn, login, users, add_utterance, make_draft, claude):
     utterance = add_utterance("施設は嫌だと言っていました。", speaker="美穂さん")
     testimony = ledger.append_statement(
         conn,
@@ -344,9 +379,62 @@ def test_本人の言葉の根拠がない推定は_確からしさをとても�
     assert turn["estimate"]["confidence"] == "とても低い"
 
 
+@pytest.mark.parametrize(
+    "lead",
+    [
+        "施設については、以前は家で暮らしたいと語り、後には考えてもよいと話しています。",
+        "和子さんへの負担を気にして考え方が動いてきた経緯です。",
+        "庭についての記録です。家についての記録です。",
+    ],
+)
+def test_案内は話題の名前だけで_経緯や理由を書くと捨てる(login, wish, claude, lead):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead=lead)
+
+    turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
+
+    assert turn["lead"] is None
+
+
+def test_話題の名前だけの案内は通る(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead="暮らす場所についての記録です。")
+
+    turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
+
+    assert turn["lead"] == "暮らす場所についての記録です。"
+
+
+def test_手がかりがなければ推定を書かず_枠を出さない(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": None}
+
+    turn = _ask(login("田中さん"), "お墓のことは").json()["turn"]
+
+    assert turn["estimate"] is None
+    assert turn["not_yet"] == "まだ聞けていません。"
+
+
+def test_直接答える要素がないときは_言葉を選ぶ係にはっきり伝える(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+
+    _ask(login("田中さん"), "海外旅行のことは")
+
+    assert "直接答える記録は見つかっていません" in json.dumps(claude.bodies("言葉を選ぶ"), ensure_ascii=False)
+
+
+def test_健康の判断の頼みは質問の記録に残さない(conn, login, wish, claude):
+    claude.answers["ツインの答え"] = _pick()
+
+    _ask(login("田中さん"), "認知症かどうか判断してください")
+
+    assert conn.execute("SELECT COUNT(*) FROM question_logs").fetchone()[0] == 0
+
+
 def test_案内に届ける本文の写しがあれば捨てる(login, wish, claude):
     claude.answers["ツインの答え"] = _pick(direct=[1])
-    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead=f"{wish.body}という話です。")
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead=f"{wish.body}についての記録です。")
 
     turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
 

@@ -4,12 +4,15 @@
 4つの極：特定の極に属さない土台（開発の道具）。
 守る原則：8（架空用のデータだけを読む。自分用の記録は読まない）。
 
-読むのは data/narrative_twin.db と data/trial/ の中のファイルだけ。別の場所を指定されても、
+読むのは data/narrative_twin.db、data/trial/ の中のファイル、logs/fictional.jsonl だけ。別の場所を指定されても、
 自分用の記録の置き場は読まない。結果は docs/tools.md に写す。
+
+データベースは「10年後へ進む」の前へ戻すと呼び出しの記録も戻るので、確かめ全体の量は開発のログから数える（--log）。
 
 使い方：
   python -m scripts.usage_report
   python -m scripts.usage_report --db data/trial/story_build.db
+  python -m scripts.usage_report --log
 
 関連するテスト：tests/test_usage_report.py
 """
@@ -26,6 +29,8 @@ from app import config
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB = config.DATA_DIR / "narrative_twin.db"
+FICTIONAL_LOG = ROOT / "logs" / "fictional.jsonl"
+_AI_OP = "AI："
 STORY_STATE = config.DATA_DIR / "trial" / "story_state.json"
 
 
@@ -72,6 +77,52 @@ def summarize(path: Path) -> list[dict]:
     return summary
 
 
+def summarize_log(path: Path, since: str = "") -> list[dict]:
+    """架空用の開発のログから、役割とモデルごとに集計する。バッチの呼び出しはログに入らない。"""
+    if "mine" in path.name.lower():
+        raise SystemExit("自分用の記録は読みません。")
+    totals: dict[tuple[str, str], dict] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        try:
+            line = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        op = str(line.get("op", ""))
+        if not op.startswith(_AI_OP) or not line.get("model") or line.get("at", "") < since:
+            continue
+        key = (op.removeprefix(_AI_OP), line["model"])
+        item = totals.setdefault(
+            key,
+            {
+                "role": key[0],
+                "model": key[1],
+                "is_batch": 0,
+                "calls": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read_tokens": 0,
+                "cache_write_tokens": 0,
+                "seconds": [],
+            },
+        )
+        item["calls"] += 1
+        for name in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens"):
+            item[name] += int(line.get(name) or 0)
+        item["seconds"].append(int(line.get("ms") or 0) / 1000)
+    summary = []
+    for item in totals.values():
+        seconds = item.pop("seconds")
+        item["average_seconds"] = sum(seconds) / len(seconds) if seconds else None
+        item["longest_seconds"] = max(seconds) if seconds else None
+        item["cost_usd"] = round(
+            config.cost_usd(item["model"], item["input_tokens"], item["output_tokens"])
+            + config.cache_cost_usd(item["model"], item["cache_read_tokens"], item["cache_write_tokens"]),
+            4,
+        )
+        summary.append(item)
+    return sorted(summary, key=lambda item: (item["role"], item["model"]))
+
+
 def as_table(summary: list[dict]) -> str:
     lines = [
         "| 役割 | モデル | バッチ | 回数 | 入力 | 出力 | キャッシュ読み | キャッシュ書き | 平均秒 | 最長秒 | 費用（ドル） |",
@@ -101,7 +152,12 @@ def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Claude の使った量を集計します。")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
+    parser.add_argument("--log", action="store_true", help="架空用の開発のログから集計します。")
+    parser.add_argument("--since", default="", help="--log で、この時刻より後の行だけを数えます。")
     args = parser.parse_args(argv)
+    if args.log:
+        print(as_table(summarize_log(FICTIONAL_LOG, args.since)))
+        return 0
     if args.db.exists():
         print(as_table(summarize(args.db)))
     else:

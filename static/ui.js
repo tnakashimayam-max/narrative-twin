@@ -205,7 +205,16 @@ export function timeLabel(iso) {
 export function openSheet(build) {
   const sheet = el("div", { class: "sheet", role: "dialog", "aria-modal": "true" });
   const inner = el("div", { class: "sheet-inner" });
-  const close = () => sheet.remove();
+  const onKey = (event) => {
+    if (event.key === "Escape") {
+      close();
+    }
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    sheet.remove();
+  };
+  document.addEventListener("keydown", onKey);
   sheet.addEventListener("click", (event) => {
     if (event.target === sheet) {
       close();

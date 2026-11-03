@@ -1072,29 +1072,37 @@ class WordPick(_Base):
     self_numbers: list[int] = []
     testimony_numbers: list[int] = []
     guess_numbers: list[int] = []
+    # 選んだ言葉の中で、時期によって考えが変わっているか、本人の言葉と証言が食い違っているか。画面の決まった1文を出す印にだけ使う
+    words_differ: bool = False
     lead: str | None = None
 
 
 class EstimateDraft(_Base):
     """推定意思の案。本人の言葉とは別の枠に出す（原則11）。根拠の番号はプログラムが確かめる。"""
 
-    estimate: str = Field(min_length=1, max_length=200)
-    evidence_numbers: list[int]
+    # 手がかりがなければ書かない。無理に書かせると、別の話題から推し量った推定になるため
+    estimate: str | None = Field(default=None, max_length=200)
+    evidence_numbers: list[int] = []
     counter_numbers: list[int] = []
-    confidence: Confidence
-    how_to_confirm: str = Field(min_length=1, max_length=200)
+    confidence: Confidence = 0.0
+    how_to_confirm: str | None = Field(default=None, max_length=200)
 
     @field_validator("estimate")
     @classmethod
-    def _check_estimate(cls, value: str) -> str:
+    def _check_estimate(cls, value: str | None) -> str | None:
         """全部の文を推測の形にする。文を落とすと AI が書いていない文章ができるので、落とさずに断ってやり直す。
 
         AI は渡した材料しか読んでいないので、記録全体について「ない」とは言えない。
         関連するテスト：tests/test_advocacy.py の test_推定は全部の文がかもしれませんで終わらなければ出さない
         """
+        if value is None or not value.strip():
+            return None
         cleaned = _twin_voice(value)
         if any(word in cleaned for word in _CLAIMS_ABOUT_RECORDS):
             raise ValueError("記録全体について書かないでください")
+        # 鉤括弧があると、推定の文の一部が本人の言葉に見える（原則11）
+        if "「" in cleaned or "『" in cleaned:
+            raise ValueError("鉤括弧を使わないでください")
         if not all(_HEDGED_END.search(sentence.strip()) for sentence in _sentences(cleaned)):
             raise ValueError("どの文も「かもしれません」で終えてください")
         return cleaned

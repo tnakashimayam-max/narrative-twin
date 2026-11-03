@@ -29,7 +29,7 @@ function otherRoleWords(me) {
 
 function otherGuide(me) {
   if (me.role === "専門職") {
-    return "本人の記録を、ツイン（AI）に聞いて読めます。部屋の話はトークで読めます。";
+    return "本人の担当として招かれています。本人の記録を、ツイン（AI）に聞いて読めます。ご家族との部屋はトークから開けます。";
   }
   if (me.can_use_supporter_screen) {
     return "便りはタイムラインで、部屋の話はトークで読めます。本人が託した範囲の記録は、ツイン（AI）に聞いて読めます。";

@@ -1242,7 +1242,7 @@ label.check input {
 
 /* 専門職の PC の幅では、根拠と反対の根拠を左右に並べて見比べる */
 @media (min-width: 900px) {
-  .estimate-grounds {
+  .estimate-grounds.two {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
@@ -1265,7 +1265,41 @@ label.check input {
 }
 
 .turn {
-  scroll-margin-top: 8px;
+  scroll-margin-top: 64px;
+}
+
+/* 同じ説明を答えごとに繰り返さない。最新の答えにだけ出す */
+.turn:not(:last-child) .turn-note {
+  display: none;
+}
+
+/* だれのツインに聞いているかが、答えを読んでいる間も見えるようにする */
+.advocate-panel > h1 {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 0;
+  background: var(--paper);
+}
+
+.now-lines > summary,
+.estimate-fold > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sheet-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--card);
 }
 
 .letter-note {

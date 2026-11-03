@@ -246,7 +246,7 @@
 | `POST /api/observations` | 今の様子を入れる。`{"text": 文, "theme": テーマ}` | 201、`{"statement_id": 番号}` |
 | `GET /api/statements/{番号}/interpretations` | 言明の4つの視点の仮説。専門職だけ | `{"items": [{"perspective", "body", "confidence", "caution", "status"}]}` |
 
-`Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`（`Now` の配列）、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`changed`（届けた言葉の要素に「変化」があるか）、`estimate`（`Estimate`。なければ `null`）、`elements`（届けた言葉を根拠に持つ要素。`element_id`、`body`、`kind`、`unit`、`valid_from`、`confirmed`）
+`Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`（`Now` の配列）、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`changed`（届けた言葉が時期によって変わっているか、証言と食い違っているか）、`estimate`（`Estimate`。なければ `null`）、`elements`（届けた言葉を根拠に持つ要素。`element_id`、`body`、`kind`、`unit`、`valid_from`、`confirmed`）
 
 `Now`：`statement_id`、`body`、`date`、`speaker`、`speaker_label`（続柄つきの呼び方。なければ `null`）、`source`
 

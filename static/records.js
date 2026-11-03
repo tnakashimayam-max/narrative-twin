@@ -20,7 +20,7 @@ export function renderRecords(container, ctx) {
       "section",
       { class: "panel" },
       el("h1", { text: "これまでの記録" }),
-      el("p", { class: "hint", text: "日付を押すと開きます。この記録はご本人だけに見えます。" }),
+      el("p", { class: "hint", text: "日付を押すと開きます。この一覧を開けるのはご本人だけです。便りは選んだ相手に見えます。託す人と範囲で選んだテーマの話は、託した人と招いた専門職にも見えます。" }),
       empty,
       message,
       list,

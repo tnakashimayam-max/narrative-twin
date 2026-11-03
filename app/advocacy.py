@@ -53,6 +53,7 @@ from app.schemas import (
     User,
     WordPick,
     _CLAIMS_ABOUT_RECORDS,
+    _sentences,
     _twin_voice,
 )
 
@@ -79,7 +80,8 @@ _NOTICES = {
 }
 _ORDER = [RequestKind.NORMAL, RequestKind.ASSERT, RequestKind.REPHRASE, RequestKind.HEALTH, RequestKind.IMPERSONATE]
 
-_LEAD_MAX_CHARS = 80
+_LEAD_MAX_CHARS = 60
+_LEAD_FORM = re.compile(r"(について|に関する|にまつわる)(の)?(記録|話)です。?$")
 _COPIED_RUN = 8
 _SELF_SOURCES = {Source.SELF_WORDS, Source.SELF_CORRECTION}
 _TESTIMONY_SOURCES = {Source.FAMILY_TESTIMONY, Source.CONNECTED_TESTIMONY}
@@ -124,6 +126,9 @@ def usable_lead(lead: str | None, delivered: tuple[str, ...] | list[str] = ()) -
         return None
     # 仕組みの言葉は、読む人には意味がない
     if "番号" in text or "要素" in text:
+        return None
+    # 話題の名前だけにする。経緯や理由を書くと、本人の言葉の言い換えや、推測と示さない読み取りになるため
+    if not _LEAD_FORM.search(text) or len(_sentences(text)) != 1:
         return None
     # 読んだのは記録の一部なので、記録全体の有無は言い切らない
     if any(word in text for word in _CLAIMS_ABOUT_RECORDS):
@@ -230,11 +235,16 @@ def _take_evenly(groups: list[list[Statement]]) -> list[Statement]:
 
 
 def _sections(conn: sqlite3.Connection, picked: list[Statement], self_name: str) -> dict:
-    """出どころごとに上限まで選び、原則2の順に並べる（原則2、3）。picked は _take_evenly の順。"""
+    """出どころごとに上限まで選び、原則2の順に並べる（原則2、3）。picked は問いに近い順か _take_evenly の順。"""
 
     def choose(sources, limit: int) -> list[dict]:
-        kept = [item for item in picked if item.source in sources][:limit]
-        return [statement_view(conn, item, self_name) for item in order_for_display(kept)]
+        # 片方を含む同じ言葉をまとめてから、上限で切る
+        same = [item for item in picked if item.source in sources]
+        bodies = [item.body for item in same]
+        kept = [item for item in same if not any(item.body in other and item.body != other for other in bodies)][:limit]
+        # 問いに近い言葉に印を付ける。画面は印のある言葉を先に見せ、残りは本人が開いたときに出す。答えが長くなりすぎるため
+        top = {item.id for item in kept[: LIMITS["quotes_first_shown"]]}
+        return [{**statement_view(conn, item, self_name), "top": item.id in top} for item in order_for_display(kept)]
 
     return {
         "self_words": choose(_SELF_SOURCES, LIMITS["quotes_total"]),
@@ -278,6 +288,8 @@ def _readable(items: list[Statement]) -> list[Statement]:
 
 def _usable_estimate(draft, materials: list[Statement]) -> dict | None:
     """推定の案を確かめる。渡していない番号の根拠を通さない。根拠がなければ枠を出さない。言い切りは型で止めている。"""
+    if not draft.estimate or not draft.how_to_confirm:
+        return None
     if any(word in draft.estimate for word in ("病気", "病名", "認知症", "診断")):
         return None
 
@@ -366,6 +378,20 @@ def _word_line(conn: sqlite3.Connection, number: int, item: Statement) -> str:
     return f"[{number}] {item.effective_date.isoformat()}／{item.source.value}／{_speaker_name(conn, item)}：{item.body}"
 
 
+def _by_speaker(items: list[Statement]) -> list[Statement]:
+    """話した人ごとに順に並べる。新しい順のままだと、よく書く人の言葉だけで上限が埋まるため。"""
+    groups: dict[int | None, list[Statement]] = {}
+    for item in items:
+        groups.setdefault(item.speaker_user_id, []).append(item)
+    ordered: list[Statement] = []
+    while groups:
+        for speaker in list(groups):
+            ordered.append(groups[speaker].pop(0))
+            if not groups[speaker]:
+                del groups[speaker]
+    return ordered
+
+
 def _build_word_pool(
     conn: sqlite3.Connection,
     viewer: User,
@@ -409,7 +435,7 @@ def _build_word_pool(
     # 新しい順の証言を先に、次に推測。本人が話していないので、問いに関係があるかは言葉を選ぶ係が決める
     visible = [item for item in consent.visible_statements(conn, viewer) if item.confirm_status is not ConfirmStatus.RESTING]
     newest = sorted(visible, key=lambda item: item.effective_date, reverse=True)
-    testimonies = [item for item in newest if item.source in _TESTIMONY_SOURCES]
+    testimonies = _by_speaker([item for item in newest if item.source in _TESTIMONY_SOURCES])
     guesses = [item for item in newest if item.source is Source.AI_GUESS]
     left = room - len(direct_others) - len(related_others)
     other_testimonies = take(testimonies, left)
@@ -499,6 +525,7 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
 
     picked = _take_evenly(_evidence_groups(direct, heads, scopes, question))
     lead = None
+    words_differ = False
     pool = _build_word_pool(conn, viewer, direct, related, heads, scopes, question)
     if pool.statements:
         try:
@@ -514,10 +541,12 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
             _log_call(conn, "言葉を選ぶ", words, "専門職の問い")
             picked = _chosen_statements(words.value, pool)
             lead = words.value.lead
+            words_differ = words.value.words_differ
     sections = _sections(conn, picked, self_name)
     delivered = [item["body"] for key in ("self_words", "testimony", "guesses") for item in sections[key]]
     has_self_words = bool(sections["self_words"])
     delivered_ids = {item["statement_id"] for key in ("self_words", "testimony", "guesses") for item in sections[key]}
+    self_ids = {item["statement_id"] for item in sections["self_words"]}
     view: dict = {
         "question": question,
         "notice": _NOTICES.get(kind),
@@ -526,11 +555,16 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
         "now": observations.now_view(conn, viewer, LIMITS["now"]),
         **sections,
         "not_yet": None if has_self_words else NOT_YET,
-        # 届けた言葉を根拠に持つ直接の要素が「変化」なら、時期によって言葉が変わっていることを画面で知らせる
-        "changed": any(
-            element.kind is ElementKind.CHANGE
-            and any(number in heads and heads[number].id in delivered_ids for number in element.evidence_statement_ids)
-            for element in direct
+        # 言葉が時期によって変わっているか、証言と食い違っているときに、決まった1文を出す。
+        # 本文を読んだ言葉を選ぶ係の判断に、届けた本人の言葉を根拠に持つ「変化」の要素を重ねる
+        "changed": has_self_words
+        and (
+            words_differ
+            or any(
+                element.kind is ElementKind.CHANGE
+                and any(number in heads and heads[number].id in self_ids for number in element.evidence_statement_ids)
+                for element in [*direct, *related]
+            )
         ),
         "estimate": None,
         "elements": _elements_view([*direct, *related], heads, delivered_ids),
@@ -538,7 +572,8 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
     estimate_log = None
     if not has_self_words:
         estimate_log = _estimate(conn, view, question, [*direct, *related], heads, scopes, self_name, client)
-        _remember_question(conn, question)
+        if kind is not RequestKind.HEALTH:
+            _remember_question(conn, question)
     answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, sorted(delivered_ids), result)
     devlog.record(
         "専門職の問い",
@@ -706,9 +741,13 @@ def read_element(
     self_user = db.self_user(conn)
     self_name = self_user.display_name if self_user else "本人"
     evidence = []
-    for number in element.evidence_statement_ids:
-        head = heads[number]
-        utterances = [ledger.get_utterance(conn, value) for value in head.source_utterance_ids]
+    seen_utterances: set[int] = set()
+    # 日付の順にする。同じ発言の原文は最初の1回だけ返す
+    for head in sorted((heads[number] for number in element.evidence_statement_ids), key=lambda item: item.effective_date):
+        utterances = [
+            ledger.get_utterance(conn, value) for value in head.source_utterance_ids if value not in seen_utterances
+        ]
+        seen_utterances.update(head.source_utterance_ids)
         evidence.append(
             {
                 **statement_view(conn, head, self_name),
