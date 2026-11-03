@@ -229,7 +229,7 @@ def test_読めない行は行番号つきで知らせる(tmp_path, capsys):
 @pytest.fixture
 def claude(monkeypatch):
     fake = RoleClaude()
-    fake.answers["不明"] = {"text": "庭を見ています。毎朝この庭を見るのが楽しみなんです。"}
+    fake.answers["不明"] = {"before": "庭を見ています。"}
     monkeypatch.setattr(ai, "_make_client", fake.client)
     return fake
 
@@ -369,9 +369,9 @@ def test_answerはツインの実際の言葉を見て作り_mustを一字も変
     assert "目印の問いはどうでしょうか？" in asked
 
 
-def test_answerにmustが入らなければ作り直し_それでもだめならmustだけを送る(world, claude):
+def test_mustの前の文がつながっていれば作り直し_それでもだめならmustだけを送る(world, claude):
     client, _, progress = world
-    claude.answers["不明"] = {"text": "庭を見るのが楽しみです。"}
+    claude.answers["不明"] = {"before": "和子の庭なので、"}
     must = "毎朝この庭を見るのが楽しみなんです。"
 
     flow(
@@ -384,8 +384,45 @@ def test_answerにmustが入らなければ作り直し_それでもだめなら
     assert any("must の文だけ" in text for text in progress.warnings)
 
 
+def test_mustがほかの言葉につながっていたら作り直す(world, claude):
+    client, _, _ = world
+    must = "毎朝この庭を見るのが楽しみなんです。"
+    claude.answers["不明"] = [{"before": "和子の庭なので、"}, {"before": "和子の庭です。", "after": "朝がいいですね。"}]
+
+    flow(
+        world,
+        [say("おはよう。"), {"at": f"{AT}11", "kind": "発言", "room": "ツイン", "by": "誠一さん", "answer": {"must": must}}, close()],
+    )
+
+    assert len(claude.bodies("不明")) == 2
+    assert [item["text"] for item in messages(client) if not item["is_twin"]][1] == f"和子の庭です。{must}朝がいいですね。"
+
+
+def test_答えのmustはAIの書き写しではなくプログラムが入れる(world, claude):
+    client, _, _ = world
+    must = "毎朝この庭を、見るのが楽しみなんです！"
+    claude.answers["不明"] = {"before": "", "after": "別の言い方はしません。"}
+
+    flow(
+        world,
+        [say("おはよう。"), {"at": f"{AT}11", "kind": "発言", "room": "ツイン", "by": "誠一さん", "answer": {"must": must}}, close()],
+    )
+
+    assert [item["text"] for item in messages(client) if not item["is_twin"]][1] == f"{must}別の言い方はしません。"
+
+
+def test_mustが1つの文かを見分ける():
+    must = "庭が好きです。"
+
+    assert run_script.stands_alone(must, "庭が好きです。")
+    assert run_script.stands_alone(must, "そうですね。庭が好きです。毎朝見ます。")
+    assert run_script.stands_alone(must, "はい！ 庭が好きです。")
+    assert not run_script.stands_alone(must, "和子の庭が好きです。")
+    assert not run_script.stands_alone(must, "そうですね、庭が好きです。")
+
+
 def test_hintだけの答えが作れなければ止まる(world, claude):
-    claude.answers["不明"] = {"text": "先週、肺炎の話を聞きました。"}
+    claude.answers["不明"] = {"before": "先週、肺炎の話を聞きました。"}
 
     with pytest.raises(StopRun, match="筋に合う答え"):
         flow(world, [say("おはよう。"), {"at": f"{AT}11", "kind": "発言", "room": "ツイン", "by": "誠一さん", "answer": {"hint": "庭の話"}}, close()])

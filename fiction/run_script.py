@@ -419,9 +419,16 @@ def _check_fixed(lines: list[Line], fixed: list[FixedWord]) -> list[Finding]:
 
 
 class AnswerDraft(BaseModel):
-    """本人の答えの案。must の確かめはプログラムが行う。"""
+    """本人の答えの案。AI は must の前と後の文だけを書く。
 
-    text: str = Field(min_length=1, max_length=500)
+    must はプログラムが間に入れる。AI に書き写させないので、must の言葉は一字も変わらない。
+    """
+
+    before: str = Field(default="", max_length=300)
+    after: str = Field(default="", max_length=300)
+
+    def joined(self, musts: list[str]) -> str:
+        return f"{self.before.strip()}{''.join(musts)}{self.after.strip()}"
 
 
 ANSWER_SYSTEM = """あなたは、架空の人物「誠一さん」の言葉を書く係です。記録を作るための架空の会話です。
@@ -434,7 +441,10 @@ ANSWER_SYSTEM = """あなたは、架空の人物「誠一さん」の言葉を�
 ## 書き方
 - ツインの直前の言葉に、誠一さんとして答えます。1〜2文の話し言葉で、短く書きます。
 - 渡された「筋」の話だけを書きます。筋にない人や出来事を作りません。
-- 「必ず言う言葉」があれば、一字も変えずにそのまま文の中に入れます。
+- 「必ず言う言葉」は、プログラムが before と after の間に入れます。あなたは書き写しません。
+- before は、必ず言う言葉の前に置く文です。「。」で終わらせます。なければ空にします。
+- after は、必ず言う言葉の後に続く文です。なければ空にします。
+- 「必ず言う言葉」がないときは、答えを before に書きます。
 - 病名、診断、薬、泊まりの話、ショートステイの話は書きません。
 - ツインの言葉を繰り返しません。"""
 
@@ -450,10 +460,27 @@ def answer_prompt(line: Line, recent: list[str], feedback: str | None = None) ->
     return "\n".join(parts)
 
 
+def stands_alone(must: str, text: str) -> bool:
+    """must が、前の文とつながらずに1つの文として入っているかを返す。
+
+    記録は文の切れ目で分かれる。「庭なので、毎朝見るのが楽しみです。」のようにつながると、
+    前の言葉が付いたまま本人の言葉になり、決まった言葉が決まった形で届かないため。
+    """
+    start = text.find(must)
+    while start != -1:
+        before = text[:start].rstrip()
+        if not before or before.endswith(_END_OF_SENTENCE):
+            return True
+        start = text.find(must, start + 1)
+    return False
+
+
 def _answer_problem(text: str, line: Line) -> str | None:
-    missing = [must for must in line.answer.musts if must not in text]
-    if missing:
-        return f"必ず言う言葉がそのまま入っていません：{'／'.join(missing)}"
+    if not text:
+        return "答えが空です"
+    joined = [must for must in line.answer.musts if not stands_alone(must, text)]
+    if joined:
+        return "before は「。」で終わらせてください。必ず言う言葉の前の文とつなげません"
     words = forbidden_in(text)
     if words:
         return f"書かない言葉があります：{'、'.join(words)}"
@@ -620,9 +647,10 @@ class Runner:
                 "架空ログの作成", system=ANSWER_SYSTEM, content=answer_prompt(line, recent, feedback), schema=AnswerDraft
             )
             self.progress.answer_usd += _usd(result)
-            feedback = _answer_problem(result.value.text, line)
+            draft = result.value.joined(line.answer.musts)
+            feedback = _answer_problem(draft, line)
             if feedback is None:
-                text = result.value.text
+                text = draft
                 break
         if text is None:
             if not line.answer.musts:

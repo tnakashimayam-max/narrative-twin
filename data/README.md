@@ -39,7 +39,7 @@ python -m fiction.run_script script.jsonl --check
 python -m fiction.run_script script.jsonl --folder data/trial/script_run --budget 10
 ```
 
-試しのファイルは `fiction/sample_script.jsonl`（24行）です。流すと約 $0.10 かかりました。
+試しのファイルは `fiction/sample_script.jsonl`（24行）です。1回流すと約 $0.10 かかります（固める処理を含みます）。
 
 ## 「10年後へ進む」の前へ戻す
 
