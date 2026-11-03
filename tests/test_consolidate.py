@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -195,6 +195,38 @@ def test_流し直しは変わった月と年と人生の段階だけを動か�
     assert len(claude.requests) == 3
     assert consolidate.run_recent(conn, NOW).months == []
     assert len(claude.requests) == 3
+
+
+def test_同じ月の中で本人が直すと_入力の番号が同じでも月と年と段階を流し直す(conn, statement, users, add_utterance, claude):
+    claude.answers["固める処理"] = {"elements": [_element()]}
+    consolidate.run_recent(conn, NOW)
+    claude.requests.clear()
+    utterance = add_utterance("実は庭より畑です。")
+
+    ledger.correct_statement(
+        conn,
+        statement.id,
+        actor_user_id=users["誠一さん"].id,
+        utterance_id=utterance.id,
+        body="実は庭より畑です。",
+        effective_date=statement.effective_date,
+        at=NOW + timedelta(hours=1),
+    )
+    report = consolidate.run_recent(conn, NOW + timedelta(hours=2))
+
+    assert report.months == ["2026年11月"]
+    assert len(claude.requests) == 3
+
+
+def test_確かめただけでは流し直さない(conn, statement, users, claude):
+    claude.answers["固める処理"] = {"elements": [_element()]}
+    consolidate.run_recent(conn, NOW)
+    claude.requests.clear()
+
+    ledger.confirm_statement(conn, statement.id, actor_user_id=users["誠一さん"].id, at=NOW + timedelta(hours=1))
+
+    assert consolidate.run_recent(conn, NOW + timedelta(hours=2)).months == []
+    assert claude.requests == []
 
 
 # ---- 見える範囲 ----

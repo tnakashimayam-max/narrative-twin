@@ -28,6 +28,7 @@ from app.schemas import (
     ConfirmStatus,
     ConsolidatedElement,
     ConsolidationResult,
+    ConsolidationRun,
     ConsolidationUnit,
     ElementKind,
     ElementStatus,
@@ -115,15 +116,8 @@ def _self_name(conn: sqlite3.Connection) -> str:
     return self_user.display_name if self_user else "本人"
 
 
-def build_month(conn: sqlite3.Connection, year: int, month: int) -> Request | None:
-    """月の固める処理の入力を作る。言明がなければ None を返す。"""
-    start, end = month_span(year, month)
-    statements = month_statements(conn, start, end)
-    if not statements:
-        return None
-    heads = ledger.head_map(conn)
-    context = _context(conn, start)
-    previous = model_store.elements_in_period(conn, ConsolidationUnit.MONTH, start, end)
+def _month_material(conn: sqlite3.Connection, statements: list[Statement]) -> tuple[list[str], list[Statement]]:
+    """読む量の上限の中で、言明の行を作る。入らなかった言明は入力にも根拠にもしない。"""
     lines: list[str] = []
     total = 0
     kept: list[Statement] = []
@@ -134,6 +128,19 @@ def build_month(conn: sqlite3.Connection, year: int, month: int) -> Request | No
         lines.append(line)
         kept.append(statement)
         total += len(line)
+    return lines, kept
+
+
+def build_month(conn: sqlite3.Connection, year: int, month: int) -> Request | None:
+    """月の固める処理の入力を作る。言明がなければ None を返す。"""
+    start, end = month_span(year, month)
+    statements = month_statements(conn, start, end)
+    if not statements:
+        return None
+    heads = ledger.head_map(conn)
+    context = _context(conn, start)
+    previous = model_store.elements_in_period(conn, ConsolidationUnit.MONTH, start, end)
+    lines, kept = _month_material(conn, statements)
     text = prompts.consolidate_user_text(
         period=f"{year}年{month}月",
         materials="\n".join(lines),
@@ -323,18 +330,35 @@ def save_result(
     return saved
 
 
+def _corrected_after(statements: list[Statement], run: ConsolidationRun) -> bool:
+    """前回の処理のあとで本人が直した言明があるかを返す。
+
+    訂正は元の行の番号のままなので、番号の集合だけでは同じ月の訂正に気づけない。
+    要素の文に、直す前の言葉の読み取りを残さないようにする。
+    """
+    since = run.run_at.astimezone()
+    return any(
+        statement.source is Source.SELF_CORRECTION and statement.created_at.astimezone() > since
+        for statement in statements
+    )
+
+
 def already_done(conn: sqlite3.Connection, request: Request) -> bool:
-    """入力の言明の番号の集合が前回と同じかを返す。同じなら AI を呼ばない。
+    """入力の言明の番号の集合が前回と同じで、そのあとの訂正がないかを返す。同じなら AI を呼ばない。
 
     状態が変わった言明も同じ番号なので、確認だけでは流し直さない。色は読むときに根拠から求める。
     """
     run = model_store.last_run(conn, request.unit, request.start, request.end)
-    return run is not None and sorted(run.input_statement_ids) == request.input_ids(conn)
+    if run is None or sorted(run.input_statement_ids) != request.input_ids(conn):
+        return False
+    return not _corrected_after(request.statements, run)
 
 
-def run_request(conn: sqlite3.Connection, request: Request, now: datetime, client=None) -> list[ModelElement]:
-    """1回の固める処理を、すぐに流す。"""
-    if already_done(conn, request):
+def run_request(
+    conn: sqlite3.Connection, request: Request, now: datetime, client=None, *, force: bool = False
+) -> list[ModelElement]:
+    """1回の固める処理を、すぐに流す。force は、下の段が変わったので入力の番号が同じでも流すときに使う。"""
+    if not force and already_done(conn, request):
         return []
     result = ai.consolidate(request.role, system=request.system, text=request.text, client=client)
     db.log_ai_call(
@@ -358,18 +382,22 @@ def run_request(conn: sqlite3.Connection, request: Request, now: datetime, clien
 
 
 def _changed_months(conn: sqlite3.Connection) -> list[tuple[int, int]]:
-    """前回の固める処理のあとで言明が変わった月を返す。"""
-    months = sorted(
-        {
-            (statement.effective_date.year, statement.effective_date.month)
-            for statement in ledger.current_statements(conn)
-            if statement.source is not Source.OBSERVATION
-        }
-    )
+    """前回の固める処理のあとで言明が変わった月を返す。
+
+    言明を1回だけ読み、月ごとに比べる。10年分の120か月で、月ごとに読み直すと数秒かかるため。
+    """
+    by_month: dict[tuple[int, int], list[Statement]] = {}
+    for statement in ledger.current_statements(conn):
+        if statement.source is Source.OBSERVATION or statement.confirm_status is ConfirmStatus.RESTING:
+            continue
+        by_month.setdefault((statement.effective_date.year, statement.effective_date.month), []).append(statement)
     changed = []
-    for year, month in months:
-        request = build_month(conn, year, month)
-        if request is not None and not already_done(conn, request):
+    for (year, month), statements in sorted(by_month.items()):
+        start, end = month_span(year, month)
+        run = model_store.last_run(conn, ConsolidationUnit.MONTH, start, end)
+        _, kept = _month_material(conn, statements)
+        roots = sorted(ledger.root_of(conn, statement.id) for statement in kept)
+        if run is None or sorted(run.input_statement_ids) != roots or _corrected_after(kept, run):
             changed.append((year, month))
     return changed
 
@@ -399,14 +427,15 @@ def run_recent(conn: sqlite3.Connection, now: datetime, client=None) -> RunRepor
         request = build_month(conn, year, month)
         report.elements += len(run_request(conn, request, now, client=client))
         report.months.append(f"{year}年{month}月")
+    # 月の要素の文が変わっても、根拠の番号の集合は同じことがある。年と段階の文に古い読み取りを残さないよう、必ず流す
     stages: set[LifeStage] = set()
     for year in sorted({year for year, _ in changed}):
         request = build_year(conn, year)
         if request is not None:
-            report.elements += len(run_request(conn, request, now, client=client))
+            report.elements += len(run_request(conn, request, now, client=client, force=True))
         stages.add(stage_of_day(conn, date(year, 12, 31) if year < now.year else now.date()))
     for stage in stages:
         request = build_stage(conn, stage)
         if request is not None:
-            report.elements += len(run_request(conn, request, now, client=client))
+            report.elements += len(run_request(conn, request, now, client=client, force=True))
     return report

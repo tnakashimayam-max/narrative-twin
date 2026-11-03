@@ -6,9 +6,13 @@
           記録がないことは「まだ聞けていません」）、10（根拠が見えない要素は使わない）、
           11（推定は別の枠に、根拠、反対の根拠、確からしさ、確かめ方を付ける）、12（本人になりきらない）。
 
-AI の呼び出しは1回で、AI は要素の番号を選ぶだけにする。本人の言葉の本文を AI に渡さず、受け取らない。
+AI は要素の番号を選ぶだけにする。この呼び出しには本人の言葉の本文を渡さず、受け取らない。
 引用はプログラムが選ばれた要素の根拠から決める。AI の出力から本人の言葉が作られる道がないため、言い換えは起きない。
 要素の本文は AI の読み取りなので、本人の言葉としては出さない。
+
+直接答える要素がないときは、関係する要素の根拠の本文を読む2回目の呼び出し（推定意思）に進む。
+要素の文には「味噌汁が好き」のような細かい事柄が残らないことがあるので、ここで問いの事柄そのものを話している言葉の
+番号を受け取り、あれば本人の言葉として届ける。受け取るのは番号だけで、本文はプログラムが記録から取り出す。
 
 推論で読むのは意思モデルの上限までで、記録が増えても読む量はほぼ変わらない（model_store.for_reading）。
 
@@ -108,6 +112,9 @@ def usable_lead(lead: str | None) -> str | None:
         return None
     text = lead.strip()
     if not text or len(text) > _LEAD_MAX_CHARS or "「" in text or "『" in text or "おっしゃ" in text:
+        return None
+    # 仕組みの言葉は、読む人には意味がない
+    if "番号" in text or "要素" in text:
         return None
     if any(word in text for word in twin._NOT_TO_ASK):
         return None
@@ -297,8 +304,17 @@ def _remember_question(conn: sqlite3.Connection, question: str) -> None:
     ledger.add_pending_question(conn, question=question)
 
 
+def _quotes_from_materials(numbers: list[int], materials: list[Statement]) -> list[Statement]:
+    """番号を材料の本人の言葉に直す。渡していない番号と、本人の言葉でない材料は捨てる。"""
+    seen: dict[int, Statement] = {}
+    for number in numbers:
+        if 1 <= number <= len(materials) and materials[number - 1].source in _SELF_SOURCES:
+            seen.setdefault(materials[number - 1].id, materials[number - 1])
+    return list(seen.values())
+
+
 def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -> dict:
-    """問いに答える。AI の呼び出しは要素を選ぶ1回と、必要なときの推定の1回だけ。"""
+    """問いに答える。AI の呼び出しは要素を選ぶ1回と、本人の言葉が見つからないときの1回だけ。"""
     started = time.monotonic()
     self_user = db.self_user(conn)
     self_name = self_user.display_name if self_user else "本人"
@@ -347,12 +363,14 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
             for element in direct
         ],
     }
-    statements = [item["statement_id"] for key in ("self_words", "testimony", "guesses") for item in sections[key]]
-    answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, statements, result)
     estimate_log = None
     if not has_self_words:
-        _remember_question(conn, question)
         estimate_log = _estimate(conn, view, question, [*direct, *related], heads, scopes, self_name, client)
+        has_self_words = bool(view["self_words"])
+    if not has_self_words:
+        _remember_question(conn, question)
+    statements = [item["statement_id"] for key in ("self_words", "testimony", "guesses") for item in view[key]]
+    answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, statements, result)
     devlog.record(
         "専門職の問い",
         outcome=devlog.SUCCESS if has_self_words else devlog.NOT_YET,
@@ -364,7 +382,7 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
 
 
 def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_name: str, client) -> int | None:
-    """推定の枠を作る。材料がなければ呼ばない。作れなくても答えは返す。"""
+    """根拠の本文を読み、問いそのものの本人の言葉を拾い直すか、推定の枠を作る。材料がなければ呼ばない。"""
     if not elements:
         return None
     materials, lines = _materials(elements, heads, scopes, question, conn)
@@ -377,6 +395,14 @@ def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_nam
     except _AI_ERRORS:
         return None
     _log_call(conn, "推定意思", result, "専門職の問い")
+    quotes = _quotes_from_materials(result.value.quote_numbers, materials)
+    if quotes:
+        # 本人の言葉があるので、推定は出さない。最初の案内は「見当たらない」と書いていることがあるので外す
+        ordered = order_for_display(quotes)[: LIMITS["quotes_total"]]
+        view["self_words"] = [statement_view(conn, item, self_name) for item in ordered]
+        view["not_yet"] = None
+        view["lead"] = None
+        return None
     usable = _usable_estimate(result.value, materials)
     if usable is None:
         return None

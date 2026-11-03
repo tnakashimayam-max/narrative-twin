@@ -147,6 +147,50 @@ def test_言い切りと根拠のない推定は枠を出さない(login, wish, 
     assert _ask(login("田中さん"), "どう考えていましたか").json()["turn"]["estimate"] is None
 
 
+def _ask_with_related(login, claude, estimate):
+    claude.answers["ツインの答え"] = {"direct_numbers": [], "related_numbers": [1], "request_kind": "通常", "lead": "見当たりません。"}
+    claude.answers["推定意思"] = estimate
+    return login("田中さん").post("/api/advocacy/ask", json={"question": "好きな食べ物は？", "client_key": "k1"}).json()["turn"]
+
+
+def test_推定の係が問いそのものの本人の言葉を選ぶと_本人の言葉として本文のまま届き_推定は出ない(conn, login, wish, claude):
+    turn = _ask_with_related(
+        login,
+        claude,
+        {
+            "estimate": "庭が好きかもしれません。",
+            "evidence_numbers": [1],
+            "quote_numbers": [1],
+            "confidence": 0.5,
+            "how_to_confirm": "本人に聞きます。",
+        },
+    )
+
+    assert turn["self_words"][0]["body"] == wish.body
+    assert turn["not_yet"] is None
+    assert turn["estimate"] is None
+    assert turn["lead"] is None
+    assert conn.execute("SELECT COUNT(*) FROM question_logs").fetchone()[0] == 0
+
+
+def test_推定の係が渡していない番号を選んでも本人の言葉にならない(login, wish, claude):
+    turn = _ask_with_related(
+        login,
+        claude,
+        {
+            "estimate": "庭が好きかもしれません。",
+            "evidence_numbers": [1],
+            "quote_numbers": [99],
+            "confidence": 0.5,
+            "how_to_confirm": "本人に聞きます。",
+        },
+    )
+
+    assert turn["self_words"] == []
+    assert turn["not_yet"] == "まだ聞けていません。"
+    assert turn["estimate"]["text"] == "庭が好きかもしれません。"
+
+
 def test_本人の言葉の引用があるときは推定を呼ばない(login, wish, claude):
     claude.answers["ツインの答え"] = _pick(direct=[1])
 

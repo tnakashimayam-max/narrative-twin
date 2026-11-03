@@ -22,7 +22,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import clock, db, ledger, verbatim
+from app import clock, consolidate, db, ledger, verbatim
 from app.auth import NOT_FOUND, get_conn, require_self
 from app.schemas import (
     ConfirmStatus,
@@ -234,7 +234,11 @@ def _confirm_conversation(conn: sqlite3.Connection, day: date) -> int:
     ).fetchone()
     if row:
         return row["id"]
-    return ledger.add_conversation(conn, ConversationDraft(conversation_date=day, trigger=_CONFIRM_TRIGGER)).id
+    # 人生の段階はその日のものを引き継ぐ。既定のままだと、人生の段階の期間が訂正の日まで伸びてしまうため
+    draft = ConversationDraft(
+        conversation_date=day, trigger=_CONFIRM_TRIGGER, life_stage=consolidate.stage_of_day(conn, day)
+    )
+    return ledger.add_conversation(conn, draft).id
 
 
 @router.post("/statements/{statement_id}/correct")

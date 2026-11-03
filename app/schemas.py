@@ -1035,6 +1035,8 @@ class EstimateDraft(_Base):
     estimate: str = Field(min_length=1, max_length=200)
     evidence_numbers: list[int]
     counter_numbers: list[int] = []
+    # 問いの事柄そのものを本人が話している材料の番号。要素の文には細かい事柄が残らないことがあるので、ここで拾い直す
+    quote_numbers: list[int] = []
     confidence: Confidence
     how_to_confirm: str = Field(min_length=1, max_length=200)
 

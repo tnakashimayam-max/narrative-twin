@@ -12,7 +12,7 @@ from datetime import date
 import pytest
 
 from app import db, handover, ledger
-from app.schemas import ConfirmStatus, ShareScope, Source, Theme
+from app.schemas import ConfirmStatus, ConversationDraft, LifeStage, ShareScope, Source, Theme
 
 
 def _bodies(client):
@@ -169,6 +169,16 @@ def test_ちがいますと答えて直すと訂正の行になり_元の推測�
     assert head.replaces_id == guess.id
     assert ledger.get_statement(conn, guess.id).body == "庭が好きなのかもしれません。"
     assert me.get(f"/api/statements/{guess.id}").json()["body"] == "庭が好きなのかもしれません。"
+
+
+def test_訂正の会話は人生の段階を引き継ぎ_段階の期間を伸ばさない(conn, login, add_statement):
+    statement = add_statement("庭の話です。")
+    ledger.add_conversation(conn, ConversationDraft(conversation_date=date.today(), life_stage=LifeStage.SUPPORT))
+
+    login("誠一さん").post(f"/api/statements/{statement.id}/correct", json={"text": "畑の話です。"})
+
+    row = conn.execute("SELECT life_stage FROM conversations WHERE room_id IS NULL AND trigger = ?", ("確認",)).fetchone()
+    assert row["life_stage"] == LifeStage.SUPPORT.value
 
 
 def test_訂正の言葉は裏の分割の対象にならない(conn, login, add_statement):
