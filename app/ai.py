@@ -286,8 +286,9 @@ def _ask_claude(
         try:
             value = schema.model_validate_json(text)
         except ValidationError as error:
-            # JSON として読めない、または型に合わないとき
-            problem = f"型に合いません（{error.error_count()}か所）"
+            # JSON として読めない、または型に合わないとき。どの項目かを残す。自分用のログには、この文を通さない
+            first = error.errors()[0]
+            problem = f"型に合いません（{error.error_count()}か所）：{first['loc']} {first['msg']}"
             continue
         return AIResult(
             value=value,

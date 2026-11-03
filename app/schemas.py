@@ -826,14 +826,32 @@ def _twin_voice(text: str) -> str:
 _HIDDEN_QUESTION = re.compile(r"(?<!そう)(?:でしょうか|ますか|ましたか|ませんか|ですか|でしたか)[。！!…]*$")
 
 
+def _is_question(sentence: str) -> bool:
+    return any(mark in sentence for mark in "？?") or bool(_HIDDEN_QUESTION.search(sentence.strip()))
+
+
+def _sentences(text: str) -> list[str]:
+    return [part for part in re.split(r"(?<=[。！!？?])|\n", text) if part.strip()]
+
+
 def _no_question_mark(text: str) -> str:
     """受け止めの文に問いを混ぜない。問いは1回に1つまでを、型で守るため。"""
-    if any(mark in text for mark in "？?"):
+    if any(_is_question(sentence) for sentence in _sentences(text)):
         raise ValueError("ここには問いを書かないでください")
-    for sentence in re.split(r"(?<=[。！!])|\n", text):
-        if _HIDDEN_QUESTION.search(sentence.strip()):
-            raise ValueError("ここには問いを書かないでください")
     return text
+
+
+def _drop_question_sentences(text: str) -> str:
+    """問いの形の文だけを落とし、残りを受け止めにする。問いの文しかなければ断ってやり直す。
+
+    AI は「落ち着くのですか。」のように書くことがあり、全体を断ると、同じ入力で8回中4回が型に合わず、
+    やり直しでも続くと送信が失敗した（docs/tools.md）。
+    関連するテスト：tests/test_twin.py の test_受け止めの問いの文だけを落とす
+    """
+    kept = [sentence for sentence in _sentences(text) if not _is_question(sentence)]
+    if not kept:
+        raise ValueError("ここには問いを書かないでください")
+    return "".join(kept).strip()
 
 
 def _one_question(text: str) -> str:
@@ -860,7 +878,7 @@ class TwinTurn(_Base):
     @field_validator("reply")
     @classmethod
     def _check_reply(cls, value: str) -> str:
-        return _no_question_mark(_twin_voice(value))
+        return _twin_voice(value)
 
     @field_validator("question")
     @classmethod
@@ -868,6 +886,18 @@ class TwinTurn(_Base):
         if value is None or not value.strip():
             return None
         return _one_question(value)
+
+    @model_validator(mode="after")
+    def _check_question_in_reply(self) -> "TwinTurn":
+        """ふだんの話では問いの文だけを落とす。体や命の場面では、症状を聞く文が混ざった返事を使わない。
+
+        体や命の場面で断ると、呼ぶ側が決まった文とつなぎ先を返す（app/twin.py の detect_care）。
+        """
+        if self.care is CareKind.NONE:
+            self.reply = _drop_question_sentences(self.reply)
+        else:
+            _no_question_mark(self.reply)
+        return self
 
 
 class TwinPhotoTurn(TwinTurn):

@@ -120,6 +120,27 @@ def test_今日うかがったことは未確認の本人の言葉と推測を�
     assert [item["body"] for item in items] == ["毎朝庭を見ます。"]
 
 
+def test_今日うかがったことは今日の話を先に_次に推測を出す(login, add_statement, make_draft, add_utterance, conn):
+    old_words = add_statement("去年の話です。", effective_date=date(2020, 1, 1))
+    guess_utterance = add_utterance("話の元です。")
+    guess = ledger.append_statement(
+        conn,
+        make_draft(
+            [guess_utterance.id],
+            "遠慮しているかもしれません。",
+            source=Source.AI_GUESS,
+            speaker_user_id=None,
+            speaker_is_twin=True,
+            effective_date=date(2020, 1, 2),
+        ),
+    )
+    today_words = add_statement("今日の話です。", effective_date=date.today())
+
+    ids = [item["id"] for item in login("誠一さん").get("/api/review").json()["items"]]
+
+    assert ids.index(today_words.id) < ids.index(guess.id) < ids.index(old_words.id)
+
+
 @pytest.mark.parametrize("name", ["美穂さん", "田中さん"])
 def test_今日うかがったことは本人だけが開ける(login, name):
     assert login(name).get("/api/review").status_code == 404

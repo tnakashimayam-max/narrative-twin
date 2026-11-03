@@ -67,14 +67,14 @@ def _turn(reply="そうなのですね。", question=None, theme=None, care="な
 @pytest.mark.parametrize(
     "fields",
     [
-        {"reply": "庭ですね。どの花ですか？"},
+        {"reply": "どの花ですか？"},
         {"reply": "私は庭が好きです。"},
         {"reply": "はい。", "question": "庭ですか？花ですか？"},
         {"reply": "はい。", "question": "庭が好きです。"},
         {"reply": "はい。", "question": "私は庭が好きですか？"},
         {"reply": "。"},
         {"reply": "にぎやかだったでしょうか。"},
-        {"reply": "庭ですね。お好きですか。"},
+        {"reply": "お好きですか。"},
         {"reply": "腰の具合は大丈夫でしたか。"},
     ],
     ids=["受け止めに問い", "私は", "問いが2つ", "問いでない", "問いに私は", "言葉がない", "でしょうか", "ですか", "でしたか"],
@@ -87,6 +87,23 @@ def test_問いが2つ以上と本人になりきる文は型で止める(fields
 @pytest.mark.parametrize("reply", ["そうですか。", "そうでしたか。よかったです。", "庭が好きなのですね。"])
 def test_受け止めの言葉は問いと間違えない(reply):
     assert TwinTurn(reply=reply).reply == reply
+
+
+@pytest.mark.parametrize(
+    ("reply", "kept"),
+    [
+        ("庭ですね。お好きですか。", "庭ですね。"),
+        ("美穂さんと畑のにんじんを抜くのですね。土にふれると落ち着くのですか。", "美穂さんと畑のにんじんを抜くのですね。"),
+        ("庭ですね。お好きですか？今日は暖かいです。", "庭ですね。今日は暖かいです。"),
+    ],
+)
+def test_受け止めの問いの文だけを落とす(reply, kept):
+    assert TwinTurn(reply=reply).reply == kept
+
+
+def test_体の場面では問いの文を落とさず型で止める():
+    with pytest.raises(ValidationError):
+        TwinTurn(reply="胸が痛いのですね。息苦しさはありますか。", care="体の不調")
 
 
 def test_今日はここまでの返事には問いを入れられない():

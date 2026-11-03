@@ -179,15 +179,22 @@ def _review_view(statement: Statement) -> dict:
 
 
 @router.get("/review")
-def read_review(_: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)) -> dict:
-    """「今日うかがったこと」の一覧。まだ確かめていない本人の言葉とAIの推測を、新しい順に返す。"""
+def read_review(
+    request: Request, _: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
+) -> dict:
+    """「今日うかがったこと」の一覧。まだ確かめていない本人の言葉とAIの推測を返す。"""
     items = [
         statement
         for statement in ledger.current_statements(conn)
         if statement.confirm_status is ConfirmStatus.UNCONFIRMED and statement.source in _REVIEW_SOURCES
     ]
-    # 推測を先に出す。本人が答えられるようにするため（原則4）
-    items.sort(key=lambda item: (item.source is Source.AI_GUESS, item.effective_date), reverse=True)
+    # 今日の話を先に、次に推測を出す。本人が答えられるようにするため（原則4）。
+    # 推測だけを先にすると、古い推測で上限が埋まり、今日話した言葉を確かめられなくなる
+    today = clock.now(request.app).date()
+    items.sort(
+        key=lambda item: (item.effective_date == today, item.source is Source.AI_GUESS, item.effective_date),
+        reverse=True,
+    )
     return {"items": [_review_view(item) for item in items[:_REVIEW_LIMIT]]}
 
 
