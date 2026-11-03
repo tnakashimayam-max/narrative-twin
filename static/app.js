@@ -93,7 +93,7 @@ function showTabs(visible) {
 
 function drawTabs() {
   const usable = tabsFor(me).map((key) => TAB_LABELS.find(([name]) => name === key));
-  tabs.className = usable.length === 3 ? "tabs three" : "tabs";
+  tabs.className = "tabs";
   tabs.replaceChildren(
     ...usable.map(([key, label]) =>
       el(
