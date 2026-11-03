@@ -293,6 +293,7 @@ class CareKind(StrEnum):
     BODY = "体の不調"
     LIFE = "命に関わる"
     DISTRESS = "強いつらさ"
+    HEALTH = "健康の相談"
 
 
 class GroupTurnKind(StrEnum):

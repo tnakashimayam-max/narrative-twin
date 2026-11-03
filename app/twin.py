@@ -10,7 +10,7 @@
 - お休みのテーマ、つらかったことのテーマ、同じ問い、本人が終えたそうなときの問いは落とす。
 - 問いが2回続いたら、次は受け止めるだけにする。尋問のようにしないため。
 - 受け止めの文から、気持ちの決めつけと、本人が今話していない体やつらさの話の文を外す。
-- 体の急な不調、命に関わる言葉、強いつらさには問いを続けず、つなぎ先の文をプログラムが添える。
+- 体の急な不調、命に関わる言葉、強いつらさ、体や薬の相談には問いを続けず、つなぎ先の文をプログラムが添える。
   語の一覧を AI の判定に重ねるのは、AI が断ったり見落としたりしても、つなぎ先を必ず出すため。
 - グループでは、ツインが入ったあとのその部屋の発言だけを渡す。スレッドでは、便りとコメントだけを渡す。
   本人の考えや気持ちを聞かれたら、AI を呼ばずに決まった文を返す。
@@ -70,20 +70,31 @@ _BODY_WORDS = (
     "倒れた",
 )
 _DISTRESS_WORDS = ("もう耐えられない", "もう限界", "つらくてたまらない", "苦しくてたまらない")
+# 体や薬のことで判断を求める発言。話題の語と、聞く言葉の両方があるときだけ相談先を添える。
+# 「腰が痛いんです。」のように話しているだけの発言に案内を付けると、話を聞いていないように読めるため。
+# 「腰」「膝」は「重い腰を上げる」のように体の話でないことがあるので入れない。そこは AI の判定に任せる。
+_HEALTH_TOPICS = ("薬", "痛", "湿布", "血圧", "血糖", "病院", "病気", "眠れな", "手術", "検査")
+# 「薬」を含むが、飲む薬の話ではない語
+_NOT_MEDICINE = ("農薬", "薬局", "薬味", "薬剤師")
+_HEALTH_ASKS = ("どうしたら", "どうすれば", "いいかな", "いいのかな", "いいですか", "いいでしょうか", "どっち", "どちら", "べきか")
 
 # つなぎ先の文。AI の文ではなく、プログラムが必ず添える。番号は厚生労働省の案内で確かめた。
 _CARE_LINES = {
     CareKind.BODY: "急な体の不調は、すぐに身近な人に伝えてください。かかりつけの病院か、急ぐときは119番に電話してください。",
     CareKind.LIFE: "おひとりで抱えないでください。身近な人に伝えてください。よりそいホットライン（0120-279-338、24時間）でも話を聞いてもらえます。",
     CareKind.DISTRESS: "身近な人に話してみてください。かかりつけの病院や、よりそいホットライン（0120-279-338、24時間）でも話を聞いてもらえます。",
+    CareKind.HEALTH: "どうしたらよいかは、お医者さんか薬剤師さんに聞いてみてください。",
 }
 # AI が答えられないときの受け止め。つなぎ先の文の前に置く。
 _CARE_RECEIVE = {
     CareKind.BODY: "それは心配です。",
     CareKind.LIFE: "お話ししてくださって、ありがとうございます。",
     CareKind.DISTRESS: "お話ししてくださって、ありがとうございます。",
+    CareKind.HEALTH: "それはお困りですね。",
 }
-_CARE_ORDER = [CareKind.NONE, CareKind.DISTRESS, CareKind.BODY, CareKind.LIFE]
+_CARE_ORDER = [CareKind.NONE, CareKind.HEALTH, CareKind.DISTRESS, CareKind.BODY, CareKind.LIFE]
+# 相談先の案内はプログラムが添えるので、AI の文に同じ案内があれば外す。
+_REFERRAL_WORDS = ("お医者", "医師", "医療", "薬剤師", "看護師", "かかりつけ", "病院", "受診", "専門", "ご相談")
 # 句点で終わる問いの形。この場面では原因を聞かないので、受け止めの文に混ざっていたら決まった文に替える。
 _HIDDEN_QUESTION = re.compile(r"(ますか|ませんか|ですか|でしたか|でしょうか|ありますか)[。！!]?")
 
@@ -121,9 +132,38 @@ _TOPIC_STEMS = {
     "辛かった": "辛",
 }
 
+# 体の話の語。本人が今の発言で体の話をしていれば、「具合」「病院」と返しても持ち出しにならない。
+_BODY_TOPIC_WORDS = ("病気", "病院", "薬", "痛み", "痛い", "体調", "具合")
+_BODY_TALK = (*_HEALTH_TOPICS, "体調", "具合", "腰", "膝")
+# 治し方の語。体の話への返事にあれば、その文を外す。いたわりの言葉と相談先までにする決まりを、プログラムで守るため。
+# 体の話でないときは「味噌汁を温める」のような暮らしの話なので外さない。
+_TREATMENT_WORDS = ("温め", "冷や", "安静", "体操", "ストレッチ", "マッサージ", "痛み止め", "湿布を貼", "湿布が", "湿布は")
+# 今日の一言は暮らしの工夫なので、体や健康の語があれば出さない。出さないことの害は、誤った助言より小さい。
+_HEALTH_ADVICE_WORDS = (
+    "体を",
+    "体が",
+    "体に",
+    "体の",
+    "健康",
+    "薬",
+    "病",
+    "痛",
+    "湿布",
+    "安静",
+    "体操",
+    "ストレッチ",
+    "運動",
+    "睡眠",
+    "眠れ",
+    "水分",
+    "血圧",
+    "栄養",
+    "減塩",
+)
+
 # 本人の気持ちを決めつける言い方。プロンプトで頼んでも実測で出たので、この文だけプログラムで外す。
 # やり直しにしないのは、返事を待たせず、失敗も増やさないため。
-_ASSUMING_WORDS = ("伝わります", "伝わってきます", "思い浮かびます", "大切にされて", "大切に使われて")
+_ASSUMING_WORDS = ("伝わります", "伝わってきます", "伝わる", "思い浮かびます", "大切にされて", "大切に使われて")
 
 # 本人の考えや気持ちを聞く言葉。AI を呼ばずに決まった文を返す。
 _ASKS_FOR_SELF = ("本音", "本心", "気持ち", "どう思", "考えて", "思って", "望んで", "したいの", "意思")
@@ -134,7 +174,7 @@ _MENTION = re.compile(r"[@＠]\s*ツイン")
 # AI がこの形で書いた文は、原文と照らせるものだけを通す。原則9（本人の言葉は記録の本文そのままだけ）。
 _REPORTED_PAST = re.compile(r"おっしゃいました|おっしゃっていました|おっしゃっています|言っていました|話していました|言っています|話しています")
 _QUOTE_THEN_REPORT = re.compile(r"「([^「」]+)」と(?:おっしゃ|言|話|うかが)")
-_HEARD_RECEIPT = "お話をうかがいました。"
+_HEARD_RECEIPT = "そうでしたか。"
 _FAMILY_WORDS = ("お父さん", "お母さん", "父", "母", "本人", "ご本人")
 _MAX_QUESTIONS_IN_A_ROW = 2
 
@@ -147,11 +187,43 @@ def detect_care(text: str) -> CareKind:
         return CareKind.BODY
     if any(word in text for word in _DISTRESS_WORDS):
         return CareKind.DISTRESS
+    topic_text = text
+    for word in _NOT_MEDICINE:
+        topic_text = topic_text.replace(word, "")
+    if any(word in topic_text for word in _HEALTH_TOPICS) and any(word in text for word in _HEALTH_ASKS):
+        return CareKind.HEALTH
     return CareKind.NONE
 
 
 def _stronger(first: CareKind, second: CareKind) -> CareKind:
     return max(first, second, key=_CARE_ORDER.index)
+
+
+def settled_ai_care(ai_care: CareKind, said: str) -> CareKind:
+    """眠れないだけの話を AI が急な不調と読んだら、急な不調として扱わない。
+
+    実測で「眠れない。どうしたらいいかな」を Haiku 5.5 が3回中2回「体の不調」と読み、119番の案内が付いた。
+    痛みや苦しさが重なるときは AI の判定を残す。見落とすほうが害が大きいため。
+    関連するテスト：tests/test_twin.py の test_眠れないだけの話をAIが急な不調と読んでも_119番の案内を出さない
+    """
+    if ai_care is CareKind.BODY and "眠れな" in said and not any(word in said for word in ("痛", "苦し")):
+        return CareKind.NONE
+    return ai_care
+
+
+def care_lines(ai_care: CareKind, keyword_care: CareKind) -> list[str]:
+    """添えるつなぎ先の文を返す。
+
+    AI が胸の痛みを「命に関わる」と読むと、強いほうの判定だけでは119番の案内が消える（実測）。
+    語の一覧が急な体の不調と読んだら、AI の判定にかかわらず119番の案内を先に出す。
+    関連するテスト：tests/test_twin.py の test_AIが胸の痛みを命の場面と読んでも_119番の案内を消さない
+    """
+    care = _stronger(ai_care, keyword_care)
+    if care is CareKind.NONE:
+        return []
+    if keyword_care is CareKind.BODY and care is not CareKind.BODY:
+        return [_CARE_LINES[CareKind.BODY], _CARE_LINES[care]]
+    return [_CARE_LINES[care]]
 
 
 def says_goodbye(text: str) -> bool:
@@ -191,15 +263,46 @@ def trim_reply(reply: str, heard: str) -> str:
 
     前の話に出た不調を AI が持ち出すと、関係のない話の途中で思い出させることになる（原則6）。
     heard は今の発言と写真の説明。全部の文が外れたら空を返し、呼ぶ側が決まった文に替える。
+    「薬剤師」は薬の話ではなく相談先なので、語の一致から外す。外さないと、プロンプトが書くよう求めた
+    相談先の文まで消え、返事が言い直しの一言だけになる。
+    関連するテスト：tests/test_twin.py の test_本人が今話している体の話への返事は_持ち出しとして消さない
     """
     sentences = re.findall(r"[^。！!\n]+[。！!]*", reply)
+    talks_about_body = any(word in heard for word in _BODY_TALK)
+
+    def brings_up(sentence: str) -> bool:
+        sentence = sentence.replace("薬剤師", "")
+        for word in _NOT_TO_ASK:
+            if word not in sentence or (talks_about_body and word in _BODY_TOPIC_WORDS):
+                continue
+            if _TOPIC_STEMS.get(word, word) not in heard:
+                return True
+        return False
+
+    def treats(sentence: str) -> bool:
+        return talks_about_body and any(word in sentence for word in _TREATMENT_WORDS)
+
     kept = [
         sentence
         for sentence in sentences
-        if not any(word in sentence for word in _ASSUMING_WORDS)
-        and not any(word in sentence and _TOPIC_STEMS.get(word, word) not in heard for word in _NOT_TO_ASK)
+        if not any(word in sentence for word in _ASSUMING_WORDS) and not brings_up(sentence) and not treats(sentence)
     ]
     return "".join(kept).strip()
+
+
+def advises_on_health(tip: str) -> bool:
+    """今日の一言が、体や健康の助言になっているかを返す。
+
+    プロンプトで禁じても、Haiku 5.5 が「体を温めてから動くと楽に」と書いた回があった（実測）。
+    関連するテスト：tests/test_twin.py の test_健康の助言を書いた今日の一言は出さない
+    """
+    return any(word in tip for word in _HEALTH_ADVICE_WORDS)
+
+
+def drop_referrals(reply: str) -> str:
+    """AI の文から相談先の案内を外す。案内はプログラムが添えるので、2回くり返さないため。"""
+    sentences = re.findall(r"[^。！!\n]+[。！!]*", reply)
+    return "".join(sentence for sentence in sentences if not any(word in sentence for word in _REFERRAL_WORDS)).strip()
 
 
 def mentions_twin(text: str) -> bool:
@@ -342,7 +445,8 @@ def respond_in_twin_room(
         return
     _log_result(conn, role, result, f"会話 {conversation_id}")
     turn = result.value
-    care = _stronger(turn.care, keyword_care)
+    ai_care = settled_ai_care(turn.care, said)
+    care = _stronger(ai_care, keyword_care)
     question = turn.question
     # 問いを落とした理由。話した内容が分かるので、架空用のログにだけ入る（app/devlog.py）。
     dropped_because = None
@@ -376,14 +480,16 @@ def respond_in_twin_room(
         heard = said + (result.value.photo_description if photo is not None else "")
         fallback = _CARE_RECEIVE[care] if care is not CareKind.NONE else _HEARD_RECEIPT
         trimmed = trim_reply(turn.reply, heard)
+        if care is CareKind.HEALTH:
+            trimmed = drop_referrals(trimmed)
         reply = trimmed or fallback
         if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
             reply = _CARE_RECEIVE[care]
         elif not words_are_real(reply, sources):
             reply = _HEARD_RECEIPT
         _say(conn, room, conversation_id, Place.DIARY_AND_TALK, reply, now)
-        if care is not CareKind.NONE:
-            _say(conn, room, conversation_id, Place.DIARY_AND_TALK, _CARE_LINES[care], now)
+        for line in care_lines(ai_care, keyword_care):
+            _say(conn, room, conversation_id, Place.DIARY_AND_TALK, line, now)
         if question:
             _ask(conn, room, conversation_id, Place.DIARY_AND_TALK, question, turn.question_theme, now)
             memory.mark_candidate_used(conn, question, now.date())
@@ -460,7 +566,8 @@ def close_in_twin_room(
     _log_result(conn, "ツインの会話", result, target)
     with ledger.atomic(conn):
         _say(conn, room, conversation.id, Place.DIARY_AND_TALK, result.value.reply, now)
-        _say(conn, room, conversation.id, Place.DIARY_AND_TALK, result.value.tip, now)
+        if not advises_on_health(result.value.tip):
+            _say(conn, room, conversation.id, Place.DIARY_AND_TALK, result.value.tip, now)
 
 
 # ---- グループ ----

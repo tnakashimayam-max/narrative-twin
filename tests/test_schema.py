@@ -58,7 +58,7 @@ AGREED_WORDS = {
     s.LinkStrength: ["強い", "ふつう", "弱い", "ストレス"],
     s.SupportDirection: ["本人から", "相手から", "お互い", "なし"],
     s.SplitTargetKind: ["会話", "便り"],
-    s.CareKind: ["なし", "体の不調", "命に関わる", "強いつらさ"],
+    s.CareKind: ["なし", "体の不調", "命に関わる", "強いつらさ", "健康の相談"],
     s.GroupTurnKind: ["問い", "答え", "聞けていない", "書かない"],
     s.Perspective: ["表の言葉", "本当のニーズ", "本人の真意", "気持ち"],
     s.InterpretationStatus: ["仮説", "本人が確かめた"],

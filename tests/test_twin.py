@@ -115,6 +115,35 @@ def test_体の場面では問いの文を落とさず型で止める():
         TwinTurn(reply="胸が痛いのですね。息苦しさはありますか。", care="体の不調")
 
 
+@pytest.mark.parametrize(
+    "tip",
+    [
+        "朝晩は冷えるので、庭仕事の前に少し体を温めてから動くと楽ですよ。",
+        "寝る前に水分をとると、よく眠れます。",
+        "腰には湿布がよく効きます。",
+    ],
+)
+def test_健康の助言を書いた今日の一言は出さない(me, use_claude, tip):
+    # 実測で、Haiku が決まりに反して「体を温めてから動くと楽に」と書いた回があった
+    use_claude(ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"), 今日はここまで={"reply": "今日もありがとうございました。", "tip": tip})
+    _send(me, "庭を見ました。")
+
+    body = _close(me).json()
+
+    texts = [item["text"] for item in body["replies"]]
+    assert texts == ["今日もありがとうございました。"]
+
+
+def test_暮らしの工夫の今日の一言は出す(me, use_claude):
+    tip = "雨のあとの晴れた日は土がやわらかいので、草が根ごと抜きやすいですよ。"
+    use_claude(ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"), 今日はここまで={"reply": "今日もありがとうございました。", "tip": tip})
+    _send(me, "庭を見ました。")
+
+    body = _close(me).json()
+
+    assert [item["text"] for item in body["replies"]] == ["今日もありがとうございました。", tip]
+
+
 def test_今日はここまでの返事には問いを入れられない():
     with pytest.raises(ValidationError):
         TwinClosing(reply="ありがとうございました。また話しますか？", tip="夕方は冷えます。")
@@ -230,10 +259,25 @@ def test_お休みの話題の問いは落とす(conn, me, use_claude):
         ("腰が痛いのですね。", "最近は腰が痛くて、庭に出にくい。", "腰が痛いのですね。"),
         ("つらかったのですね。", "あのころはつらくてね。", "つらかったのですね。"),
         ("そのお気持ちが伝わります。", "迷惑はかけたくない。", ""),
+        ("庭の写真ですね。薬のことも気になります。", "庭の写真です。", "庭の写真ですね。"),
+        ("大事なことですね。お気持ちが伝わる話です。", "血圧の薬をやめてもいいかな", "大事なことですね。"),
+        ("腰が痛いと大変ですね。温めると楽になりますよ。", "腰が痛いんです。", "腰が痛いと大変ですね。"),
     ],
 )
 def test_受け止めから決めつけと持ち出しの文を外す(reply, heard, kept):
     assert twin.trim_reply(reply, heard) == kept
+
+
+@pytest.mark.parametrize(
+    ("reply", "heard"),
+    [
+        ("腰が痛いのですね。どうしたらよいかは、お医者さんか薬剤師さんに聞いてください。", "腰が痛いんだがどうしたらいいのかな?"),
+        ("腰が痛いと大変ですね。具合が続くようなら、病院で聞いてみると安心です。", "腰が痛いんです。"),
+    ],
+)
+def test_本人が今話している体の話への返事は_持ち出しとして消さない(reply, heard):
+    # プロンプトが書くよう求めた相談先の文を、後の処理が「薬」の一致で消していた
+    assert twin.trim_reply(reply, heard) == reply
 
 
 def test_全部の文が外れたら決まった受け止めを返す(me, use_claude):
@@ -241,7 +285,7 @@ def test_全部の文が外れたら決まった受け止めを返す(me, use_cl
 
     body = _send(me, "迷惑はかけたくない。").json()
 
-    assert [item["text"] for item in body["replies"]] == ["お話をうかがいました。"]
+    assert [item["text"] for item in body["replies"]] == ["そうでしたか。"]
 
 
 def test_本人が断ったと読めたら_その話題をお休みにする(conn, me, use_claude):
@@ -358,10 +402,73 @@ def test_本人が終えたそうなら問わない(me, use_claude, text):
         ("もう生きていてもしょうがない", CareKind.LIFE),
         ("もう耐えられない", CareKind.DISTRESS),
         ("今朝、庭を見ました。", CareKind.NONE),
+        ("腰が痛いんだがどうしたらいいのかな?", CareKind.HEALTH),
+        ("血圧の薬をやめてもいいかな", CareKind.HEALTH),
+        ("腰に貼るなら温湿布と冷湿布のどっちがいいかな", CareKind.HEALTH),
+        ("さっきから胸が痛い。どうしたらいいかな", CareKind.BODY),
+        ("腰が痛いんです。", CareKind.NONE),
+        ("庭の草が伸びて困っている。どうしたらいいかな", CareKind.NONE),
+        ("今夜のおかず、何にしようかな", CareKind.NONE),
+        ("夜なかなか眠れないんだ。どうしたらいいかな", CareKind.HEALTH),
+        ("重い腰を上げて畑に行くべきかな", CareKind.NONE),
+        ("昨日はよく眠れたから、今日は畑に出てもいいかな", CareKind.NONE),
+        ("薬局まで散歩してもいいかな", CareKind.NONE),
+        ("農薬をまいてもいいかな", CareKind.NONE),
     ],
 )
 def test_語の一覧で問いを続けない場面を見分ける(text, kind):
     assert twin.detect_care(text) is kind
+
+
+def test_体や薬の相談には_相談先を必ず添えて問いを続けない(me, use_claude):
+    # AI が相談先を書き忘れ、聞き返しても、プログラムが問いを落として相談先を添える
+    use_claude(ツインの会話=_turn("血圧のお薬のことですね。", "いつから飲んでいますか？", "好きなこと"))
+
+    body = _send(me, "血圧の薬をやめてもいいかな").json()
+
+    replies = [item["text"] for item in body["replies"]]
+    assert replies[0] == "血圧のお薬のことですね。"
+    assert "お医者さんか薬剤師さん" in replies[1]
+    assert len(replies) == 2
+    assert all(item["question_id"] is None for item in body["replies"])
+
+
+def test_AIが相談先を書いても_同じ案内を2回くり返さない(me, use_claude):
+    use_claude(ツインの会話=_turn("それはお困りですね。薬のことは、お医者さんか薬剤師さんに聞いてください。", care="健康の相談"))
+
+    replies = [item["text"] for item in _send(me, "血圧の薬をやめてもいいかな").json()["replies"]]
+
+    assert replies[0] == "それはお困りですね。"
+    assert "お医者さんか薬剤師さん" in replies[1]
+    assert len(replies) == 2
+
+
+def test_AIが別の言い方で相談を勧めても_同じ案内を2回くり返さない(me, use_claude):
+    # 実測で「身近な医療の方にご相談ください」が、プログラムの案内と重なった
+    use_claude(ツインの会話=_turn("毎日のことだけに気になりますね。早めに身近な医療の方にご相談ください。", care="健康の相談"))
+
+    replies = [item["text"] for item in _send(me, "腰が痛いんだがどうしたらいいのかな?").json()["replies"]]
+
+    assert replies[0] == "毎日のことだけに気になりますね。"
+    assert len(replies) == 2
+
+
+def test_AIが断っても_体や薬の相談には相談先を返す(me, use_claude):
+    use_claude(ツインの会話="断る")
+
+    response = _send(me, "腰が痛いんだがどうしたらいいのかな?")
+
+    assert response.status_code == 200
+    assert "お医者さんか薬剤師さん" in response.json()["replies"][1]["text"]
+
+
+def test_ふだんの体の話には相談先を付けない(me, use_claude):
+    # 聞かれていないのに案内を付けると、話を聞いてもらえていない感じになる
+    use_claude(ツインの会話=_turn("階段がきついと大変ですね。"))
+
+    replies = [item["text"] for item in _send(me, "腰が痛いんです。").json()["replies"]]
+
+    assert replies == ["階段がきついと大変ですね。"]
 
 
 @pytest.mark.parametrize(
@@ -378,6 +485,33 @@ def test_体と命の言葉には問いを続けず_つなぎ先を必ず添え�
     assert len(replies) == 2
     assert expected in replies[1]
     assert all(item["question_id"] is None for item in body["replies"])
+
+
+def test_眠れないだけの話をAIが急な不調と読んでも_119番の案内を出さない(me, use_claude):
+    # 実測で、Haiku が「眠れない。どうしたらいいかな」を3回中2回「体の不調」と読んだ
+    use_claude(ツインの会話=_turn("眠れない夜は、つらいですね。", care="体の不調"))
+
+    replies = [item["text"] for item in _send(me, "夜なかなか眠れないんだ。どうしたらいいかな").json()["replies"]]
+
+    assert "119番" not in "".join(replies)
+    assert "お医者さんか薬剤師さん" in replies[1]
+
+
+def test_眠れないに痛みが重なれば_AIの急な不調の判定を残す(me, use_claude):
+    use_claude(ツインの会話=_turn("それは心配ですね。", care="体の不調"))
+
+    replies = [item["text"] for item in _send(me, "お腹がひどく痛くて眠れない").json()["replies"]]
+
+    assert "119番" in replies[1]
+
+
+def test_AIが胸の痛みを命の場面と読んでも_119番の案内を消さない(me, use_claude):
+    # 実測で、Haiku が「さっきから胸が痛い」を「命に関わる」と読み、119番が出ない回があった
+    use_claude(ツインの会話=_turn("それは心配ですね。", care="命に関わる"))
+
+    replies = [item["text"] for item in _send(me, "さっきから胸が痛い").json()["replies"]]
+
+    assert "119番" in replies[1]
 
 
 def test_体の場面の受け止めに問いが混ざったら決まった文に替える(me, use_claude):
@@ -403,7 +537,7 @@ def test_本人が話していないことを本人の言葉として伝える�
 
     replies = [item["text"] for item in _send(me, "今朝、庭を見ました。").json()["replies"]]
 
-    assert replies == ["お話をうかがいました。"]
+    assert replies == ["そうでしたか。"]
 
 
 def test_本人が話したとおりの引用は通す(me, use_claude):
