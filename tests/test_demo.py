@@ -15,7 +15,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from app import ai, config, db, ledger, model_store
+from app import ai, clock, config, db, demo, ledger, model_store
 from app.main import create_app
 from app.schemas import ConfirmStatus, LifeStage, ShareScope, Theme
 from fiction import load, plan, stage
@@ -286,6 +286,30 @@ def test_10年後へ進むを2回押しても2回読み込まれない(fresh, cl
     me.post("/api/dev/advance")
 
     assert conn.execute("SELECT COUNT(*) FROM statements").fetchone()[0] == before
+
+
+def test_進んだあとで起動し直しても2036年のままで招いた人が入れる(fresh, claude):
+    app, _, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+    me.post("/api/dev/advance")
+    invited = person("美穂さん").post("/api/people/professional", json={"name": "田中さん", "relation": "ケアマネジャー"})
+
+    restarted = create_app(deployment=app.state.deployment)
+    assert demo.restore_day(restarted) is True
+
+    assert clock.now(restarted).date() == plan.FUTURE_DAY
+    client = TestClient(restarted, headers={"X-NT-User": str(invited.json()["id"])})
+    assert client.get("/api/me").status_code == 200
+
+
+def test_進む前に起動し直しても日付は動かない(fresh):
+    app, _, _, _ = fresh
+
+    restarted = create_app(deployment=app.state.deployment)
+
+    assert demo.restore_day(restarted) is False
+    assert clock.now(restarted).date() == date.today()
 
 
 def test_本人だけの話は託すテーマでも広がらない(fresh, claude):

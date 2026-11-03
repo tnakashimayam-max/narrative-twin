@@ -8,13 +8,15 @@
   トークのタブには、人どうしの新しい発言の数を出す。画面の中だけの表示で、通知はしない。
 */
 
+import { renderAdvocate } from "./advocate.js";
 import { ApiError, api, currentUserId, forgetUser, rememberUser, uploadPhoto } from "./api.js";
 import { renderHome } from "./home.js";
 import { shrinkPhoto } from "./photo.js";
+import { renderProRecords } from "./prorecords.js";
 import { renderRecords } from "./records.js";
 import { renderTalk } from "./talk.js";
 import { renderTimeline } from "./timeline.js";
-import { avatar, el, tabIcon } from "./ui.js";
+import { avatar, el, setTwinLevels, tabIcon } from "./ui.js";
 
 const view = document.getElementById("view");
 const tabs = document.getElementById("tabs");
@@ -40,14 +42,37 @@ const TAB_LABELS = [
   ["talk", "トーク", renderTalk],
   ["timeline", "タイムライン", renderTimeline],
   ["records", "記録", renderRecords],
+  ["advocate", "ツインと話す", renderAdvocate],
+  ["prorecords", "記録", renderProRecords],
 ];
+
+/* 立場ごとのタブ。専門職は「ツインと話す」を先にし、託された家族には足す。 */
+function tabsFor(person) {
+  if (person.role === "本人") {
+    return ["home", "talk", "timeline", "records"];
+  }
+  if (person.role === "専門職") {
+    return ["advocate", "prorecords", "talk", "home"];
+  }
+  return person.can_use_supporter_screen ? ["home", "talk", "timeline", "advocate"] : ["home", "talk", "timeline"];
+}
+
+/* 専門職の画面は白を基調にする。今のツインの色も読む。 */
+async function afterLogin() {
+  document.body.dataset.look = me.role === "専門職" ? "modern" : "";
+  try {
+    setTwinLevels((await api("/twin/appearance")).levels);
+  } catch {
+    setTwinLevels(null);
+  }
+}
 
 function showTabs(visible) {
   tabs.hidden = !visible;
 }
 
 function drawTabs() {
-  const usable = TAB_LABELS.filter(([key]) => key !== "records" || me.role === "本人");
+  const usable = tabsFor(me).map((key) => TAB_LABELS.find(([name]) => name === key));
   tabs.className = usable.length === 3 ? "tabs three" : "tabs";
   tabs.replaceChildren(
     ...usable.map(([key, label]) =>
@@ -95,6 +120,7 @@ function context() {
     switchUser: logIn,
     refreshMe: async () => {
       me = await api("/me");
+      await afterLogin();
       return me;
     },
   };
@@ -111,14 +137,16 @@ function openTab(key, options = {}) {
 
 async function logIn(userId) {
   try {
-    me = await api("/login", { method: "POST", json: { user_id: userId } });
+    await api("/login", { method: "POST", json: { user_id: userId } });
+    rememberUser(userId);
+    me = await api("/me");
+    await afterLogin();
   } catch (error) {
     showLogin(error.message);
     return;
   }
-  rememberUser(me.id);
   loginNote.hidden = true;
-  openTab("home");
+  openTab(tabsFor(me)[0]);
 }
 
 async function showLogin(message) {
@@ -232,8 +260,9 @@ async function start() {
   if (currentUserId()) {
     try {
       me = await api("/me");
+      await afterLogin();
       loginNote.hidden = true;
-      openTab("home");
+      openTab(tabsFor(me)[0]);
       return;
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401) {

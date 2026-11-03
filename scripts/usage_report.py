@@ -41,16 +41,19 @@ def summarize(path: Path) -> list[dict]:
     connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
-        columns = {row["name"] for row in connection.execute("PRAGMA table_info(ai_calls)")}
-        cache_read = "SUM(cache_read_tokens)" if "cache_read_tokens" in columns else "0"
-        cache_write = "SUM(cache_write_tokens)" if "cache_write_tokens" in columns else "0"
+        # キャッシュの量は別の表にある。ai_calls の表を変えないため。古いデータベースには表がない
+        tables = {row["name"] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        cache_join = "LEFT JOIN ai_call_cache c ON c.ai_call_id = a.id" if "ai_call_cache" in tables else ""
+        cache_read = "SUM(c.cache_read_tokens)" if cache_join else "0"
+        cache_write = "SUM(c.cache_write_tokens)" if cache_join else "0"
         rows = connection.execute(
             f"""
-            SELECT role, model, is_batch, COUNT(*) AS calls,
-                   SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,
+            SELECT a.role AS role, a.model AS model, a.is_batch AS is_batch, COUNT(*) AS calls,
+                   SUM(a.input_tokens) AS input_tokens, SUM(a.output_tokens) AS output_tokens,
                    {cache_read} AS cache_read_tokens, {cache_write} AS cache_write_tokens,
-                   AVG(seconds) AS average_seconds, MAX(seconds) AS longest_seconds
-            FROM ai_calls GROUP BY role, model, is_batch ORDER BY role, model, is_batch
+                   AVG(a.seconds) AS average_seconds, MAX(a.seconds) AS longest_seconds
+            FROM ai_calls a {cache_join}
+            GROUP BY a.role, a.model, a.is_batch ORDER BY a.role, a.model, a.is_batch
             """
         ).fetchall()
     finally:
@@ -61,7 +64,9 @@ def summarize(path: Path) -> list[dict]:
         item["cache_read_tokens"] = item["cache_read_tokens"] or 0
         item["cache_write_tokens"] = item["cache_write_tokens"] or 0
         item["cost_usd"] = round(
-            config.cost_usd(item["model"], item["input_tokens"], item["output_tokens"], batch=bool(item["is_batch"])), 4
+            config.cost_usd(item["model"], item["input_tokens"], item["output_tokens"], batch=bool(item["is_batch"]))
+            + config.cache_cost_usd(item["model"], item["cache_read_tokens"], item["cache_write_tokens"]),
+            4,
         )
         summary.append(item)
     return summary

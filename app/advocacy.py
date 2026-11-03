@@ -331,6 +331,8 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
         "question": question,
         "notice": _NOTICES.get(kind),
         "lead": usable_lead(pick.lead),
+        # いちばん上に今の様子を出す（原則2）。問いに関係なく、いつも入れる
+        "now": observations.now_view(conn, viewer, LIMITS["now"]),
         **sections,
         "not_yet": None if has_self_words else NOT_YET,
         "estimate": None,
@@ -467,7 +469,9 @@ def overview(viewer: User = Depends(current_user), conn: sqlite3.Connection = De
     """画面のいちばん上に出す、今の様子と、本人が範囲を決めた日を返す。"""
     _require_supporter(conn, viewer)
     themes = handover.handover_themes(conn)
+    self_user = db.self_user(conn)
     return {
+        "self_name": self_user.display_name if self_user else "本人",
         "now": observations.now_view(conn, viewer, LIMITS["now"]),
         "decided_on": max(themes.values()).isoformat() if themes else None,
         "themes": [theme.value for theme in themes],

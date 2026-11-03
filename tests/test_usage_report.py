@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from app import db
+from app import config, db
 from scripts import usage_report
 
 
@@ -35,6 +35,25 @@ def test_表に合計を出す(db_path, conn):
 
     assert "ツインの会話" in table
     assert "合計" in table
+
+
+def test_キャッシュの読み書きを別の表から足して費用に入れる(db_path, conn):
+    db.log_ai_call(
+        conn,
+        role="ツインの答え",
+        model="claude-sonnet-5-5",
+        input_tokens=100,
+        output_tokens=50,
+        cache_read_tokens=1000,
+        cache_write_tokens=2000,
+    )
+    db.log_ai_call(conn, role="ツインの答え", model="claude-sonnet-5-5", input_tokens=100, output_tokens=50)
+
+    item = usage_report.summarize(db_path)[0]
+
+    assert (item["calls"], item["cache_read_tokens"], item["cache_write_tokens"]) == (2, 1000, 2000)
+    expected = config.cost_usd("claude-sonnet-5-5", 200, 100) + config.cache_cost_usd("claude-sonnet-5-5", 1000, 2000)
+    assert item["cost_usd"] == round(expected, 4)
 
 
 def test_自分用の記録の置き場は読まない(tmp_path):

@@ -89,19 +89,55 @@ export function svg(tag, attributes = {}, ...children) {
   return node;
 }
 
-/* ツインの姿の線。花びらの輪郭と丸い芯だけで、色はのせない。 */
-export function twinDrawing(size = 100) {
+/* ツインの色。花びらの順に、濃さの言葉だけを受け取る。名前も数も出さない（原則13）。 */
+const PETAL_COLORS = ["#7fa7c9", "#d9929f", "#e3b061", "#86b57f", "#a78cc4"];
+const LEVEL_OPACITY = { なし: 0, うすい: 0.26, 中くらい: 0.5, こい: 0.82 };
+let twinLevels = null;
+
+export function setTwinLevels(levels) {
+  twinLevels = levels;
+}
+
+/* ツインの姿。鉛筆の線の下に、本人が確かめた分だけ水彩の色をのせる。 */
+export function twinDrawing(size = 100, levels = twinLevels) {
   const pencil = { fill: "none", stroke: "#6f6a60", "stroke-width": "1.6", "stroke-linecap": "round" };
   const faint = { fill: "none", stroke: "#a39d90", "stroke-width": "1", "stroke-linecap": "round" };
   const petals = [];
+  const washes = [];
   for (let index = 0; index < 5; index += 1) {
     const angle = index * 72;
+    const opacity = LEVEL_OPACITY[levels?.[index]] ?? 0;
+    if (opacity > 0) {
+      washes.push(
+        svg("ellipse", {
+          cx: "50",
+          cy: "23",
+          rx: "15",
+          ry: "19.5",
+          fill: PETAL_COLORS[index],
+          "fill-opacity": String(opacity),
+          filter: "url(#twin-wash)",
+          transform: `rotate(${angle} 50 50)`,
+        })
+      );
+    }
     petals.push(svg("ellipse", { cx: "50", cy: "23", rx: "15", ry: "19.5", transform: `rotate(${angle} 50 50)`, ...pencil }));
     petals.push(svg("ellipse", { cx: "51", cy: "24", rx: "14", ry: "18.5", transform: `rotate(${angle + 2.5} 50 50)`, ...faint }));
   }
   return svg(
     "svg",
     { viewBox: "0 0 100 100", width: String(size), height: String(size), role: "img", "aria-label": "ツイン（AI）の姿" },
+    svg(
+      "defs",
+      {},
+      svg(
+        "filter",
+        { id: "twin-wash", x: "-20%", y: "-20%", width: "140%", height: "140%" },
+        svg("feTurbulence", { type: "fractalNoise", baseFrequency: "0.09", numOctaves: "2", seed: "4", result: "noise" }),
+        svg("feDisplacementMap", { in: "SourceGraphic", in2: "noise", scale: "3" })
+      )
+    ),
+    washes,
     petals,
     svg("circle", { cx: "50", cy: "50", r: "21", fill: "#fbf7ec", stroke: "#6f6a60", "stroke-width": "1.6" }),
     svg("circle", { cx: "50.6", cy: "50.4", r: "20", ...faint }),
@@ -189,6 +225,8 @@ export function tabIcon(name) {
     talk: "M4 5h16v11H9l-5 4z",
     timeline: "M5 4h14v16H5zM8 9h8M8 13h8M8 17h5",
     records: "M6 3h12v18l-6-4-6 4z",
+    advocate: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
+    prorecords: "M6 3h12v18H6zM9 8h6M9 12h6M9 16h4",
   };
   return svg("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, svg("path", { d: paths[name], ...line }));
 }

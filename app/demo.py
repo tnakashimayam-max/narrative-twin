@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import timedelta
+from datetime import date, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
@@ -109,10 +109,30 @@ def advance(
     return _status(request, conn)
 
 
+def restore_day(app) -> bool:
+    """進んだあとで起動し直したら、日付を2036年へ合わせる。戻したら True を返す。
+
+    日付のずれは記憶の中にしかないので、起動し直すと2026年に戻り、招いた専門職が入れなくなる。
+    """
+    deployment = app.state.deployment
+    if deployment.mine:
+        return False
+    stage = _story()
+    connection = db.connect(deployment.db_path)
+    try:
+        loaded = stage.is_loaded(connection, _FUTURE_STAGE)
+    finally:
+        connection.close()
+    if not loaded:
+        return False
+    app.state.day_offset = timedelta(days=(stage.FUTURE_DAY - date.today()).days)
+    return True
+
+
 def ensure_prologue(path) -> bool:
     """架空用の起動のときに、2026年11月3日より前の架空ログを入れる。入れたら True を返す。"""
     stage = _story()
-    if not stage.story_is_ready():
+    if not stage.load.read_logs():
         return False
     connection = db.connect(path)
     try:

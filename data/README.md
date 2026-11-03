@@ -7,12 +7,28 @@
 | 場所 | 中身 | 量 | Git |
 |---|---|---|---|
 | `data/trial/` | 架空ログの小さな試しの結果（2026年の4月から12月、会話40回、一時のデータベース、測った結果） | 会話40回、言明195件、解釈551件。測った結果は `docs/tools.md` にある | 入れない |
-| `data/narrative_twin.db`、`data/photos/` | 架空用の起動の保存先。起動すると作られる | 最初は利用者4人と託す設定だけ | 入れない |
+| `data/story/log_YYYY.json` | 10年分の架空の会話（2026年4月〜2036年4月） | 387回 | 入れる |
+| `data/story/split_YYYY.json` | 会話を言明に分けた AI の結果 | 443単位 | 入れる |
+| `data/story/model_YYYY.json` | 固める処理の AI の結果。言明は鍵で指す | 月、年、人生の段階 | 入れる |
+| `data/narrative_twin.db`、`data/photos/` | 架空用の起動の保存先。起動すると作られる | 利用者5人と、2026年11月3日より前の架空ログ | 入れない |
+| `data/demo_photos/` | デモに映す写真（撮影の情報を消したもの） | 約10枚 | 入れない |
 | `data/mine/` | 開発者が自分の記録で試すときの保存先 | 公開しない | 入れない |
 
-いまコミットしている架空データはありません。デモと評価に使うデータができたら、年ごとに分けて、ここに置きます（1ファイル 1MB 以下が目安）。
+## 10年分の架空ログの作り方
 
-## 作り方
+物語は `fiction/plan.py` にあります。乱数を使わないので、同じ予定が毎回できます。泊まりの話と病名は、物語に入れません。
+
+```
+python -m fiction.generate log-submit       # 会話をバッチで作る（Haiku 5.5）
+python -m fiction.generate log-collect
+python -m fiction.generate split-submit     # 言明に分ける（Haiku 5.5）
+python -m fiction.generate split-collect
+python -m fiction.consolidate_story         # 固める（月は Sonnet 5.5、年と人生の段階は Opus 5.5）
+```
+
+保存した JSON は、AI を呼ばずに読み込めます（`fiction/load.py`）。物語を差し替えるときは `fiction/plan.py` を直し、変わった会話の鍵を JSON から除いて、上を流し直します。プロンプトは `fiction/generate.py` と `app/prompts.py` にあります。
+
+## 2026年分の小さな試しの作り方
 
 | 手順 | 場所 |
 |---|---|

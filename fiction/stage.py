@@ -27,9 +27,13 @@ def is_loaded(conn, stage: str) -> bool:
 
 
 def story_is_ready() -> bool:
-    """10年分のログと固める処理の結果がそろっているかを返す。"""
+    """10年分のログと固める処理の結果がそろっているかを返す。固める処理が途中なら進めない。"""
     logs = load.read_logs()
-    return bool(logs) and all(item.key in logs for item in plan.build_plan()) and bool(load.read_models())
+    items = plan.build_plan()
+    runs = load.read_models()
+    if not runs or not all(item.key in logs for item in items):
+        return False
+    return max(date.fromisoformat(run["end"]) for run in runs) >= max(item.day for item in items)
 
 
 def _prologue_items() -> list[plan.PlanItem]:

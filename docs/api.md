@@ -204,3 +204,59 @@
 | `POST /api/dev/date` | `{"date": "2026-11-05"}` で、サーバーの今日をその日にする。`{"date": null}` で戻す | `{"today": 日付}` |
 
 日を変えた会話を確かめるための道です。自分用の起動では 404 を返します。
+
+## 確認と託す設定
+
+本人だけが使えます。本人以外には 404 を返します。
+
+| 道 | 内容 | 応答 |
+|---|---|---|
+| `GET /api/review` | 今日うかがったこと。まだ確かめていない本人の言葉と AI の推測を、推測を先にして8件まで | `{"items": [ReviewItem, ...]}` |
+| `POST /api/statements/{番号}/confirm` | 「そうです」。確かめた行を足す | `ReviewItem` |
+| `POST /api/statements/{番号}/correct` | 「ちがいます」。`{"text": 文}`。本人の訂正の行を足す。元の行は履歴に残る | `ReviewItem` |
+| `POST /api/statements/{番号}/rest` | 「今は話したくない」。範囲を「本人だけ」に戻した行を足す | `ReviewItem` |
+| `GET /api/handover` | 託す設定 | `Handover` |
+| `PUT /api/handover` | `{"delegate_ids": [番号], "themes": [テーマ]}`。託せるのは家族だけ。選んだテーマの今の言葉に、範囲を広げた行を足す。はずしたテーマの言葉は「本人だけ」に戻す | `Handover` |
+
+すでに置き換えられた行を指すと 409 を返します。
+
+`ReviewItem`：`id`、`body`、`source`、`effective_date`、`is_guess`
+
+`Handover`：`themes`、`all_themes`、`delegate_ids`、`family`（`id`、`name`）、`decided_on`
+
+## 意思モデルとツインの色
+
+| 道 | 内容 | 応答 |
+|---|---|---|
+| `POST /api/model/consolidate` | 固める処理を流す。言明が変わった月と、その年と人生の段階だけを動かす。本人だけ | `{"months": [文], "elements": 数}` |
+| `GET /api/twin/appearance` | 今のツインの色。花びらの順に、濃さの言葉（なし／うすい／中くらい／こい）を返す。名前と数は返さない | `{"levels": [文, ...]}` |
+| `GET /api/twin/growth` | 1年ごとのツインの色 | `{"items": [{"year": 数, "levels": [文, ...]}]}` |
+
+## 支援者の画面
+
+招かれた専門職と、立場が家族の託された人が使えます。それ以外には 404 を返します。
+
+| 道 | 内容 | 応答 |
+|---|---|---|
+| `POST /api/advocacy/ask` | ツインに聞く。`{"question": 文, "client_key": 文}`。2000字まで。同じ `client_key` で送り直しても答えは増えない | `{"turn": Turn}` |
+| `GET /api/advocacy/turns` | この人の問いと答え。ほかの人のやり取りは返さない | `{"items": [Turn, ...]}` |
+| `GET /api/advocacy/overview` | 今の様子と、本人が範囲を決めた日 | `{"self_name": 文, "now": [Now, ...], "decided_on": 日付, "themes": [テーマ]}` |
+| `GET /api/advocacy/elements` | 見える意思モデルの要素。花びらは専門職にだけ返す | `{"items": [Element, ...]}` |
+| `GET /api/advocacy/elements/{番号}` | 要素の根拠を、言明と発言の原文までたどる。見えない要素は 404 | `{"element_id": 番号, "body": 文, "kind": 文, "evidence": [Quote に utterances を足したもの]}` |
+| `POST /api/observations` | 今の様子を入れる。`{"text": 文, "theme": テーマ}` | 201、`{"statement_id": 番号}` |
+| `GET /api/statements/{番号}/interpretations` | 言明の4つの視点の仮説。専門職だけ | `{"items": [{"perspective", "body", "confidence", "caution", "status"}]}` |
+
+`Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`estimate`（`Estimate`。なければ `null`）、`elements`
+
+`Quote`：`statement_id`、`body`（記録の本文のまま）、`lead_in`（プログラムが付ける前置き）、`date`、`source`、`speaker`、`confirm`
+
+`Estimate`：`text`、`evidence`、`counter`（`Quote` の配列）、`confidence`（とても低い／低い／中くらい）、`how_to_confirm`
+
+## 10年後へ進む（架空用の起動だけ）
+
+自分用の起動では 404 を返します。
+
+| 道 | 内容 | 応答 |
+|---|---|---|
+| `GET /api/dev/story` | 状態。本人だけ | `{"future_loaded": 真偽, "ready": 真偽, "working": 真偽, "today": 日付}` |
+| `POST /api/dev/advance` | 架空ログを読み込み、2036年5月1日へ進む。本人だけ。託す範囲が決まっていなければ 400。2回押しても2回読み込まない | 上と同じ |

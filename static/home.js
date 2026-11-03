@@ -10,6 +10,7 @@ import { api } from "./api.js";
 import { renderEcomap } from "./ecomap_ui.js";
 import { openGenogram } from "./genogram_ui.js";
 import { openOwnForm, openPersonForm, personRow } from "./people_ui.js";
+import { demoSection, handoverSection, reviewSection } from "./review.js";
 import { avatar, el, openSheet, twinFigure } from "./ui.js";
 
 const ROLE_CHOICES = [
@@ -166,6 +167,7 @@ export function renderHome(container, ctx) {
         "ツイン（AI）と話す"
       )
     );
+    panel.append(reviewSection(ctx, drawSelfHome));
     const candidates = el("section", { class: "stack" });
     panel.append(candidates);
     try {
@@ -232,6 +234,8 @@ export function renderHome(container, ctx) {
         onclick: () => openPersonForm(ctx, null, drawSelfHome),
       })
     );
+    panel.append(handoverSection(ctx, drawSelfHome));
+    panel.append(demoSection(ctx, drawSelfHome));
     panel.append(inviteSection(ctx, drawSelfHome));
     panel.append(switcher);
     loadSwitcher();
