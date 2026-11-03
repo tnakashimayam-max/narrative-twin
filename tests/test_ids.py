@@ -51,8 +51,8 @@ SEQUENTIAL_ID_TABLES = [
     "person_candidates",
     "job_failures",
 ]
-# 番号の列がない表。部屋の人は部屋と人の組で、印は対象の組で見分ける。
-NO_ID_TABLES = ["room_members", "split_marks"]
+# 番号の列がない表。部屋の人と読んだ位置は部屋と人の組で、印は対象の組で見分ける。
+NO_ID_TABLES = ["room_members", "room_reads", "split_marks"]
 LARGEST_SAFE_INTEGER = 2**53 - 1
 
 

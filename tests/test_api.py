@@ -21,12 +21,14 @@ def client(db_path, conn):
     return TestClient(create_app(db_path))
 
 
-def test_ログイン画面の名前は4人(client):
+def test_ログイン画面には架空の5人と招かれた人が出る(client):
     response = client.get("/api/users")
 
     assert [user["name"] for user in response.json()["items"]] == [
         "誠一さん",
+        "和子さん",
         "美穂さん",
+        "正雄さん",
         "節子さん",
         "田中さん",
     ]

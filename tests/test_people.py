@@ -21,8 +21,8 @@ def me(login):
 
 
 FULL = {
-    "name": "和子さん",
-    "called_name": "和子",
+    "name": "光子さん",
+    "called_name": "光子",
     "role": "家族",
     "relation": "妻",
     "residence": "同居",
@@ -42,11 +42,11 @@ def test_本人が家族と知人を登録できる(me):
 
     assert response.status_code == 201
     body = response.json()
-    assert body["called_name"] == "和子"
+    assert body["called_name"] == "光子"
     assert body["relation"] == "妻"
     assert body["residence"] == "同居"
     assert body["memo"] == "紫陽花の世話を一緒にしている。"
-    assert "和子さん" in _names(me)
+    assert "光子さん" in _names(me)
 
 
 def test_新しい人の番号は乱数(me):
@@ -74,7 +74,7 @@ def test_同じ名前は登録できない(me):
 
 
 def test_呼ばれ方を省くと名前を使う(me):
-    assert me.post("/api/people", json={"name": "和子さん", "role": "家族"}).json()["called_name"] == "和子さん"
+    assert me.post("/api/people", json={"name": "光子さん", "role": "家族"}).json()["called_name"] == "光子さん"
 
 
 def test_各人は自分の名前と呼ばれ方と写真を直せる(login, users):
@@ -188,8 +188,8 @@ def test_はずしても過去の発言は残る(conn, me, login, users):
 def test_亡くなった方はログインの一覧に出ない(me):
     me.post("/api/people", json={**FULL, "is_deceased": True})
 
-    assert "和子さん" not in _names(me)
-    assert "和子さん" in [item["name"] for item in me.get("/api/people").json()["items"]]
+    assert "光子さん" not in _names(me)
+    assert "光子さん" in [item["name"] for item in me.get("/api/people").json()["items"]]
 
 
 # ---- 自分用の最初の起動 ----

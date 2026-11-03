@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from dotenv import dotenv_values
@@ -27,6 +28,9 @@ EVAL_CASES_PATH = ROOT / "eval" / "cases.json"
 
 LABEL_FICTIONAL = "架空データ"
 LABEL_MINE = "自分の記録で試用中"
+
+# 架空用の起動で、専門職が現れてよい日付。10年後の場面を日付で切り替えるため（app/auth.py）。
+PROFESSIONAL_FROM = date(2036, 1, 1)
 
 
 @dataclass(frozen=True)

@@ -59,6 +59,36 @@ def members_of(conn: sqlite3.Connection, room_id: int) -> list[User]:
     return [db.row_to_model(row, User) for row in rows]
 
 
+def creator_of(conn: sqlite3.Connection, room_id: int) -> int | None:
+    """部屋を作った人を返す。作るときに、作った人を先頭で入れている。出たあとも変わらない。"""
+    row = conn.execute(
+        "SELECT user_id FROM room_members WHERE room_id = ? ORDER BY rowid LIMIT 1", (room_id,)
+    ).fetchone()
+    return row["user_id"] if row else None
+
+
+def remove_member(conn: sqlite3.Connection, room_id: int, user_id: int, moment: str) -> None:
+    """部屋の人でなくする。発言は記録として残る。"""
+    conn.execute(
+        "UPDATE room_members SET left_at = ? WHERE room_id = ? AND user_id = ? AND left_at IS NULL",
+        (moment, room_id, user_id),
+    )
+
+
+def find_pair_room(conn: sqlite3.Connection, first: int, second: int) -> Room | None:
+    """2人とも入っている1対1の部屋を返す。本人のいない部屋もあるので、片方だけでは探さない。"""
+    row = conn.execute(
+        """
+        SELECT r.* FROM rooms r
+        WHERE r.kind = ?
+          AND EXISTS (SELECT 1 FROM room_members a WHERE a.room_id = r.id AND a.user_id = ? AND a.left_at IS NULL)
+          AND EXISTS (SELECT 1 FROM room_members b WHERE b.room_id = r.id AND b.user_id = ? AND b.left_at IS NULL)
+        """,
+        (RoomKind.PAIR.value, first, second),
+    ).fetchone()
+    return db.row_to_model(row, Room) if row else None
+
+
 def create_room(
     conn: sqlite3.Connection, *, kind: RoomKind, name: str | None, member_ids: list[int], moment: str
 ) -> Room:
@@ -251,6 +281,64 @@ def conversation_messages(conn: sqlite3.Connection, conversation_id: int, viewer
 def room_length(conn: sqlite3.Connection, room_id: int) -> int:
     """部屋の行の数を返す。"""
     return conn.execute("SELECT COUNT(*) FROM room_messages WHERE room_id = ?", (room_id,)).fetchone()[0]
+
+
+def mark_read(conn: sqlite3.Connection, room_id: int, user_id: int, seq: int, moment: str) -> None:
+    """読んだ位置を進める。戻さず、部屋の行の数を超えない。
+
+    画面が開いて見えているときにだけ呼ばれる。3秒ごとの読み込みでは読んだことにしない。
+    関連するテスト：tests/test_room_access.py
+    """
+    position = min(seq, room_length(conn, room_id))
+    with ledger.atomic(conn):
+        row = conn.execute(
+            "SELECT last_read_seq FROM room_reads WHERE room_id = ? AND user_id = ?", (room_id, user_id)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO room_reads (room_id, user_id, last_read_seq, updated_at) VALUES (?, ?, ?, ?)",
+                (room_id, user_id, position, moment),
+            )
+        elif position > row["last_read_seq"]:
+            conn.execute(
+                "UPDATE room_reads SET last_read_seq = ?, updated_at = ? WHERE room_id = ? AND user_id = ?",
+                (position, moment, room_id, user_id),
+            )
+
+
+def unread(conn: sqlite3.Connection, room_id: int, user_id: int) -> tuple[int, int | None]:
+    """未読の数と、最初の未読の順番を返す。自分の発言とお知らせは数えない。"""
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS total, MIN(seq) AS first FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY m.rowid) AS seq, m.sender_user_id, m.kind
+            FROM room_messages m WHERE m.room_id = ?
+        )
+        WHERE seq > COALESCE(
+                (SELECT last_read_seq FROM room_reads WHERE room_id = ? AND user_id = ?), 0
+              )
+          AND kind <> ?
+          AND (sender_user_id IS NULL OR sender_user_id <> ?)
+        """,
+        (room_id, room_id, user_id, MessageKind.NOTICE.value, user_id),
+    ).fetchone()
+    return row["total"], row["first"]
+
+
+def others_read_seqs(conn: sqlite3.Connection, room_id: int, user_id: int) -> list[int]:
+    """部屋にいるほかの人の読んだ位置を、小さい順に返す。
+
+    名前を返さず、人の順にも並べない。だれが読んだかまでは伝えないと決めたため。
+    """
+    rows = conn.execute(
+        """
+        SELECT COALESCE(x.last_read_seq, 0) AS seq FROM room_members m
+        LEFT JOIN room_reads x ON x.room_id = m.room_id AND x.user_id = m.user_id
+        WHERE m.room_id = ? AND m.user_id <> ? AND m.left_at IS NULL
+        """,
+        (room_id, user_id),
+    ).fetchall()
+    return sorted(row["seq"] for row in rows)
 
 
 def position_of(conn: sqlite3.Connection, message_id: int) -> int:

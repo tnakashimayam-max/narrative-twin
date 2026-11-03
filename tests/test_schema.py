@@ -132,17 +132,24 @@ def test_外部キーの確認が有効(conn):
     assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
 
 
-def test_利用者は架空の4人で_何度起動しても増えない(db_path, conn):
-    db.init_db(db_path)
-    db.init_db(db_path)
+def test_架空用の最初の人は5人で_田中さんはいない(tmp_path):
+    path = tmp_path / "new.db"
+    db.init_db(path)
+    db.init_db(path)
 
-    assert [(user.name, user.role) for user in db.list_users(conn)] == [
-        ("誠一さん", s.Role.SELF),
-        ("美穂さん", s.Role.FAMILY),
-        ("節子さん", s.Role.CONNECTED),
-        ("田中さん", s.Role.PROFESSIONAL),
-    ]
-    assert conn.execute("SELECT COUNT(*) FROM delegations").fetchone()[0] == 2
+    connection = db.connect(path)
+    try:
+        assert [(user.name, user.role, user.relation) for user in db.list_users(connection)] == [
+            ("誠一さん", s.Role.SELF, None),
+            ("和子さん", s.Role.FAMILY, "妻"),
+            ("美穂さん", s.Role.FAMILY, "長女"),
+            ("正雄さん", s.Role.CONNECTED, "友人"),
+            ("節子さん", s.Role.CONNECTED, "ご近所さん"),
+        ]
+        # 起動し直しても増えない。託す設定は美穂さんの分だけ
+        assert connection.execute("SELECT COUNT(*) FROM delegations").fetchone()[0] == 1
+    finally:
+        connection.close()
 
 
 def test_取り消した託す設定は起動し直しても戻らない(db_path, conn):

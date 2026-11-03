@@ -49,6 +49,16 @@ def scopes_for(role: Role, delegated: bool) -> frozenset[ShareScope]:
     return scopes
 
 
+def can_act_for_self(conn: sqlite3.Connection, viewer: User) -> bool:
+    """本人か、立場が家族の託された人かを返す。専門職を招く操作とツインの操作は、この人だけができる。
+
+    招かれた専門職にも delegations の行が入るので、行の有無だけでは決めない。専門職が次の専門職を
+    招いたり、ツインをはずしたりしないよう、立場が家族であることも確かめる。
+    関連するテスト：tests/test_room_access.py
+    """
+    return viewer.role is Role.SELF or (viewer.role is Role.FAMILY and _has_delegation(conn, viewer.id))
+
+
 def _has_delegation(conn: sqlite3.Connection, user_id: int) -> bool:
     row = conn.execute(
         "SELECT 1 FROM delegations WHERE delegate_user_id = ? AND scope = ? LIMIT 1",

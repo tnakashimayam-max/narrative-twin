@@ -23,7 +23,7 @@ from collections.abc import Iterator
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app import db
+from app import clock, config, consent, db
 from app.schemas import Gender, Role, User
 
 USER_HEADER = "X-NT-User"
@@ -61,16 +61,27 @@ def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
-def can_log_in(user: User | None) -> bool:
-    """ログインできる人かを返す。はずした人と亡くなった方はログインできない。"""
-    return user is not None and user.removed_at is None and not user.is_deceased
+def professionals_open(app) -> bool:
+    """専門職が現れてよい日付かを返す。
+
+    デモで10年後の場面を日付で切り替え、何度も撮り直せるようにするため。自分用の起動は日付を
+    動かせないので、切り替えない。関連するテスト：tests/test_room_access.py
+    """
+    return app.state.deployment.mine or clock.now(app).date() >= config.PROFESSIONAL_FROM
+
+
+def can_log_in(user: User | None, app) -> bool:
+    """ログインできる人かを返す。はずした人と亡くなった方と、現れる前の専門職はログインできない。"""
+    if user is None or user.removed_at is not None or user.is_deceased:
+        return False
+    return user.role is not Role.PROFESSIONAL or professionals_open(app)
 
 
 def current_user(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> User:
     """ログイン中の人を返す。わからなければ 401 にする。"""
     user_id = _user_id_from_header(request.headers.get(USER_HEADER, ""))
     user = db.get_user(conn, user_id) if user_id is not None else None
-    if not can_log_in(user):
+    if not can_log_in(user, request.app):
         raise HTTPException(status_code=401, detail="名前を選んでください")
     return user
 
@@ -123,29 +134,33 @@ def mode(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict
 
 
 @router.get("/users")
-def list_users(conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[dict]]:
+def list_users(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[dict]]:
     """ログイン画面に出す名前の一覧。プロフィール写真はログインのあとで読む。"""
     return {
         "items": [
             {"id": user.id, "name": user.name, "called_name": user.display_name, "role": user.role.value}
             for user in db.login_users(conn)
+            if can_log_in(user, request.app)
         ]
     }
 
 
 @router.post("/login")
-def login(body: LoginRequest, conn: sqlite3.Connection = Depends(get_conn)) -> dict:
+def login(body: LoginRequest, request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict:
     """選ばれた人として使えるかを確かめる。覚えておくのは画面の側。"""
     user = db.get_user(conn, body.user_id)
-    if not can_log_in(user):
+    if not can_log_in(user, request.app):
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     return person_view(user)
 
 
 @router.get("/me")
-def me(user: User = Depends(current_user)) -> dict:
-    """ログイン中の人を返す。"""
-    return person_view(user)
+def me(
+    request: Request, user: User = Depends(current_user), conn: sqlite3.Connection = Depends(get_conn)
+) -> dict:
+    """ログイン中の人を返す。画面が「ケアマネジャーを招く」を出すかを決められるようにする。"""
+    can_invite = consent.can_act_for_self(conn, user) and professionals_open(request.app)
+    return {**person_view(user), "can_invite_professional": can_invite}
 
 
 @router.post("/self", status_code=201)

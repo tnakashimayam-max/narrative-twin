@@ -324,6 +324,15 @@ CREATE TABLE IF NOT EXISTS room_members (
     PRIMARY KEY (room_id, user_id)
 );
 
+-- 人ごとの読んだ位置（部屋の中の順番）。部屋の行は追記だけなので順番は変わらない。未読と既読に使う
+CREATE TABLE IF NOT EXISTS room_reads (
+    room_id INTEGER NOT NULL REFERENCES rooms(id),
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    last_read_seq INTEGER NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (room_id, user_id)
+);
+
 -- グループにツインが入っている間。入るたびに会話を1行作り、ツインが読むのはその会話の発言だけにする
 CREATE TABLE IF NOT EXISTS twin_presences (
     id INTEGER PRIMARY KEY,
@@ -573,6 +582,7 @@ TABLE_MODELS: dict[str, type[BaseModel]] = {
     "evaluations": s.Evaluation,
     "rooms": s.Room,
     "room_members": s.RoomMember,
+    "room_reads": s.RoomRead,
     "twin_presences": s.TwinPresence,
     "room_messages": s.RoomMessage,
     "family_links": s.FamilyLink,
@@ -583,20 +593,19 @@ TABLE_MODELS: dict[str, type[BaseModel]] = {
     "job_failures": s.JobFailure,
 }
 
-# デモの利用者（架空の4人）。番号を固定し、起動し直しても同じ人を指すようにする。
+# デモの利用者（架空の5人）。番号を固定し、起動し直しても同じ人を指すようにする。
+# ケアマネジャーは10年後の場面で招くので、ここには入れない（app/people.py）。
 # (番号, 名前, 立場, 続柄, 住まい, 性別)
 DEMO_USERS = [
     (1, "誠一さん", s.Role.SELF, None, None, s.Gender.MALE),
-    (2, "美穂さん", s.Role.FAMILY, "長女", s.Residence.NEAR, s.Gender.FEMALE),
-    (3, "節子さん", s.Role.CONNECTED, "ご近所の友人", s.Residence.NEAR, s.Gender.FEMALE),
-    (4, "田中さん", s.Role.PROFESSIONAL, "ケアマネジャー", s.Residence.NEAR, None),
+    (2, "和子さん", s.Role.FAMILY, "妻", s.Residence.TOGETHER, s.Gender.FEMALE),
+    (3, "美穂さん", s.Role.FAMILY, "長女", s.Residence.NEAR, s.Gender.FEMALE),
+    (4, "正雄さん", s.Role.CONNECTED, "友人", s.Residence.NEAR, s.Gender.MALE),
+    (5, "節子さん", s.Role.CONNECTED, "ご近所さん", s.Residence.NEAR, s.Gender.FEMALE),
 ]
 
-# 美穂さんは託された人、田中さんは招かれた専門職として、最初から設定しておく。
-DEMO_DELEGATIONS = [
-    (2, s.ShareScope.DECISION_SUPPORT, "2026-04-01"),
-    (4, s.ShareScope.DECISION_SUPPORT, "2026-04-01"),
-]
+# 美穂さんは託された人として、最初から設定しておく。
+DEMO_DELEGATIONS = [(3, s.ShareScope.DECISION_SUPPORT, "2026-04-01")]
 
 
 def connect(path: Path | str) -> sqlite3.Connection:

@@ -3,13 +3,15 @@
 役割：ツインとの部屋、1対1、グループの部屋を作り、発言を保存して、部屋の人にだけ返す。
 4つの極：1. 書く・話す、2. 分かち合う。
 守る原則：10（部屋の発言は部屋の人だけに見せる）、12（ツインの表示）、
-          14（未読の数、既読、通知は作らない）、15（ツインは招かれた部屋だけを読む）。
+          15（ツインは本人がいる招かれた部屋だけを読む）。
 
 部屋の発言と写真は部屋の人だけに見せ、ほかの人には 404 を返す。
+部屋はだれでも作れる。本人がいない部屋にはツインが入れないので、本文は AI に渡らず、言明にもならない。
 グループにツインが入るたびに会話を1行作り、ツインが読むのはその会話の発言だけにする。
+1対1とグループには未読の数と既読を出す。通知は作らない。読んだ人の名前は返さない。
 表の読み書きは app/room_store.py にある。
 
-関連するテスト：tests/test_rooms.py
+関連するテスト：tests/test_rooms.py、tests/test_room_access.py
 全体の説明：docs/architecture.md、取り決め：docs/api.md
 """
 
@@ -21,27 +23,33 @@ import threading
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import ai, clock, config, db, jobs, ledger, memory, photos, twin
-from app.auth import NOT_FOUND, current_user, get_conn, person_view, require_self
+from app import ai, clock, config, consent, db, jobs, ledger, memory, photos, twin
+from app.auth import NOT_FOUND, can_log_in, current_user, get_conn, person_view, require_self
 from app.prompts import TWIN_LABEL
 from app.room_store import (
     active_presence,
     close_conversation,
     create_room,
+    creator_of,
     ensure_twin_room,
     find_by_client_key,
+    find_pair_room,
     get_room,
     insert_message,
     is_member,
     last_message,
+    mark_read,
     members_of,
     message_view,
     messages_after,
     open_conversation,
+    others_read_seqs,
     position_of,
+    remove_member,
     room_length,
     say_in_ledger,
     start_conversation,
+    unread,
 )
 from app.schemas import (
     MessageKind,
@@ -92,6 +100,14 @@ class RoomInput(BaseModel):
 
 class TwinPresenceInput(BaseModel):
     present: bool
+
+
+class ReadInput(BaseModel):
+    """読んだ位置の入力。部屋の中の順番で受け取る。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seq: int = Field(ge=0, le=db.MAX_ID)
 
 
 # ---- 部屋の人の確かめと、応答の形 ----
@@ -170,13 +186,28 @@ def _room_title(room: Room, members: list[User], viewer: User) -> str:
     return "、".join(others) or "部屋"
 
 
+def _self_in_room(conn: sqlite3.Connection, room_id: int) -> bool:
+    """部屋に本人がいるかを返す。ツインは本人がいる部屋にだけ入れる。"""
+    self_user = db.self_user(conn)
+    return self_user is not None and is_member(conn, room_id, self_user.id)
+
+
+def _can_manage_twin(conn: sqlite3.Connection, room: Room, viewer: User) -> bool:
+    return room.kind is RoomKind.GROUP and consent.can_act_for_self(conn, viewer) and _self_in_room(conn, room.id)
+
+
+def _can_remove_members(conn: sqlite3.Connection, room: Room, viewer: User) -> bool:
+    """グループから人をはずせるかを返す。家族の間で互いにはずし合わないよう、作った人と本人に限る。"""
+    return room.kind is RoomKind.GROUP and (viewer.role is Role.SELF or creator_of(conn, room.id) == viewer.id)
+
+
 def room_summary(conn: sqlite3.Connection, room: Room, viewer: User) -> dict:
     members = members_of(conn, room.id)
     last = last_message(conn, room.id)
     preview = None
     if last is not None:
         preview = last["body"][:_PREVIEW_CHARS] if last["body"] else "写真"
-    return {
+    summary = {
         "id": room.id,
         "kind": room.kind.value,
         "name": _room_title(room, members, viewer),
@@ -184,7 +215,13 @@ def room_summary(conn: sqlite3.Connection, room: Room, viewer: User) -> dict:
         "twin_present": room.kind is RoomKind.TWIN or active_presence(conn, room.id) is not None,
         "last_text": preview,
         "last_at": last["sent_at"] if last is not None else None,
+        "can_manage_twin": _can_manage_twin(conn, room, viewer),
+        "can_remove_members": _can_remove_members(conn, room, viewer),
     }
+    # ツインとの部屋には未読の数を出さない。AI が読んだことを「既読」と言わないため。
+    if room.kind is not RoomKind.TWIN:
+        summary["unread_count"] = unread(conn, room.id, viewer.id)[0]
+    return summary
 
 
 def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: User, after: int) -> dict:
@@ -193,7 +230,7 @@ def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: U
     people = {member.id: member for member in members_of(conn, room.id)}
     for user_id in speakers - people.keys():
         people[user_id] = db.get_user(conn, user_id)
-    return {
+    view = {
         "room": room_summary(conn, room, viewer),
         "items": items,
         "people": [person_view(person) for person in people.values()],
@@ -201,6 +238,10 @@ def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: U
         "thinking": room.id in request.app.state.thinking_rooms,
         "shareable_conversation_id": _shareable_conversation_id(conn, room),
     }
+    if room.kind is not RoomKind.TWIN:
+        view["first_unread_seq"] = unread(conn, room.id, viewer.id)[1]
+        view["others_read_seqs"] = others_read_seqs(conn, room.id, viewer.id)
+    return view
 
 
 # ---- API ----
@@ -229,29 +270,23 @@ def list_rooms(
 def make_room(
     body: RoomInput,
     request: Request,
-    viewer: User = Depends(require_self),
+    viewer: User = Depends(current_user),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
-    """部屋を作る。本人だけができ、部屋には必ず本人が入る。ツインとの1対1はここからは作れない。"""
+    """部屋を作る。だれでもでき、作った人は必ず入る。ツインとの1対1はここからは作れない。"""
     if body.kind is RoomKind.TWIN:
         raise HTTPException(status_code=400, detail="この部屋は作れません。")
     others = sorted({user_id for user_id in body.member_ids if user_id != viewer.id})
     if not others or (body.kind is RoomKind.PAIR and len(others) != 1):
         raise HTTPException(status_code=400, detail="部屋に入る人を選び直してください。")
     for user_id in others:
-        user = db.get_user(conn, user_id)
-        if user is None or user.removed_at or user.is_deceased:
+        if not can_log_in(db.get_user(conn, user_id), request.app):
             raise HTTPException(status_code=400, detail="部屋に入れない人が選ばれています。")
     if body.kind is RoomKind.PAIR:
-        existing = conn.execute(
-            """
-            SELECT r.* FROM rooms r JOIN room_members m ON m.room_id = r.id
-            WHERE r.kind = ? AND m.user_id = ? AND m.left_at IS NULL
-            """,
-            (RoomKind.PAIR.value, others[0]),
-        ).fetchone()
+        existing = find_pair_room(conn, viewer.id, others[0])
         if existing is not None:
-            return room_summary(conn, db.row_to_model(existing, Room), viewer)
+            return room_summary(conn, existing, viewer)
+    # 作った人を先頭で入れる。creator_of はこの順番で作った人を見分ける。
     room = create_room(
         conn,
         kind=body.kind,
@@ -463,13 +498,21 @@ def set_twin_presence(
     request: Request,
     background: BackgroundTasks,
     room_id: int = Path(ge=1, le=db.MAX_ID),
-    viewer: User = Depends(require_self),
+    viewer: User = Depends(current_user),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
-    """グループにツインを入れる、はずす。本人だけができ、そのことを部屋に表示する。"""
+    """グループにツインを入れる、はずす。本人と、立場が家族の託された人ができる。部屋に表示する。
+
+    本人がいない部屋には入れない。本人のいない場でツインが本人のことを話さないようにするため。
+    関連するテスト：tests/test_room_access.py
+    """
     room = room_for_member(conn, viewer, room_id)
+    if not consent.can_act_for_self(conn, viewer):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
     if room.kind is not RoomKind.GROUP:
         raise HTTPException(status_code=400, detail="ツインを入れられるのはグループだけです。")
+    if not _self_in_room(conn, room.id):
+        raise HTTPException(status_code=400, detail="ツインは本人がいる部屋にだけ入れます。")
     now = clock.now(request.app)
     presence = active_presence(conn, room.id)
     if body.present and presence is None:
@@ -489,20 +532,92 @@ def set_twin_presence(
             )
     elif not body.present and presence is not None:
         with ledger.atomic(conn):
-            conn.execute(
-                "UPDATE twin_presences SET left_at = ? WHERE id = ?", (now.isoformat(), presence.id)
-            )
-            close_conversation(conn, presence.conversation_id, now.isoformat())
-            insert_message(
-                conn,
-                room_id=room.id,
-                sender_user_id=viewer.id,
-                kind=MessageKind.NOTICE,
-                text=_TWIN_LEFT,
-                sent_at=now.isoformat(),
-            )
+            _end_twin_presence(conn, room, presence, viewer, now)
         background.add_task(jobs.split_quietly, app=request.app, conversation_id=presence.conversation_id)
     return _room_view(request, conn, room, viewer, 0)
+
+
+def _end_twin_presence(conn: sqlite3.Connection, room: Room, presence, actor: User, now) -> None:
+    """ツインをはずし、会話を閉じ、部屋に表示する。言明に分ける処理は呼ぶ側が裏で流す。"""
+    conn.execute("UPDATE twin_presences SET left_at = ? WHERE id = ?", (now.isoformat(), presence.id))
+    close_conversation(conn, presence.conversation_id, now.isoformat())
+    insert_message(
+        conn,
+        room_id=room.id,
+        sender_user_id=actor.id,
+        kind=MessageKind.NOTICE,
+        text=_TWIN_LEFT,
+        sent_at=now.isoformat(),
+    )
+
+
+def _notice(conn: sqlite3.Connection, room: Room, actor: User, text: str, now) -> None:
+    insert_message(
+        conn, room_id=room.id, sender_user_id=actor.id, kind=MessageKind.NOTICE, text=text, sent_at=now.isoformat()
+    )
+
+
+@router.post("/rooms/{room_id}/members/{user_id}/remove", status_code=204)
+def remove_from_room(
+    request: Request,
+    room_id: int = Path(ge=1, le=db.MAX_ID),
+    user_id: int = Path(ge=1, le=db.MAX_ID),
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> None:
+    """グループから人をはずす。作った人と部屋にいる本人ができる。本人はほかの人にはずされない。"""
+    room = room_for_member(conn, viewer, room_id)
+    if room.kind is not RoomKind.GROUP:
+        raise HTTPException(status_code=400, detail="はずせるのはグループの人だけです。")
+    if not _can_remove_members(conn, room, viewer):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    target = db.get_user(conn, user_id)
+    if target is None or not is_member(conn, room.id, target.id):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    if target.role is Role.SELF or target.id == viewer.id:
+        raise HTTPException(status_code=400, detail="この人ははずせません。")
+    now = clock.now(request.app)
+    with ledger.atomic(conn):
+        remove_member(conn, room.id, target.id, now.isoformat())
+        _notice(conn, room, viewer, f"{target.display_name}がこの部屋からはずれました。", now)
+
+
+@router.post("/rooms/{room_id}/leave", status_code=204)
+def leave_room(
+    request: Request,
+    background: BackgroundTasks,
+    room_id: int = Path(ge=1, le=db.MAX_ID),
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> None:
+    """自分でグループを出る。本人が出たらツインも一緒にはずす。本人のいない部屋の話を読まないため。"""
+    room = room_for_member(conn, viewer, room_id)
+    if room.kind is not RoomKind.GROUP:
+        raise HTTPException(status_code=400, detail="出られるのはグループだけです。")
+    now = clock.now(request.app)
+    presence = active_presence(conn, room.id) if viewer.role is Role.SELF else None
+    with ledger.atomic(conn):
+        if presence is not None:
+            _end_twin_presence(conn, room, presence, viewer, now)
+        remove_member(conn, room.id, viewer.id, now.isoformat())
+        _notice(conn, room, viewer, f"{viewer.display_name}がこの部屋を出ました。", now)
+    if presence is not None:
+        background.add_task(jobs.split_quietly, app=request.app, conversation_id=presence.conversation_id)
+
+
+@router.post("/rooms/{room_id}/read", status_code=204)
+def read_room(
+    body: ReadInput,
+    request: Request,
+    room_id: int = Path(ge=1, le=db.MAX_ID),
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> None:
+    """読んだ位置を進める。画面が部屋を開いて見えているときに送る。ツインとの部屋には使わない。"""
+    room = room_for_member(conn, viewer, room_id)
+    if room.kind is RoomKind.TWIN:
+        raise HTTPException(status_code=400, detail="この部屋には使えません。")
+    mark_read(conn, room.id, viewer.id, body.seq, clock.now(request.app).isoformat())
 
 
 class ResumeInput(BaseModel):

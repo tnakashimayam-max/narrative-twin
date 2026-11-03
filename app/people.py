@@ -19,9 +19,18 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import clock, consent, db, photos
-from app.auth import NOT_FOUND, current_user, get_conn, person_detail, person_view, require_self
-from app.schemas import Gender, PhotoKind, Residence, Role, User
+from app import clock, consent, db, ledger, photos
+from app.auth import (
+    NOT_FOUND,
+    can_log_in,
+    current_user,
+    get_conn,
+    person_detail,
+    person_view,
+    professionals_open,
+    require_self,
+)
+from app.schemas import Gender, PhotoKind, Residence, Role, ShareScope, User
 
 router = APIRouter(prefix="/api/people")
 
@@ -101,6 +110,16 @@ def check_names(conn: sqlite3.Connection, person_id: int | None, *names: str | N
             raise HTTPException(status_code=400, detail=NAME_NOT_USABLE)
 
 
+class ProfessionalInvite(BaseModel):
+    """専門職を招く入力。立場は受け取らず、専門職に固定する。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=40)
+    called_name: str | None = Field(default=None, max_length=40)
+    relation: str | None = Field(default=None, max_length=40)
+
+
 def add_person(conn: sqlite3.Connection, draft: PersonDraft) -> User:
     """人を登録する。番号は乱数にする。通し番号だと、はずした人の数が分かるため。"""
     check_names(conn, None, draft.name, draft.called_name)
@@ -119,7 +138,7 @@ def add_person(conn: sqlite3.Connection, draft: PersonDraft) -> User:
     columns = ", ".join(values)
     marks = ", ".join("?" for _ in values)
     try:
-        with conn:
+        with ledger.atomic(conn):
             conn.execute(f"INSERT INTO users ({columns}) VALUES ({marks})", list(values.values()))
     except sqlite3.IntegrityError as error:
         raise HTTPException(status_code=400, detail=NAME_NOT_USABLE) from error
@@ -132,6 +151,39 @@ def list_people(
 ) -> dict[str, list[dict]]:
     """はずしていない人の一覧。本人だけが開ける。"""
     return {"items": [person_detail(user) for user in db.list_users(conn)]}
+
+
+@router.get("/choices")
+def list_choices(
+    request: Request, viewer: User = Depends(current_user), conn: sqlite3.Connection = Depends(get_conn)
+) -> dict[str, list[dict]]:
+    """部屋の相手を選ぶ一覧。ログインできる人の名前だけを返し、生まれた年やメモは返さない。"""
+    people = [user for user in db.login_users(conn) if user.id != viewer.id and can_log_in(user, request.app)]
+    return {"items": [person_view(user) for user in people]}
+
+
+@router.post("/professional", status_code=201)
+def invite_professional(
+    body: ProfessionalInvite,
+    request: Request,
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict:
+    """専門職を招く。人の登録と託す設定を1つの処理で入れる。
+
+    招かれた人に見えるのは、本人が「意思決定支援用」にした記録だけ。招いた人が見える範囲を広げることは
+    できない（原則10）。関連するテスト：tests/test_room_access.py
+    """
+    if not (consent.can_act_for_self(conn, viewer) and professionals_open(request.app)):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    draft = PersonDraft(name=body.name, called_name=body.called_name, role=Role.PROFESSIONAL, relation=body.relation)
+    with ledger.atomic(conn):
+        person = add_person(conn, draft)
+        conn.execute(
+            "INSERT INTO delegations (delegate_user_id, scope, decided_on) VALUES (?, ?, ?)",
+            (person.id, ShareScope.DECISION_SUPPORT.value, clock.now(request.app).date().isoformat()),
+        )
+    return person_view(person)
 
 
 @router.post("", status_code=201)

@@ -69,10 +69,10 @@ def test_自分用の起動には架空の人がいない(tmp_path):
     assert client.get("/api/users").json()["items"] == []
 
 
-def test_架空用の起動には架空の4人がいる(tmp_path):
+def test_架空用の起動には架空の5人がいる(tmp_path):
     client = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
 
-    assert len(client.get("/api/users").json()["items"]) == 4
+    assert len(client.get("/api/users").json()["items"]) == 5
 
 
 def test_画面の隅の表示を起動の種類で分ける(tmp_path):

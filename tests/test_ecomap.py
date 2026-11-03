@@ -15,7 +15,7 @@ from app import ai, ecomap
 from app.schemas import FamilyLink, FamilyLinkKind, PersonCandidateDraft
 from tests.fake_claude import RoleClaude
 
-OTHERS = ["美穂さん", "節子さん", "田中さん"]
+OTHERS = ["和子さん", "美穂さん", "正雄さん", "節子さん", "田中さん"]
 
 
 @pytest.fixture
@@ -118,7 +118,7 @@ def test_はずした人と亡くなった方は地図に出ない(me, users):
 
     names = {item["person"]["name"] for item in me.get("/api/map").json()["people"]}
 
-    assert names == {"美穂さん", "田中さん"}
+    assert names == {"和子さん", "美穂さん", "正雄さん", "田中さん"}
 
 
 # ---- 話に出てきた人の候補 ----
@@ -138,30 +138,30 @@ def _candidate(name, relation="妻", kind="配偶者", **more):
 
 
 def test_話に出てきた人は候補になり_根拠の発言が付く(me, use_claude):
-    use_claude(人の候補={"people": [_candidate("和子")]})
+    use_claude(人の候補={"people": [_candidate("光子")]})
 
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
 
     item = me.get("/api/people/candidates").json()["items"][0]
-    assert item["name"] == "和子"
+    assert item["name"] == "光子"
     assert item["relation"] == "妻"
-    assert item["evidence"] == "和子と縁側でお茶を飲みました。"
+    assert item["evidence"] == "光子と縁側でお茶を飲みました。"
 
 
 def test_決めるまでは地図にも一覧にも足さない(me, use_claude):
-    use_claude(人の候補={"people": [_candidate("和子")]})
+    use_claude(人の候補={"people": [_candidate("光子")]})
 
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
 
-    assert "和子" not in {item["person"]["name"] for item in me.get("/api/map").json()["people"]}
-    assert "和子" not in {item["name"] for item in me.get("/api/people").json()["items"]}
-    assert "和子" not in {item["name"] for item in me.get("/api/users").json()["items"]}
+    assert "光子" not in {item["person"]["name"] for item in me.get("/api/map").json()["people"]}
+    assert "光子" not in {item["name"] for item in me.get("/api/people").json()["items"]}
+    assert "光子" not in {item["name"] for item in me.get("/api/users").json()["items"]}
 
 
 def test_発言に出てこない名前は候補にしない(me, use_claude):
     use_claude(人の候補={"people": [_candidate("作られた名前")]})
 
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
 
     assert me.get("/api/people/candidates").json()["items"] == []
 
@@ -183,11 +183,11 @@ def test_さんの有無だけが違う人を候補にしない(me, use_claude):
 
 
 def test_同じ続柄の人を別の候補にしない(me, use_claude):
-    use_claude(人の候補={"people": [_candidate("和子"), _candidate("妻")]})
+    use_claude(人の候補={"people": [_candidate("光子"), _candidate("妻")]})
 
-    _talk_and_close(me, "妻の和子と縁側でお茶を飲みました。")
+    _talk_and_close(me, "妻の光子と縁側でお茶を飲みました。")
 
-    assert [item["name"] for item in me.get("/api/people/candidates").json()["items"]] == ["和子"]
+    assert [item["name"] for item in me.get("/api/people/candidates").json()["items"]] == ["光子"]
 
 
 def test_候補を作るときに話に出てこない人の名前と続柄を渡さない(me, use_claude):
@@ -203,10 +203,10 @@ def test_候補を作るときに話に出てこない人の名前と続柄を�
 def test_候補を抜き出すのは本人の発言だけ(me, use_claude):
     fake = use_claude(ツインの会話={"reply": "ツインが言った佐藤さんの話です。"})
 
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
 
     text = fake.bodies("人の候補")[0]["messages"][0]["content"]
-    assert "[1] 和子と縁側でお茶を飲みました。" in text
+    assert "[1] 光子と縁側でお茶を飲みました。" in text
     assert "佐藤" not in text
 
 
@@ -217,15 +217,15 @@ def test_候補の項目に人の仲の良さを持たない():
 
 
 def test_登録すると一覧と地図に足され_夫婦の関係も入る(me, users, use_claude):
-    use_claude(人の候補={"people": [_candidate("和子")]})
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    use_claude(人の候補={"people": [_candidate("光子")]})
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
     candidate = me.get("/api/people/candidates").json()["items"][0]
 
     body = me.post(f"/api/people/candidates/{candidate['id']}/decide", json={"decision": "登録する"}).json()
 
-    assert body["person"]["name"] == "和子"
+    assert body["person"]["name"] == "光子"
     assert body["person"]["role"] == "家族"
-    assert "和子" in {item["person"]["name"] for item in me.get("/api/map").json()["people"]}
+    assert "光子" in {item["person"]["name"] for item in me.get("/api/map").json()["people"]}
     links = me.get("/api/genogram").json()["links"]
     assert [link["kind"] for link in links] == ["夫婦"]
     assert me.get("/api/people/candidates").json()["items"] == []
@@ -247,24 +247,24 @@ def test_親の候補を登録すると親子の関係が入る(me, users, use_c
 
 @pytest.mark.parametrize("decision", ["ちがう", "今はいい"])
 def test_ちがうと今はいいでは足さない(me, use_claude, decision):
-    use_claude(人の候補={"people": [_candidate("和子")]})
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    use_claude(人の候補={"people": [_candidate("光子")]})
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
     candidate = me.get("/api/people/candidates").json()["items"][0]
 
     body = me.post(f"/api/people/candidates/{candidate['id']}/decide", json={"decision": decision}).json()
 
     assert body["person"] is None
-    assert "和子" not in {item["name"] for item in me.get("/api/people").json()["items"]}
+    assert "光子" not in {item["name"] for item in me.get("/api/people").json()["items"]}
     assert me.get("/api/people/candidates").json()["items"] == []
 
 
 def test_ちがうと決めた候補をまた出さない(me, use_claude):
-    use_claude(人の候補={"people": [_candidate("和子")]})
-    _talk_and_close(me, "和子と縁側でお茶を飲みました。")
+    use_claude(人の候補={"people": [_candidate("光子")]})
+    _talk_and_close(me, "光子と縁側でお茶を飲みました。")
     candidate = me.get("/api/people/candidates").json()["items"][0]
     me.post(f"/api/people/candidates/{candidate['id']}/decide", json={"decision": "ちがう"})
 
-    _talk_and_close(me, "和子がお茶をいれてくれました。")
+    _talk_and_close(me, "光子がお茶をいれてくれました。")
 
     assert me.get("/api/people/candidates").json()["items"] == []
 

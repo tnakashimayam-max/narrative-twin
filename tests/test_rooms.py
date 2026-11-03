@@ -61,15 +61,6 @@ def _twin_in(client, room, present=True):
 # ---- 部屋を作れる人、見える人 ----
 
 
-@pytest.mark.parametrize("name", ["美穂さん", "節子さん", "田中さん"])
-def test_本人以外は部屋を作れない(login, users, name):
-    response = login(name).post(
-        "/api/rooms", json={"kind": "1対1", "member_ids": [users["誠一さん"].id]}
-    )
-
-    assert response.status_code == 404
-
-
 def test_部屋には必ず本人が入る(me, users):
     room = _make_room(me, users, ["美穂さん"], kind="1対1")
 
@@ -203,12 +194,11 @@ def test_1対1にはツインを入れられない(me, users):
 # ---- グループのツイン ----
 
 
-@pytest.mark.parametrize("name", ["美穂さん", "節子さん"])
-def test_本人以外はツインを出し入れできない(me, login, users, name):
+def test_託されていない人はツインを出し入れできない(me, login, users):
     room = _make_room(me, users, ["美穂さん", "節子さん"])
 
-    assert _twin_in(login(name), room).status_code == 404
-    assert _twin_in(login(name), room, present=False).status_code == 404
+    assert _twin_in(login("節子さん"), room).status_code == 404
+    assert _twin_in(login("節子さん"), room, present=False).status_code == 404
 
 
 def test_ツインが入るとはずれるを部屋に表示する(me, users):

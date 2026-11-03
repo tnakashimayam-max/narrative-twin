@@ -662,6 +662,15 @@ class RoomMember(_Base):
     left_at: datetime | None = None
 
 
+class RoomRead(_Base):
+    """人ごとの読んだ位置。last_read_seq は部屋の中の順番。未読と既読に使い、AI には渡さない。"""
+
+    room_id: int
+    user_id: int
+    last_read_seq: int
+    updated_at: datetime
+
+
 class TwinPresence(_Base):
     """グループにツインが入っている間。conversation_id の会話の発言だけをツインが読む。"""
 

@@ -335,7 +335,7 @@ def test_ない写真の番号はプロフィールに指せない(me, users):
 def test_人を登録するときも別の種類の写真は指せない(me):
     photo_id = _upload(me, kind="会話").json()["id"]
 
-    response = me.post("/api/people", json={"name": "和子さん", "role": "家族", "photo_id": photo_id})
+    response = me.post("/api/people", json={"name": "光子さん", "role": "家族", "photo_id": photo_id})
 
     assert response.status_code == 404
 

@@ -1,8 +1,8 @@
 """テストの共通部品。
 
-役割：一時的なデータベース、4人の利用者、ログイン済みのブラウザ役を用意する。
+役割：一時的なデータベース、架空の利用者、ログイン済みのブラウザ役を用意する。
 4つの極：特定の極に属さない土台。
-守る原則：8（テストの人物も架空の4人だけを使う）。
+守る原則：8（テストの人物も架空の人だけを使う）。
 
 本物の API キーと本物のデータベースに触れないようにするのが、この場所の大事な役目。
 テストはキーがなくても、ネットにつながらなくても通る。
@@ -24,6 +24,8 @@ from app.schemas import (
     Period,
     Petal,
     Place,
+    Residence,
+    Role,
     ShareScope,
     Source,
     StatementDraft,
@@ -46,6 +48,25 @@ def keep_real_logs_out(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "LOG_DIR", tmp_path / "logs")
 
 
+@pytest.fixture(autouse=True)
+def professionals_open_in_tests(monkeypatch):
+    """既存のテストは招かれた田中さんを使うので、日付の切り替えを開けておく。切り替えのテストだけ閉じる。"""
+    monkeypatch.setattr(config, "PROFESSIONAL_FROM", date(2000, 1, 1))
+
+
+def invite_tanaka(connection) -> None:
+    """招かれた田中さんがいる状態を作る。招く道のテストは tests/test_room_access.py にある。"""
+    with connection:
+        connection.execute(
+            "INSERT INTO users (id, name, role, called_name, relation, residence) VALUES (?, ?, ?, ?, ?, ?)",
+            (6, "田中さん", Role.PROFESSIONAL.value, "田中さん", "ケアマネジャー", Residence.NEAR.value),
+        )
+        connection.execute(
+            "INSERT INTO delegations (delegate_user_id, scope, decided_on) VALUES (?, ?, ?)",
+            (6, ShareScope.DECISION_SUPPORT.value, "2036-01-01"),
+        )
+
+
 @pytest.fixture
 def db_path(tmp_path):
     return tmp_path / "test.db"
@@ -55,6 +76,7 @@ def db_path(tmp_path):
 def conn(db_path):
     db.init_db(db_path)
     connection = db.connect(db_path)
+    invite_tanaka(connection)
     yield connection
     connection.close()
 

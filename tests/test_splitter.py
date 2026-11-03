@@ -236,8 +236,8 @@ def test_一覧にない人は捨てる(conn, save, add_utterance):
 
     report = save(
         [said],
-        _item("庭が好きです。", subject="和子さん"),
-        _item("庭が好きです。", speaker="和子さん"),
+        _item("庭が好きです。", subject="光子さん"),
+        _item("庭が好きです。", speaker="光子さん"),
     )
 
     assert report.statement_ids == []
