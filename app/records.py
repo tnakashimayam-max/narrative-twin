@@ -17,9 +17,9 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 
-from app import consent, db
+from app import consent, db, ledger
 from app.auth import current_user, get_conn
-from app.schemas import Letter, Source, Statement, User
+from app.schemas import Letter, Role, Source, Statement, User
 
 router = APIRouter(prefix="/api")
 
@@ -66,6 +66,26 @@ def read_statement(
         raise HTTPException(status_code=404, detail="見つかりません")
     db.log_access(conn, viewer.id, f"言明 {statement_id}")
     return consent.statement_for_viewer(viewer, statement)
+
+
+@router.get("/statements/{statement_id}/interpretations")
+def read_interpretations(
+    statement_id: int = Path(ge=1, le=db.MAX_ID),
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
+) -> dict[str, list[dict]]:
+    """言明の4つの視点の仮説を返す（NAK-4V、仮説リーフ）。専門職の画面だけに出す。
+
+    解釈は連鎖のいちばん元の行にぶら下がるので、元の行までたどって読む。
+    """
+    statement = consent.visible_statement(conn, viewer, statement_id)
+    if statement is None or viewer.role is not Role.PROFESSIONAL:
+        raise HTTPException(status_code=404, detail="見つかりません")
+    rows = conn.execute(
+        "SELECT perspective, body, confidence, caution, status FROM interpretations WHERE statement_id = ?",
+        (ledger.root_of(conn, statement_id),),
+    ).fetchall()
+    return {"items": [dict(row) for row in rows]}
 
 
 @router.get("/letters")

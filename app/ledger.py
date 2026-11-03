@@ -328,6 +328,7 @@ def correct_statement(
     body: str,
     petals: list[Petal] | None = None,
     effective_date: date | None = None,
+    at: datetime | None = None,
 ) -> Statement:
     """本人の訂正を新しい行として追記し、元の行を指す。元の行はそのまま残る。
 
@@ -356,8 +357,126 @@ def correct_statement(
         petals=original.petals if petals is None else petals,
         share_scope=original.share_scope,
         effective_date=effective_date or date.today(),
+        created_at=at,
     )
     return _insert(conn, draft, replaces_id=original_id)
+
+
+def _copy_head(
+    conn: sqlite3.Connection,
+    statement_id: int,
+    *,
+    actor_user_id: int,
+    confirm_status: ConfirmStatus | None = None,
+    share_scope: ShareScope | None = None,
+    at: datetime | None = None,
+) -> Statement:
+    """いま有効な行を写し、状態か範囲だけを変えた新しい行を足す。元の行はそのまま残る。
+
+    確かめる、休ませる、見せる範囲を変えることは、本人が決めることなので本人だけができる。
+    at は行を足した時刻。架空ログの読み込みで物語の日付を渡す。省くと今の時刻になり、
+    10年分の確かめがすべて読み込んだ日に固まって、ツインの色の移り変わりが分からなくなるため。
+    有効になった日（effective_date）は、話した日のまま変えない。
+    """
+    if not _is_self(conn, actor_user_id):
+        raise LedgerError("これを決められるのは本人だけです")
+    original = get_statement(conn, statement_id)
+    if original is None:
+        raise LedgerError(f"言明が見つかりません：{statement_id}")
+    if head_of(conn, statement_id).id != statement_id:
+        raise LedgerError("この行はすでに置き換えられています。いま有効な行を指定してください")
+    draft = StatementDraft(
+        source_utterance_ids=original.source_utterance_ids,
+        subject_user_id=original.subject_user_id,
+        speaker_user_id=original.speaker_user_id,
+        speaker_is_twin=original.speaker_is_twin,
+        source=original.source,
+        confirm_status=confirm_status or original.confirm_status,
+        body=original.body,
+        period=original.period,
+        theme=original.theme,
+        petals=original.petals,
+        share_scope=share_scope or original.share_scope,
+        effective_date=original.effective_date,
+        created_at=at,
+    )
+    return _insert(conn, draft, replaces_id=statement_id)
+
+
+def confirm_statement(
+    conn: sqlite3.Connection, statement_id: int, *, actor_user_id: int, at: datetime | None = None
+) -> Statement:
+    """本人が「そうです」と確かめた行を足す。ツインの色は、この確かめを根拠にのる（原則13）。
+
+    関連するテスト：tests/test_confirm.py
+    """
+    return _copy_head(
+        conn, statement_id, actor_user_id=actor_user_id, confirm_status=ConfirmStatus.CONFIRMED, at=at
+    )
+
+
+def rest_statement(
+    conn: sqlite3.Connection, statement_id: int, *, actor_user_id: int, at: datetime | None = None
+) -> Statement:
+    """本人が「今は話したくない」と答えた行を足す。範囲は「本人だけ」に戻す（原則6）。
+
+    見える範囲の判断を app/consent.py の1か所に保つため、状態だけでなく範囲も戻す。
+    """
+    return _copy_head(
+        conn,
+        statement_id,
+        actor_user_id=actor_user_id,
+        confirm_status=ConfirmStatus.RESTING,
+        share_scope=ShareScope.SELF_ONLY,
+        at=at,
+    )
+
+
+def change_share_scope(
+    conn: sqlite3.Connection,
+    statement_id: int,
+    *,
+    actor_user_id: int,
+    share_scope: ShareScope,
+    at: datetime | None = None,
+) -> Statement:
+    """見せる範囲を変えた行を足す。範囲は本人だけが決める（原則10）。"""
+    return _copy_head(conn, statement_id, actor_user_id=actor_user_id, share_scope=share_scope, at=at)
+
+
+def head_map(conn: sqlite3.Connection) -> dict[int, Statement]:
+    """すべての行について、いま有効な行を引ける辞書を返す。
+
+    要素の根拠は多いので、1行ずつ head_of を回すと1問で数千回の問い合わせになる。
+    表を1回読み、置き換えの連鎖をたどって辞書にする。
+    """
+    rows = conn.execute("SELECT * FROM statements ORDER BY rowid").fetchall()
+    statements = {row["id"]: db.row_to_model(row, Statement) for row in rows}
+    next_of = {item.replaces_id: item.id for item in statements.values() if item.replaces_id is not None}
+    heads: dict[int, Statement] = {}
+    for statement_id, statement in statements.items():
+        current, seen = statement_id, set()
+        while current in next_of and current not in seen:
+            seen.add(current)
+            current = next_of[current]
+        heads[statement_id] = statements[current]
+    return heads
+
+
+def root_of(conn: sqlite3.Connection, statement_id: int) -> int:
+    """訂正の連鎖のいちばん元の行の番号を返す。要素の根拠は、この番号で持つ。
+
+    確かめや訂正で先頭の行が増えても、根拠の番号を変えずにたどれるようにするため。
+    """
+    current = statement_id
+    seen: set[int] = set()
+    while current not in seen:
+        seen.add(current)
+        row = conn.execute("SELECT replaces_id FROM statements WHERE id = ?", (current,)).fetchone()
+        if row is None or row["replaces_id"] is None:
+            return current
+        current = row["replaces_id"]
+    raise LedgerError(f"置き換えの連鎖が輪になっています：{statement_id}")
 
 
 def head_of(conn: sqlite3.Connection, statement_id: int) -> Statement | None:

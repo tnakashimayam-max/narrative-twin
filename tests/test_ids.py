@@ -34,8 +34,10 @@ RANDOM_ID_TABLES = [
     "inference_logs",
     "rooms",
     "room_messages",
+    "advocacy_turns",
 ]
 SEQUENTIAL_ID_TABLES = [
+    "handover_themes",
     "users",
     "delegations",
     "access_logs",
@@ -52,7 +54,7 @@ SEQUENTIAL_ID_TABLES = [
     "job_failures",
 ]
 # 番号の列がない表。部屋の人と読んだ位置は部屋と人の組で、印は対象の組で見分ける。
-NO_ID_TABLES = ["room_members", "room_reads", "split_marks"]
+NO_ID_TABLES = ["room_members", "room_reads", "split_marks", "story_marks", "story_keys", "ai_call_cache"]
 LARGEST_SAFE_INTEGER = 2**53 - 1
 
 

@@ -20,15 +20,20 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app import (
+    advocacy,
     archive,
     auth,
     clock,
     config,
     db,
+    demo,
     devlog,
     ecomap,
     eval_cases,
+    growth,
+    handover,
     intake,
+    observations,
     people,
     photos,
     records,
@@ -70,6 +75,11 @@ def create_app(
     app.state.room_locks_guard = threading.Lock()
     app.state.job_locks = {}
     app.state.job_locks_guard = threading.Lock()
+    # 専門職の問いを順に処理する鍵。2回押しで AI を2回呼ばないため。
+    app.state.advocacy_lock = threading.Lock()
+    # 固める処理と「10年後へ進む」を同時に動かさないための鍵と、動いている間の印。
+    app.state.consolidate_lock = threading.Lock()
+    app.state.advancing = False
     # /api/people/candidates を先につなぐ。/api/people/{番号} より後だと番号の道に吸われるため。
     app.include_router(auth.router)
     app.include_router(ecomap.router)
@@ -78,7 +88,13 @@ def create_app(
     app.include_router(rooms.router)
     app.include_router(timeline.router)
     app.include_router(archive.router)
+    # /api/statements/{番号}/confirm などの道を、記録の道と一緒につなぐ
     app.include_router(records.router)
+    app.include_router(handover.router)
+    app.include_router(observations.router)
+    app.include_router(advocacy.router)
+    app.include_router(growth.router)
+    app.include_router(demo.router)
     app.include_router(intake.router)
     app.include_router(eval_cases.router)
     app.include_router(clock.router)

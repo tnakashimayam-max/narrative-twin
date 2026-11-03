@@ -88,7 +88,8 @@ def test_決めた言葉の型をすべて確かめている():
         for value in vars(s).values()
         if isinstance(value, type) and issubclass(value, StrEnum) and value is not StrEnum
     }
-    assert defined == set(AGREED_WORDS)
+    # AI の答えの型にだけ使う言葉は、表に入らないので、ここでは数えない
+    assert defined - {s.RequestKind} == set(AGREED_WORDS)
 
 
 @pytest.mark.parametrize("table", db.TABLE_MODELS.keys())

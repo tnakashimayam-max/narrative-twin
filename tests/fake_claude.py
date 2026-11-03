@@ -57,6 +57,9 @@ class FakeClaude:
 
 # プロンプトの書き出しから、どの役割の呼び出しかを見分ける
 _ROLE_MARKS = {
+    "固める処理": "意思モデルを作る係",
+    "ツインの答え": "要素の番号を選ぶ係",
+    "推定意思": "推定を書く係",
     "言明への分割": "記録の整理係",
     "人の候補": "話に出てきた人を抜き出します",
     "会話の要約": "の会話を要約します",
@@ -70,6 +73,9 @@ _ROLE_MARKS = {
 
 def role_of(body: dict) -> str:
     system = body.get("system", "")
+    # プロンプトキャッシュを使うときは、ブロックの配列で届く
+    if isinstance(system, list):
+        system = "\n".join(block["text"] for block in system)
     for role, mark in _ROLE_MARKS.items():
         if mark in system:
             return role
@@ -93,6 +99,15 @@ class RoleClaude:
             "グループのツイン": {"kind": "書かない", "text": ""},
             "今日はここまで": {"reply": "今日もお話をありがとうございました。", "tip": "夕方は少し冷えそうです。"},
             "ツインの会話": {"reply": "そうなのですね。"},
+            "固める処理": {"elements": []},
+            "ツインの答え": {"direct_numbers": [], "related_numbers": [], "request_kind": "通常", "lead": None},
+            "推定意思": {
+                "estimate": "推定です。",
+                "evidence_numbers": [],
+                "counter_numbers": [],
+                "confidence": 0.3,
+                "how_to_confirm": "ご本人にうかがってください。",
+            },
         }
         self.answers.update({key.replace("_", ""): value for key, value in answers.items()})
         self.requests: list[httpx2.Request] = []

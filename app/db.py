@@ -333,6 +333,43 @@ CREATE TABLE IF NOT EXISTS room_reads (
     PRIMARY KEY (room_id, user_id)
 );
 
+-- 本人が「意思決定支援用」に入れると決めたテーマ
+CREATE TABLE IF NOT EXISTS handover_themes (
+    id INTEGER PRIMARY KEY,
+    {_enum("theme")},
+    decided_on TEXT NOT NULL,
+    UNIQUE (theme)
+);
+
+-- 架空ログをどこまで読み込んだかの印と、言明の鍵。自分用の起動では使わない
+CREATE TABLE IF NOT EXISTS story_marks (
+    stage TEXT PRIMARY KEY,
+    loaded_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS story_keys (
+    key TEXT PRIMARY KEY,
+    statement_id INTEGER NOT NULL
+);
+
+-- 専門職とツインのやり取り。問いと答えの本文は inference_logs にある
+CREATE TABLE IF NOT EXISTS advocacy_turns (
+    {_RANDOM_ID},
+    asker_user_id INTEGER NOT NULL REFERENCES users(id),
+    client_key TEXT NOT NULL,
+    answer_log_id INTEGER NOT NULL,
+    estimate_log_id INTEGER,
+    created_at TEXT NOT NULL,
+    UNIQUE (asker_user_id, client_key)
+);
+
+-- AI の呼び出しのプロンプトキャッシュの量。ai_calls の表を変えないので、自分用の記録にも表が増えるだけ
+CREATE TABLE IF NOT EXISTS ai_call_cache (
+    ai_call_id INTEGER PRIMARY KEY REFERENCES ai_calls(id),
+    cache_read_tokens INTEGER NOT NULL,
+    cache_write_tokens INTEGER NOT NULL
+);
+
 -- グループにツインが入っている間。入るたびに会話を1行作り、ツインが読むのはその会話の発言だけにする
 CREATE TABLE IF NOT EXISTS twin_presences (
     id INTEGER PRIMARY KEY,
@@ -463,6 +500,7 @@ WORD_COLUMNS: dict[str, dict[str, type[StrEnum]]] = {
         "status": s.CandidateStatus,
     },
     "split_marks": {"target_kind": s.SplitTargetKind},
+    "handover_themes": {"theme": s.Theme},
 }
 
 
@@ -583,6 +621,11 @@ TABLE_MODELS: dict[str, type[BaseModel]] = {
     "rooms": s.Room,
     "room_members": s.RoomMember,
     "room_reads": s.RoomRead,
+    "handover_themes": s.HandoverTheme,
+    "story_marks": s.StoryMark,
+    "story_keys": s.StoryKey,
+    "advocacy_turns": s.AdvocacyTurn,
+    "ai_call_cache": s.AICallCache,
     "twin_presences": s.TwinPresence,
     "room_messages": s.RoomMessage,
     "family_links": s.FamilyLink,
@@ -772,10 +815,12 @@ def log_ai_call(
     target: str | None = None,
     is_batch: bool = False,
     seconds: float | None = None,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
 ) -> None:
     """AI の呼び出しを記録する。どのモデルで作ったかと、費用の元になるトークン数を残す。"""
     with connection:
-        connection.execute(
+        cursor = connection.execute(
             "INSERT INTO ai_calls "
             "(role, model, input_tokens, output_tokens, is_batch, target, called_at, seconds) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -790,6 +835,11 @@ def log_ai_call(
                 seconds,
             ),
         )
+        if cache_read_tokens or cache_write_tokens:
+            connection.execute(
+                "INSERT INTO ai_call_cache (ai_call_id, cache_read_tokens, cache_write_tokens) VALUES (?, ?, ?)",
+                (cursor.lastrowid, cache_read_tokens, cache_write_tokens),
+            )
 
 
 def log_job_failure(connection: sqlite3.Connection, job: str, target: str | None, error: BaseException) -> None:

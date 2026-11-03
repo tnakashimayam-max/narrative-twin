@@ -294,7 +294,7 @@ def _imported_modules(path: Path) -> set[str]:
     sorted(
         path.name
         for path in APP_DIR.glob("*.py")
-        if path.name not in {"ai.py", "intake.py", "twin.py", "jobs.py", "rooms.py", "timeline.py"}
+        if path.name not in {"ai.py", "intake.py", "twin.py", "jobs.py", "rooms.py", "timeline.py", "consolidate.py", "advocacy.py", "demo.py"}
     ),
 )
 def test_決まった手順の層はAIを呼ばない(filename):

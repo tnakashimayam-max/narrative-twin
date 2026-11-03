@@ -59,8 +59,10 @@ QUESTION_DROPPED = "問いを落とした"
 REPLY_TRIMMED = "受け止めを短くした"
 REPLY_REPLACED = "決まった文に替えた"
 STATEMENT_DROPPED = "入らなかった言明あり"
+NOT_YET = "まだ聞けていない"
 _RESULTS = frozenset(
     {
+        NOT_YET,
         SUCCESS,
         FAILED,
         REJECTED,
@@ -80,7 +82,9 @@ _RESULTS = frozenset(
 START = "起動"
 TWIN_TURN = "ツインの返事"
 _NO_ROUTE = "（道なし）"
-_FIXED_OPS = frozenset({START, TWIN_TURN, "言明への分割", "会話の要約", "人の候補", "グループのツイン", "スレッドの問い"})
+_FIXED_OPS = frozenset(
+    {START, TWIN_TURN, "言明への分割", "会話の要約", "人の候補", "グループのツイン", "スレッドの問い", "専門職の問い", "固める処理"}
+)
 # 道の形はコードに書いたものだけで、番号の部分は {room_id} のままになる。実際の URL は通さない。
 _ROUTE_OP = re.compile(r"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) (/api[/\w{}:-]*|（道なし）)", re.ASCII)
 _ERROR_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,79}")

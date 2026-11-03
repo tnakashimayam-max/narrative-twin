@@ -18,6 +18,8 @@
   ないので送らず、断られた応答（stop_reason が refusal）を AIRefusedError として扱う。
 - 画像を読む力：写真に写っているものに触れて話すため。Sonnet だけで使う。
 - Message Batches API：大量の処理を半額でまとめて行うため。
+- プロンプトキャッシュ：意思モデルを system の後ろのブロックに置き、問いが続くときの入力を安くするため。
+  意思モデルのブロックには日付を入れない。毎回変わるとキャッシュに当たらないため。
 
 どのモデルで作ったかを残すため、結果にはモデル名とトークン数を必ず付ける。失敗したときも、
 使った分を例外に持たせて記録できるようにする。
@@ -47,11 +49,14 @@ from app.schemas import (
     ConversationSummary,
     GroupTurn,
     LetterBodyDraft,
+    ConsolidationResult,
+    EstimateDraft,
     PersonCandidateResult,
     Photo,
     PhotoKind,
     SplitResult,
     ThreadQuestion,
+    TwinAnswerPick,
     TwinClosing,
     TwinPhotoTurn,
     TwinTurn,
@@ -106,6 +111,8 @@ class AIResult(Generic[ResultT]):
     input_tokens: int
     output_tokens: int
     seconds: float | None = None
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 def _make_client() -> anthropic.Anthropic:
@@ -139,8 +146,13 @@ def _answering_model(response) -> str:
     return response.model
 
 
-def _request_params(role: str, system: str, content: str | list, schema: type[BaseModel]) -> dict:
-    """1回の呼び出しの中身を作る。すぐに呼ぶときとバッチで同じものを使う。"""
+def _request_params(
+    role: str, system: str, content: str | list, schema: type[BaseModel], cached_system: str | None = None
+) -> dict:
+    """1回の呼び出しの中身を作る。すぐに呼ぶときとバッチで同じものを使う。
+
+    cached_system は、プロンプトキャッシュに載せる変わりにくい文（意思モデル）。
+    """
     if role not in config.MODEL_BY_ROLE:
         raise ValueError(f"モデルが決まっていない役割です：{role}")
     output_config: dict = {
@@ -151,7 +163,12 @@ def _request_params(role: str, system: str, content: str | list, schema: type[Ba
     return {
         "model": config.MODEL_BY_ROLE[role],
         "max_tokens": config.MAX_TOKENS_BY_ROLE.get(role, config.MAX_TOKENS),
-        "system": system,
+        "system": system
+        if cached_system is None
+        else [
+            {"type": "text", "text": system},
+            {"type": "text", "text": cached_system, "cache_control": {"type": "ephemeral"}},
+        ],
         "messages": [{"role": "user", "content": content}],
         "output_config": output_config,
     }
@@ -181,12 +198,15 @@ def call_structured(
     content: str | list,
     schema: type[ResultT],
     client: anthropic.Anthropic | None = None,
+    cached_system: str | None = None,
 ) -> AIResult[ResultT]:
     """Claude を呼び、結果を開発のログに残す。呼び出しの中身は _ask_claude にある。"""
     started = time.monotonic()
     prompt = _prompt_text(content)
     try:
-        result = _ask_claude(role, system=system, content=content, schema=schema, client=client)
+        result = _ask_claude(
+            role, system=system, content=content, schema=schema, client=client, cached_system=cached_system
+        )
     except Exception as error:
         devlog.record(
             f"AI：{role}",
@@ -204,10 +224,12 @@ def call_structured(
         f"AI：{role}",
         outcome=devlog.SUCCESS,
         ms=devlog.since(started),
-        prompt_chars=len(prompt),
+        prompt_chars=len(prompt) + len(cached_system or ""),
         answer_chars=len(answer),
         input_tokens=result.input_tokens,
         output_tokens=result.output_tokens,
+        cache_read_tokens=result.cache_read_tokens,
+        cache_write_tokens=result.cache_write_tokens,
         model=result.model,
         text={"入力": prompt, "答え": answer},
     )
@@ -221,9 +243,10 @@ def _ask_claude(
     content: str | list,
     schema: type[ResultT],
     client: anthropic.Anthropic | None = None,
+    cached_system: str | None = None,
 ) -> AIResult[ResultT]:
     """Claude を呼び、schema の型に合う答えを返す。"""
-    params = _request_params(role, system, content, schema)
+    params = _request_params(role, system, content, schema, cached_system)
     claude = client or _make_client()
     # 代替の指定は、機能のあるモデルにだけ送る。Haiku 5.5 に送るとエラーになるため。
     options: dict = {}
@@ -237,6 +260,8 @@ def _ask_claude(
     # やり直した分の費用も記録に残すため、トークン数は全部の試行を足す
     input_tokens = 0
     output_tokens = 0
+    cache_read = 0
+    cache_write = 0
     for _ in range(_MAX_ATTEMPTS):
         # SDK の parse は答えを受け取った時点で読み取りまで済ませるので、断られた応答でも
         # 読み取りの失敗になり、断られたことが分からない。先に終わり方を見るために、
@@ -247,6 +272,8 @@ def _ask_claude(
             raise AIUnavailableError(_describe_api_error(error)) from error
         input_tokens += response.usage.input_tokens
         output_tokens += response.usage.output_tokens
+        cache_read += getattr(response.usage, "cache_read_input_tokens", 0) or 0
+        cache_write += getattr(response.usage, "cache_creation_input_tokens", 0) or 0
         if response.stop_reason == "refusal":
             raise AIRefusedError(
                 "Claude が答えを断りました", response.model, input_tokens, output_tokens
@@ -268,6 +295,8 @@ def _ask_claude(
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             seconds=round(time.monotonic() - started, 2),
+            cache_read_tokens=cache_read,
+            cache_write_tokens=cache_write,
         )
 
     raise AIResultError(
@@ -361,6 +390,32 @@ def person_candidates(
 ) -> AIResult[PersonCandidateResult]:
     """話に出てきた人の候補。"""
     return call_structured("人の候補", system=system, content=text, schema=PersonCandidateResult, client=client)
+
+
+def consolidate(
+    role: str, *, system: str, text: str, client: anthropic.Anthropic | None = None
+) -> AIResult[ConsolidationResult]:
+    """言明か下の段の要素から、意思モデルの要素を作る。結果の確かめは app/consolidate.py が行う。"""
+    return call_structured(role, system=system, content=text, schema=ConsolidationResult, client=client)
+
+
+def pick_elements(
+    *, system: str, model_text: str, question: str, client: anthropic.Anthropic | None = None
+) -> AIResult[TwinAnswerPick]:
+    """問いに合う要素の番号を選ぶ。本人の言葉の本文は渡さず、受け取らない（原則9）。"""
+    return call_structured(
+        "ツインの答え",
+        system=system,
+        cached_system=model_text,
+        content=question,
+        schema=TwinAnswerPick,
+        client=client,
+    )
+
+
+def estimate_will(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[EstimateDraft]:
+    """推定意思の案を作る。本人の言葉とは別の枠に出す（原則11）。"""
+    return call_structured("推定意思", system=system, content=text, schema=EstimateDraft, client=client)
 
 
 def split_utterances(

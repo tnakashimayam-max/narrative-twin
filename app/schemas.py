@@ -671,6 +671,47 @@ class RoomRead(_Base):
     updated_at: datetime
 
 
+class HandoverTheme(_Base):
+    """本人が「意思決定支援用」に入れると決めたテーマ。決めた日を画面に出す（原則10）。"""
+
+    id: int
+    theme: Theme
+    decided_on: date
+
+
+class StoryMark(_Base):
+    """架空ログをどこまで読み込んだかの印。2回読み込まないため。"""
+
+    stage: str
+    loaded_at: datetime
+
+
+class StoryKey(_Base):
+    """架空ログの言明の鍵と番号の対応。番号は乱数なので、保存した結果は鍵で言明を指す。"""
+
+    key: str
+    statement_id: int
+
+
+class AdvocacyTurn(_Base):
+    """専門職とツインのやり取りの1回。問いと答えの本文は推論の記録（inference_logs）にある。"""
+
+    id: int
+    asker_user_id: int
+    client_key: str
+    answer_log_id: int
+    estimate_log_id: int | None = None
+    created_at: datetime
+
+
+class AICallCache(_Base):
+    """AI の呼び出しのプロンプトキャッシュの量。既存の ai_calls の表を変えないよう、別の表に持つ。"""
+
+    ai_call_id: int
+    cache_read_tokens: int
+    cache_write_tokens: int
+
+
 class TwinPresence(_Base):
     """グループにツインが入っている間。conversation_id の会話の発言だけをツインが読む。"""
 
@@ -939,6 +980,63 @@ class SplitResult(_Base):
     """言明に分けた結果。"""
 
     statements: list[SplitStatement]
+
+
+class ConsolidatedElement(_Base):
+    """固める処理が作る、意思モデルの要素の案。
+
+    根拠は入力で振った番号で受け取り、プログラムが確かめて本当の番号に直す。
+    conflicts_with は食い違う今の要素の番号、continues は前回の結果から続く要素の番号。
+    """
+
+    kind: ElementKind
+    body: str = Field(min_length=1, max_length=200)
+    condition: str | None = None
+    petals: Petals = []
+    confidence: Confidence
+    evidence_numbers: list[int]
+    conflicts_with: int | None = None
+    continues: int | None = None
+    confirm_question: str | None = None
+
+
+class ConsolidationResult(_Base):
+    """固める処理の結果。"""
+
+    elements: list[ConsolidatedElement]
+
+
+class RequestKind(StrEnum):
+    """専門職の頼みの種類。原則に触れる頼みには、決まった1文を添える。"""
+
+    NORMAL = "通常"
+    IMPERSONATE = "なりきり"
+    REPHRASE = "言い換え"
+    HEALTH = "健康の判断"
+    ASSERT = "言い切り"
+
+
+class TwinAnswerPick(_Base):
+    """ツインの答えの AI の出力。要素の番号を選ぶだけで、本人の言葉の本文は持たない。
+
+    direct_numbers は問いに直接答える要素、related_numbers は関係はあるが直接は答えない要素。
+    lead は短い案内で、本人の言葉として扱わない。プログラムが確かめて、通らなければ捨てる。
+    """
+
+    direct_numbers: list[int] = []
+    related_numbers: list[int] = []
+    request_kind: RequestKind = RequestKind.NORMAL
+    lead: str | None = None
+
+
+class EstimateDraft(_Base):
+    """推定意思の案。本人の言葉とは別の枠に出す（原則11）。根拠の番号はプログラムが確かめる。"""
+
+    estimate: str = Field(min_length=1, max_length=200)
+    evidence_numbers: list[int]
+    counter_numbers: list[int] = []
+    confidence: Confidence
+    how_to_confirm: str = Field(min_length=1, max_length=200)
 
 
 class Evaluation(_Base):

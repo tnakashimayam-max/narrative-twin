@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import clock, config, consent, db
-from app.schemas import Gender, Role, User
+from app.schemas import Gender, Role, ShareScope, User
 
 USER_HEADER = "X-NT-User"
 NOT_FOUND = "見つかりません"
@@ -160,7 +160,11 @@ def me(
 ) -> dict:
     """ログイン中の人を返す。画面が「ケアマネジャーを招く」を出すかを決められるようにする。"""
     can_invite = consent.can_act_for_self(conn, user) and professionals_open(request.app)
-    return {**person_view(user), "can_invite_professional": can_invite}
+    # 支援者の画面を使えるのは、招かれた専門職と、立場が家族の託された人
+    supporter = user.role in {Role.PROFESSIONAL, Role.FAMILY} and ShareScope.DECISION_SUPPORT in consent.visible_scopes(
+        conn, user
+    )
+    return {**person_view(user), "can_invite_professional": can_invite, "can_use_supporter_screen": supporter}
 
 
 @router.post("/self", status_code=201)

@@ -22,6 +22,7 @@ from app.prompts import TWIN_LABEL
 from app.schemas import (
     Conversation,
     ConversationDraft,
+    LifeStage,
     MessageKind,
     Place,
     QuestionResult,
@@ -135,7 +136,15 @@ def open_conversation(conn: sqlite3.Connection, room_id: int) -> Conversation | 
 
 
 def start_conversation(conn: sqlite3.Connection, room_id: int, day: date) -> Conversation:
-    return ledger.add_conversation(conn, ConversationDraft(conversation_date=day, room_id=room_id))
+    """会話を始める。人生の段階は、その日までの最後の会話から引き継ぐ。"""
+    row = conn.execute(
+        "SELECT life_stage FROM conversations WHERE conversation_date <= ? ORDER BY conversation_date DESC, rowid DESC LIMIT 1",
+        (day.isoformat(),),
+    ).fetchone()
+    draft = ConversationDraft(conversation_date=day, room_id=room_id)
+    if row is not None:
+        draft.life_stage = LifeStage(row["life_stage"])
+    return ledger.add_conversation(conn, draft)
 
 
 def close_conversation(conn: sqlite3.Connection, conversation_id: int, moment: str) -> None:

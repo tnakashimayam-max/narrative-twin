@@ -93,6 +93,10 @@ MODEL_BY_ROLE: dict[str, str] = {
     "便りの下書き": _HAIKU,
     # 人の候補：本人の言葉から名前と続柄を抜き出すだけで、決めるのは本人なので Haiku。
     "人の候補": _HAIKU,
+    # 固める処理（月）：回数が多く、言明の抜き出しに近い作業なので Sonnet。バッチで半額にする。
+    "固める処理（月）": _SONNET,
+    # ツインの答え：専門職の問いに合う要素の番号を選ぶだけで、本文は読まない。専門職が待つので Opus は使わない。
+    "ツインの答え": _SONNET,
     # 固める処理：回数は少ないが、誤ると意思モデル全体に残る。まだ動かない。作るときに Haiku と比べて決める。
     "固める処理": _OPUS,
     # 推定意思：本人の言葉がない場面で、ケアの判断の材料になる。まだ動かない。作るときに比べて決める。
@@ -121,6 +125,10 @@ EFFORT_BY_ROLE: dict[str, str] = {
     "便りの下書き": "low",
     "人の候補": "low",
     "会話の要約": "low",
+    "固める処理（月）": "low",
+    "ツインの答え": "low",
+    "固める処理": "medium",
+    "推定意思": "medium",
 }
 
 # 役割ごとの応答の上限。考える処理の分もここに含まれるので、余裕を持たせる。
@@ -135,6 +143,10 @@ MAX_TOKENS_BY_ROLE: dict[str, int] = {
     "便りの下書き": 1500,
     "人の候補": 3000,
     "会話の要約": 1500,
+    "固める処理（月）": 6000,
+    "固める処理": 12000,
+    "ツインの答え": 3000,
+    "推定意思": 6000,
 }
 
 # 本人が待つ処理は、長く待たせずに「もう一度送る」を出す。単位は秒。
@@ -142,6 +154,8 @@ TIMEOUT_SECONDS_BY_ROLE: dict[str, float] = {
     "ツインの会話": 60,
     "写真の問い": 90,
     "便りの下書き": 60,
+    "ツインの答え": 90,
+    "推定意思": 150,
 }
 
 # ツインが前の話を思い出すために読む量の上限。記録が増えても読む量を増やさないため。
@@ -157,6 +171,20 @@ MEMORY_LIMITS = {
     "self_chars": 4000,
     "asked_questions": 30,
     "pending_questions": 5,
+}
+
+# 推論で読む量の上限。記録が増えても、読むのは意思モデルの上限までなので、読む量はほぼ変わらない。
+MODEL_LIMITS = {
+    "element_chars": 12000,
+    "selected_elements": 6,
+    "quotes_per_element": 3,
+    "quotes_total": 8,
+    "testimonies": 3,
+    "guesses": 2,
+    "now": 3,
+    "estimate_statements": 24,
+    "context_elements": 40,
+    "month_statement_chars": 16000,
 }
 
 # 公式の料金表（2026-11-02 に確認）。1M トークンあたりの USD。費用の計算と docs/tools.md に使う。
@@ -177,6 +205,17 @@ MAX_TOKENS = 16000
 
 # 通信の失敗のときに SDK が繰り返す回数。費用と待ち時間を読めるよう、明示する。
 MAX_API_RETRIES = 2
+
+
+# プロンプトキャッシュの料金の倍率。読むと入力の1割、書くと入力の1.25倍。
+CACHE_READ_RATE = 0.1
+CACHE_WRITE_RATE = 1.25
+
+
+def cache_cost_usd(model: str, read_tokens: int, write_tokens: int) -> float:
+    """プロンプトキャッシュの分の費用を計算する。input_tokens には含まれない分。"""
+    price = PRICE_PER_MTOK[model]["input"]
+    return (read_tokens * CACHE_READ_RATE + write_tokens * CACHE_WRITE_RATE) * price / 1_000_000
 
 
 def cost_usd(model: str, input_tokens: int, output_tokens: int, *, batch: bool = False) -> float:

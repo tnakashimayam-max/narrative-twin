@@ -18,7 +18,7 @@ from collections.abc import Sequence
 
 import uvicorn
 
-from app import config, devlog, jobs
+from app import config, demo, devlog, jobs
 from app.main import create_app
 
 HOST = "127.0.0.1"
@@ -35,6 +35,9 @@ def main() -> None:
     deployment = choose_deployment()
     app = create_app(deployment=deployment)
     app.state.devlog.write(devlog.START, outcome=devlog.SUCCESS)
+    # 架空用の起動では、デモの日より前の架空ログを入れる。自分用の記録には入れない。
+    if not deployment.mine:
+        demo.ensure_prologue(deployment.db_path)
     # 前回の起動で止まった処理を流し直す。テストが本物の API を呼ばないよう、ここからだけ呼ぶ。
     threading.Thread(target=jobs.catch_up, args=(app,), daemon=True).start()
     uvicorn.run(app, host=HOST, port=deployment.port)
