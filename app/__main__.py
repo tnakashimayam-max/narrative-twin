@@ -37,7 +37,7 @@ def main() -> None:
     app.state.devlog.write(devlog.START, outcome=devlog.SUCCESS)
     # 架空用の起動では、デモの日より前の架空ログを入れる。自分用の記録には入れない。
     if not deployment.mine:
-        demo.ensure_prologue(deployment.db_path)
+        demo.ensure_prologue(deployment)
         demo.restore_day(app)
     # 前回の起動で止まった処理を流し直す。テストが本物の API を呼ばないよう、ここからだけ呼ぶ。
     threading.Thread(target=jobs.catch_up, args=(app,), daemon=True).start()

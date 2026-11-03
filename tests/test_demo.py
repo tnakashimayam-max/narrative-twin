@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from app import ai, clock, config, db, demo, ledger, model_store
 from app.main import create_app
 from app.schemas import ConfirmStatus, LifeStage, ShareScope, Theme
-from fiction import load, plan, stage
+from fiction import load, plan, snapshot, stage
 from tests.fake_claude import RoleClaude
 
 BEFORE = plan.PlanItem(
@@ -310,6 +310,97 @@ def test_進む前に起動し直しても日付は動かない(fresh):
 
     assert demo.restore_day(restarted) is False
     assert clock.now(restarted).date() == date.today()
+
+
+def _tanaka_exists(connection):
+    return any(user.name == "田中さん" for user in db.list_users(connection))
+
+
+def test_進む直前に控えを取り_控えには進む前の状態が入る(fresh, claude):
+    app, conn, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+    before = conn.execute("SELECT COUNT(*) FROM statements").fetchone()[0]
+
+    me.post("/api/dev/advance")
+
+    saved = snapshot.list_snapshots(app.state.deployment)[-1]
+    assert saved.name.endswith(snapshot.BEFORE_ADVANCE)
+    copied = db.connect(saved.db_path)
+    assert copied.execute("SELECT COUNT(*) FROM statements").fetchone()[0] == before
+    assert copied.execute("SELECT 1 FROM story_marks WHERE stage = 'future'").fetchone() is None
+    copied.close()
+
+
+def test_2回押しても控えは1つだけ増える(fresh, claude):
+    app, _, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+
+    me.post("/api/dev/advance")
+    me.post("/api/dev/advance")
+
+    assert len(snapshot.list_snapshots(app.state.deployment)) == 1
+
+
+def test_控えを取れなければ進まない(fresh, claude, monkeypatch):
+    app, conn, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+
+    def broken(*_):
+        raise OSError("書けない")
+
+    monkeypatch.setattr(snapshot, "save", broken)
+    assert me.post("/api/dev/advance").status_code == 503
+
+    assert stage.is_loaded(conn, "future") is False
+    assert clock.now(app).date() == date.today()
+
+
+def test_控えへ戻すと2026年に戻り_田中さんは消え_もう一度10年後へ進める(fresh, claude, monkeypatch):
+    app, conn, person, users = fresh
+    monkeypatch.setattr(snapshot, "server_is_running", lambda port: False)
+    me = person("誠一さん")
+    _set_handover(me, users)
+    me.post("/api/dev/advance")
+    person("美穂さん").post("/api/people/professional", json={"name": "田中さん", "relation": "ケアマネジャー"})
+    assert _tanaka_exists(conn)
+    deployment = app.state.deployment
+    # 本物と同じく、サーバーを止めてから戻す。Windows では開いているファイルを移せない
+    conn.close()
+
+    snapshot.restore(deployment)
+
+    # 起動し直したのと同じ手順を通す
+    restarted = create_app(deployment=deployment)
+    assert demo.ensure_prologue(deployment) is False
+    assert demo.restore_day(restarted) is False
+    assert clock.now(restarted).date() == date.today()
+    connection = db.connect(deployment.db_path)
+    assert not _tanaka_exists(connection)
+    assert stage.is_loaded(connection, "future") is False
+    client = TestClient(restarted, headers={"X-NT-User": str(users["誠一さん"].id)})
+    assert client.get("/api/dev/story").json()["future_loaded"] is False
+
+    body = client.post("/api/dev/advance").json()
+
+    assert body["future_loaded"] is True
+    assert body["today"] == plan.FUTURE_DAY.isoformat()
+    bodies = [statement.body for statement in ledger.current_statements(connection)]
+    assert bodies.count("施設のことも考えていい。") == 1
+    connection.close()
+
+
+def test_最初の起動のときに控えを取り_2回目の起動では取らない(tmp_path, story):
+    deployment = config.deployment(data_dir=tmp_path / "d")
+    create_app(deployment=deployment)
+
+    assert demo.ensure_prologue(deployment) is True
+    assert demo.ensure_prologue(deployment) is False
+
+    saved = snapshot.list_snapshots(deployment)
+    assert [item.name.endswith(snapshot.FIRST_START) for item in saved] == [True]
 
 
 def test_本人だけの話は託すテーマでも広がらない(fresh, claude):

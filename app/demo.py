@@ -8,6 +8,7 @@
 「10年後へ進む」は、保存した架空ログを AI を呼ばずに読み込み（fiction/load.py）、そのあと、その場で入れた言葉の
 分だけ固める処理を流す。2026年の年と人生の段階も流し直すので、その場で入れた言葉が田中さんに届く。
 2回押しても2回読み込まないよう、印と鍵で止める。
+進むと戻れないので、最初の起動のときと進む直前に控えを取る。戻す道具は fiction/snapshot.py にある。
 
 関連するテスト：tests/test_demo.py
 """
@@ -35,6 +36,13 @@ def _story():
     from fiction import stage
 
     return stage
+
+
+def _snapshot():
+    """控えの道具を読み込む。自分用の起動では使わない。"""
+    from fiction import snapshot
+
+    return snapshot
 
 
 @router.post("/model/consolidate")
@@ -101,6 +109,13 @@ def advance(
         if not stage.is_loaded(conn, _FUTURE_STAGE):
             if not stage.story_is_ready():
                 raise HTTPException(status_code=409, detail="10年分の記録がまだ用意できていません。")
+            # 控えを取れないまま進むと戻せないので、進まない
+            tool = _snapshot()
+            try:
+                tool.save(app.state.deployment, tool.BEFORE_ADVANCE)
+            except (tool.SnapshotError, OSError, sqlite3.Error) as error:
+                devlog.record("進む前の控え", outcome=devlog.FAILED, error=devlog.error_name(error))
+                raise HTTPException(status_code=503, detail="控えを取れなかったので、進みませんでした。") from error
             app.state.advancing = True
             stage.load_future(conn, clock.now(app))
             # 日付を2036年へ進める。専門職の招待と、その後の会話の日付に使う
@@ -129,13 +144,26 @@ def restore_day(app) -> bool:
     return True
 
 
-def ensure_prologue(path) -> bool:
-    """架空用の起動のときに、2026年11月3日より前の架空ログを入れる。入れたら True を返す。"""
+def ensure_prologue(deployment) -> bool:
+    """架空用の起動のときに、2026年11月3日より前の架空ログを入れる。入れたら True を返す。
+
+    入れた直後の控えも取る。入れた言葉と訂正の場面まで撮り直せるようにするため。控えを取れなくても起動は止めない。
+    """
     stage = _story()
     if not stage.load.read_logs():
         return False
-    connection = db.connect(path)
+    connection = db.connect(deployment.db_path)
     try:
-        return stage.load_prologue(connection)
+        loaded = stage.load_prologue(connection)
     finally:
         connection.close()
+    if loaded:
+        tool = _snapshot()
+        try:
+            tool.save(deployment, tool.FIRST_START)
+        except (tool.SnapshotError, OSError, sqlite3.Error) as error:
+            # 要求の外なので devlog.record は何も書かない。失敗が見えるよう、ログへ直接書く
+            devlog.DevLog(deployment.log_path, mine=deployment.mine).write(
+                "最初の起動の控え", outcome=devlog.FAILED, error=devlog.error_name(error)
+            )
+    return loaded

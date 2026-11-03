@@ -22,6 +22,8 @@ import { openShareSheet } from "./share.js";
 import { avatar, el, openSheet, twinFigure } from "./ui.js";
 
 const POLL_MS = 3000;
+// サーバーの上限（app/rooms.py の text）と同じにする
+const MAX_MESSAGE_CHARS = 4000;
 const BANNER_NO_TWIN = "ツイン（AI）はこの部屋を読みません";
 const BANNER_TWIN = "ツイン（AI）がいます。ここでの話を読みます";
 const GUESS_ENDING = "合っていますか？";
@@ -592,6 +594,11 @@ export function openRoom(container, ctx, roomId) {
   async function send() {
     const text = textBox.value.trim();
     if (sending || (!text && !attached)) {
+      return;
+    }
+    // 長すぎる言葉は送っても受け付けられず、「もう一度送る」でも通らない。消さずに残して、短くしてもらう
+    if (text.length > MAX_MESSAGE_CHARS) {
+      showStatus(`長すぎて送れません。${MAX_MESSAGE_CHARS}字までにしてください（今は${text.length}字です）。`);
       return;
     }
     showStatus("");

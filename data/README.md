@@ -12,6 +12,8 @@
 | `data/story/model_YYYY.json` | 固める処理の AI の結果。言明は鍵で指す | 月、年、人生の段階 | 入れる |
 | `data/narrative_twin.db`、`data/photos/` | 架空用の起動の保存先。起動すると作られる | 利用者5人と、2026年11月3日より前の架空ログ | 入れない |
 | `data/demo_photos/` | デモに映す写真（撮影の情報を消したもの） | 約10枚 | 入れない |
+| `data/trial/snapshots/` | 架空用のデータベースと写真の控え（下の「「10年後へ進む」の前へ戻す」） | 1回あたり約1MB | 入れない |
+| `data/trial/replaced/` | 控えへ戻したときに、戻す前のデータベースと写真を移した先 | 1回あたり約1〜3MB | 入れない |
 | `data/mine/` | 開発者が自分の記録で試すときの保存先 | 公開しない | 入れない |
 
 ## 10年分の架空ログの作り方
@@ -27,6 +29,46 @@ python -m fiction.consolidate_story         # 固める（月は Sonnet 5.5、�
 ```
 
 保存した JSON は、AI を呼ばずに読み込めます（`fiction/load.py`）。物語を差し替えるときは `fiction/plan.py` を直し、変わった会話の鍵を JSON から除いて、上を流し直します。プロンプトは `fiction/generate.py` と `app/prompts.py` にあります。
+
+## 「10年後へ進む」の前へ戻す
+
+デモを撮り直すための道具です（`fiction/snapshot.py`）。架空用の保存先（`data/narrative_twin.db` と `data/photos/`）だけを扱います。自分用の記録の置き場は写さず、変えません。場所を指定する引数はありません。
+
+控えは次のときに自動で取ります。`data/trial/snapshots/` に増えていき、前の控えを上書きしません。
+
+| いつ | 控えの種類 | 戻すと |
+|---|---|---|
+| 架空用のサーバーを初めて起動し、2026年11月3日より前の架空ログを入れた直後 | `first-start` | 誠一さんがまだ何も入れていない2026年の画面 |
+| 「10年後へ進む」を押した直後、読み込みの前 | `before-advance` | 押す直前の2026年の画面（入れた言葉、訂正、託す設定が残っている） |
+| `python -m fiction.snapshot save` を流したとき | `manual` | 流したときの画面 |
+
+10年後へ進んだあとの状態は控えにしません。
+
+戻し方：
+
+1. 架空用のサーバー（8000番）を、動かしている窓で Ctrl+C で止めます。動いていると、道具は戻さずに止まります。
+2. 次の命令を流します。いちばん新しい控えへ戻ります。
+
+   ```
+   .venv/Scripts/python -m fiction.snapshot restore
+   ```
+
+   別の控えへ戻すときは、一覧で名前を確かめて指定します。
+
+   ```
+   .venv/Scripts/python -m fiction.snapshot list
+   .venv/Scripts/python -m fiction.snapshot restore --from 控えの名前
+   ```
+
+3. サーバーを起動します。
+
+   ```
+   .venv/Scripts/python -m app
+   ```
+
+4. ブラウザを開き直します。田中さんでログインしたままなら、名前を選ぶ画面に戻ります。田中さんは戻した時点にはいないためです。
+
+戻す前のデータベースと写真は消さず、`data/trial/replaced/` へ移します。「10年後へ進む」をもう一度押すと、その場で入れた言葉の分だけ固める処理が本物の API で流れます。読み込みそのものは AI を呼びません。
 
 ## 2026年分の小さな試しの作り方
 
