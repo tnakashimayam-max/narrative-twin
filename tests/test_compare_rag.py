@@ -183,7 +183,7 @@ def test_今の方式の腕は_アプリの答えと同じ言葉を届ける(wor
     assert row["arms"][ARM_MODEL]["self_words"] == [item["body"] for item in view["self_words"]]
 
 
-def test_要素が選ばれないと今の方式はAIを呼ばず何も届かない(world):
+def test_要素が選ばれないと今の方式に本人の言葉は届かない(world):
     called = {}
 
     def runner(_question, pools):
@@ -236,6 +236,26 @@ def test_正解が2つの年にまたがるときだけ_新しい言葉が届い
     assert compare_rag.latest_delivered(["新しい"], dates) is True
     assert compare_rag.latest_delivered(["古い"], dates) is False
     assert compare_rag.latest_delivered(["古い"], {"古い": "2027-01-01", "同じ年": "2027-06-01"}) is None
+
+
+def test_2回とも何も届かない問いは_同じ組の数と分けて数える():
+    def row(words):
+        return {"arms": {arm: {"self_words": words} for arm in compare_rag.ARMS}}
+
+    result = compare_rag.stability([row(["a"]), row([]), row(["b"])], [row(["a"]), row([]), row(["c"])])
+
+    assert result[ARM_MODEL] == {"same": 2, "empty": 1, "total": 3}
+
+
+def test_問いごとの比べは群で絞れる():
+    questions = [{"gold": ["a"], "group": "甲"}, {"gold": ["a"], "group": "乙"}, {"gold": [], "group": "甲"}]
+    def row(first, second):
+        return {"arms": {ARM_MODEL: {"self_words": first}, ARM_BM25: {"self_words": second}}}
+
+    rows = [row(["a"], []), row([], ["a"]), row(["a"], [])]
+
+    assert compare_rag.paired(questions, rows, ARM_MODEL, ARM_BM25) == {"first_better": 1, "second_better": 1, "same": 0}
+    assert compare_rag.paired(questions, rows, ARM_MODEL, ARM_BM25, ["甲"]) == {"first_better": 1, "second_better": 0, "same": 0}
 
 
 def test_判定には腕の名前を出さず_同じ言葉の組は1つにまとめる():

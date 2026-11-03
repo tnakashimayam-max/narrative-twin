@@ -78,6 +78,7 @@ python -m venv .venv
 - [仕組みの説明](docs/architecture.md)：全体の図、台帳の決まり、見える範囲の表、名前の対応
 - [画面とサーバーの取り決め](docs/api.md)
 - [モデルと機能の表](docs/tools.md)：役割、選んだ理由、選ばなかった案、実測
+- [BM25 の RAG との比べ](docs/tools.md#bm25-の-rag-との比べ)：同じ84問で今の方式と比べた結果と、この比べで言えないこと
 - [作業の記録](docs/worklog.md)
 - [決めたことと、やめたこと](docs/decisions.md)
 

@@ -23,6 +23,7 @@
   python -m scripts.compare_rag gold      正解を付ける（本人の言葉を全部読む）
   python -m scripts.compare_rag run       腕を流す。--rep 1 か 2
   python -m scripts.compare_rag judge     届いた言葉を目隠しで判定する
+  python -m scripts.compare_rag repeat    同じ記録で今の方式を2回流し、揺れを測る
   python -m scripts.compare_rag report    表を書き出す（AI を呼ばない）
 
 関連するテスト：tests/test_compare_rag.py
@@ -72,6 +73,8 @@ TOP_WITHOUT_PICKER = 8
 SELF_LIMIT = advocacy.LIMITS["word_pool_self"]
 QUOTE_LIMIT = advocacy.LIMITS["quotes_total"]
 WORKERS = 5
+# 同じ記録で2回流す問いの数。揺れの割合を見るだけなので、全部は流さない
+REPEAT_QUESTIONS = 30
 # 比べ全体で使ってよい費用（ドル）。これを超えそうなら止める
 BUDGET_USD = 16.0
 
@@ -625,6 +628,67 @@ def cmd_judge() -> int:
     return 0
 
 
+# ---- repeat ----
+
+
+def cmd_repeat() -> int:
+    """同じ記録で今の方式を2回流す。記録を入れ直すと要素の並びが変わるので、AI の揺れだけを見るために分ける。"""
+    questions = _read_questions()
+    first = json.loads((WORK / "run_1.json").read_text(encoding="utf-8"))["rows"]
+    second = json.loads((WORK / "run_2.json").read_text(encoding="utf-8"))["rows"]
+    eligible = [
+        number
+        for number, (one, two) in enumerate(zip(first, second, strict=True))
+        if one["arms"][ARM_MODEL]["self_words"] or two["arms"][ARM_MODEL]["self_words"]
+    ]
+    chosen = sorted(random.Random(SEED + 3).sample(eligible, min(REPEAT_QUESTIONS, len(eligible))))
+    _check_budget(len(chosen) * 2 * 0.02)
+    rows = []
+    total = 0.0
+    with tempfile.TemporaryDirectory() as folder:
+        _, conn, _, viewer = _open(Path(folder))
+        try:
+            world = open_world(conn, viewer)
+            system = prompts.twin_answer_system(world.self_name)
+
+            def once(question: str) -> tuple[set[int], list[int], set[str], float]:
+                pick = ai.pick_elements(system=system, model_text=world.model_text, question=question)
+                direct, related = elements_from_pick(world, pick.value)
+                pool = advocacy._build_word_pool(conn, viewer, direct, related, world.heads, world.scopes, question)
+                spent = _usd(pick)
+                picked: list[Statement] = []
+                if pool.statements:
+                    words = _pick_words(world, question, pool)
+                    spent += _usd(words)
+                    picked = advocacy._chosen_statements(words.value, pool)
+                return (
+                    {item.id for item in [*direct, *related]},
+                    [item.id for item in pool.statements],
+                    set(delivered(world, picked)["self_words"]),
+                    spent,
+                )
+
+            for number in chosen:
+                question = questions[number]["question"]
+                one = once(question)
+                two = once(question)
+                total += one[3] + two[3]
+                rows.append(
+                    {
+                        "question": question,
+                        "elements_same": one[0] == two[0],
+                        "pool_same": one[1] == two[1],
+                        "words_same": one[2] == two[2],
+                    }
+                )
+                print(f"{len(rows)}/{len(chosen)} {total:.2f}ドル", flush=True)
+        finally:
+            conn.close()
+    (WORK / "repeat.json").write_text(json.dumps({"rows": rows}, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"同じ記録の繰り返し {total:.2f} ドル（合計 {_add_spent(total):.2f}）")
+    return 0
+
+
 # ---- report ----
 
 
@@ -691,11 +755,11 @@ def summarize(questions: list[dict], rows: list[dict], judged: list[dict] | None
     return summary
 
 
-def paired(questions: list[dict], rows: list[dict], first: str, second: str) -> dict:
-    """正解のある問いで、2つの腕の届いた割合を問いごとに比べる。"""
+def paired(questions: list[dict], rows: list[dict], first: str, second: str, groups: list[str] | None = None) -> dict:
+    """正解のある問いで、2つの腕の届いた割合を問いごとに比べる。groups を渡すとその群の問いだけ。"""
     wins = losses = ties = 0
     for case, row in zip(questions, rows, strict=True):
-        if not case["gold"]:
+        if not case["gold"] or (groups and case["group"] not in groups):
             continue
         a = recall(row["arms"][first]["self_words"], case["gold"])
         b = recall(row["arms"][second]["self_words"], case["gold"])
@@ -735,12 +799,19 @@ def cost_rows(rows: list[dict]) -> dict[str, dict]:
     return result
 
 
-def stability(first: list[dict], second: list[dict]) -> dict[str, float]:
-    """2回流して、届いた本人の言葉の組が同じだった問いの割合。"""
+def stability(first: list[dict], second: list[dict]) -> dict[str, dict]:
+    """2回流して、届いた本人の言葉の組が同じだった問いを数える。
+
+    2回とも何も届かなかった問いは「同じ」になるので、1回でも届いた問いだけの値を別に出す。
+    """
     result = {}
     for arm in ARMS:
-        same = sum(set(a["arms"][arm]["self_words"]) == set(b["arms"][arm]["self_words"]) for a, b in zip(first, second, strict=True))
-        result[arm] = same / len(first) if first else 0.0
+        same = empty = 0
+        for a, b in zip(first, second, strict=True):
+            one, two = set(a["arms"][arm]["self_words"]), set(b["arms"][arm]["self_words"])
+            same += one == two
+            empty += not one and not two
+        result[arm] = {"same": same, "empty": empty, "total": len(first)}
     return result
 
 
@@ -771,27 +842,56 @@ def cmd_report() -> int:
     # 抜いた言葉の層は実際の比率（辿れる言葉と辿れない言葉の件数）で重みを付ける。抜いた数は同じなので、そのままだと辿れない言葉が多く見える
     sample = json.loads((WORK / "sample.json").read_text(encoding="utf-8"))
     weight = sample["reachable"] / (sample["reachable"] + sample["unreachable"])
-    reach = summarize(questions, first, None, ["要素から辿れる言葉"])
-    miss = summarize(questions, first, None, ["要素から辿れない言葉"])
     lines += ["", f"## 抜いた言葉の問いを実際の比率で重み付け（辿れる {weight * 100:.0f}%、辿れない {(1 - weight) * 100:.0f}%）", ""]
-    for arm in ARMS:
-        target = weight * reach[arm]["target"] + (1 - weight) * miss[arm]["target"]
-        capped = weight * reach[arm]["capped"] + (1 - weight) * miss[arm]["capped"]
-        lines.append(f"- {arm}：もとにした言葉が届いた {_percent(target)}、上限で割った割合 {_percent(capped)}")
+    for rep, run in zip((1, 2), runs, strict=True):
+        reach = summarize(questions, run["rows"], None, ["要素から辿れる言葉"])
+        miss = summarize(questions, run["rows"], None, ["要素から辿れない言葉"])
+        for arm in ARMS:
+            target = weight * reach[arm]["target"] + (1 - weight) * miss[arm]["target"]
+            capped = weight * reach[arm]["capped"] + (1 - weight) * miss[arm]["capped"]
+            lines.append(f"- {rep}回目 {arm}：もとにした言葉が届いた {_percent(target)}、上限で割った割合 {_percent(capped)}")
     lines += ["", "## 同じ問いを2回目に流した結果", "", *_table(summarize(questions, runs[1]["rows"], None, None))]
     lines += ["", "## 問いごとの比べ（正解のある問い、届いた割合）", ""]
     for rep, run in zip((1, 2), runs, strict=True):
         for a, b in ((ARM_HYBRID, ARM_MODEL), (ARM_BM25, ARM_MODEL)):
             pair = paired(questions, run["rows"], a, b)
             lines.append(f"- {rep}回目 {a} と {b}：{a}が上 {pair['first_better']}、{b}が上 {pair['second_better']}、同じ {pair['same']}")
+    # 足した腕の伸びがどの問いから来るかを見る。同じ語の問いは BM25 に有利なので分ける
+    changed_words = ["要素から辿れる言葉", "要素から辿れない言葉"]
+    without_same = [group for group in groups if group != "同じ語を使う問い"]
+    lines += ["", "## 足した腕の伸びの内訳", ""]
+    for rep, run in zip((1, 2), runs, strict=True):
+        base = summarize(questions, run["rows"], None, without_same)
+        pair = paired(questions, run["rows"], ARM_HYBRID, ARM_MODEL, changed_words)
+        lines.append(
+            f"- {rep}回目 同じ語の問いを除く：上限で割った割合 {ARM_MODEL} {base[ARM_MODEL]['capped'] * 100:.1f}%、{ARM_HYBRID} {base[ARM_HYBRID]['capped'] * 100:.1f}%"
+        )
+        lines.append(f"- {rep}回目 語を変えた{pair['first_better'] + pair['second_better'] + pair['same']}問：{ARM_HYBRID}が上 {pair['first_better']}、{ARM_MODEL}が上 {pair['second_better']}、同じ {pair['same']}")
     lines += ["", "## 1問あたりの量（1回目）", "", "| 腕 | 費用（ドル） | 入力トークン | キャッシュ読み | 候補の字数 | 秒（AI の呼び出しの合計） | AI を呼んだ問い |", "|---|---|---|---|---|---|---|"]
     for arm, data in cost_rows(first).items():
         lines.append(
             f"| {arm} | {data['usd']:.4f} | {data['input']:.0f} | {data['cache_read']:.0f} | {data['pool_chars']:.0f} | {data['seconds']:.1f} | {data['calls']} |"
         )
-    lines += ["", "## 2回流して同じ言葉の組が届いた問い", ""]
+    lines += ["", "## 2回流して同じ言葉の組が届いた問い（2回とも記録を入れ直している）", ""]
     for arm, value in stability(first, runs[1]["rows"]).items():
-        lines.append(f"- {arm}：{_percent(value)}")
+        reached = value["total"] - value["empty"]
+        lines.append(
+            f"- {arm}：全部の問いで {value['same']}/{value['total']}（2回とも何も届かない問い {value['empty']} を含む）、1回でも届いた問いで {value['same'] - value['empty']}/{reached}"
+        )
+    repeat_path = WORK / "repeat.json"
+    if repeat_path.exists():
+        repeat = json.loads(repeat_path.read_text(encoding="utf-8"))
+        rows = repeat["rows"]
+        same_elements = [row for row in rows if row["elements_same"]]
+        lines += [
+            "",
+            f"## 同じ記録で今の方式を2回流した結果（{len(rows)}問）",
+            "",
+            f"- 選んだ要素が同じ問い：{len(same_elements)}/{len(rows)}",
+            f"- 候補が同じ問い：{sum(row['pool_same'] for row in rows)}/{len(rows)}",
+            f"- 届いた本人の言葉の組が同じ問い：{sum(row['words_same'] for row in rows)}/{len(rows)}",
+            f"- 候補が同じ問いのうち、組も同じ問い：{sum(row['words_same'] for row in rows if row['pool_same'])}/{sum(row['pool_same'] for row in rows)}",
+        ]
     agreement = WORK / "gold_agreement.json"
     if agreement.exists():
         value = json.loads(agreement.read_text(encoding="utf-8"))
@@ -815,6 +915,7 @@ def cmd_report() -> int:
                     for run in runs
                 ],
                 "judged": judged,
+                "repeat": json.loads((WORK / "repeat.json").read_text(encoding="utf-8")) if (WORK / "repeat.json").exists() else None,
             },
             ensure_ascii=False,
             indent=0,
@@ -828,7 +929,7 @@ def cmd_report() -> int:
 def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="今の方式と BM25 の RAG を比べます。")
-    parser.add_argument("command", choices=["sample", "gold", "run", "judge", "report"])
+    parser.add_argument("command", choices=["sample", "gold", "run", "judge", "repeat", "report"])
     parser.add_argument("--rep", type=int, default=1, choices=[1, 2], help="run の何回目か")
     args = parser.parse_args(argv)
     if args.command == "sample":
@@ -839,6 +940,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_run(args.rep)
     if args.command == "judge":
         return cmd_judge()
+    if args.command == "repeat":
+        return cmd_repeat()
     return cmd_report()
 
 
