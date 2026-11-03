@@ -198,7 +198,7 @@ UIUX担当が2回見て、高11件を含む指摘を出しました。内容と�
 
 ## 「10年後へ進む」の前へ戻す道具
 
-`python -m fiction.snapshot restore` で、本物のデータベースを5回戻し、2026年の画面から「10年後へ進む」までを通しました。戻した直後の2026年の画面は `images/restore_2026_after_restore_pc.png`、田中さんでログインしたままのブラウザが名前を選ぶ画面に戻る様子は `images/restore_stale_login_pc.png` です。手順は [data/README.md](../../data/README.md) にあります。
+`python -m fiction.snapshot restore` で、架空用のデータベースを7回戻しました。6回は「10年後へ進む」の直前の控えへ戻して、2026年の画面から2036年まで通しました。1回は最初の起動の控えへ戻し、押した「そうです」が取り消されることを確かめました。戻した直後の2026年の画面は `images/restore_2026_after_restore_pc.png`、田中さんでログインしたままのブラウザが名前を選ぶ画面に戻る様子は `images/restore_stale_login_pc.png` です。手順は [data/README.md](../../data/README.md) にあります。
 
 ## 使った量
 
