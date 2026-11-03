@@ -27,7 +27,10 @@ async function refreshColor() {
   }
 }
 
-/* 今日うかがったこと */
+// 一度に出す数。ほぼ同じ推測に何度も答えることにならないよう、少なくして、残りは本人が開いたときだけ出す
+const REVIEW_SHOWN = 3;
+
+/* ツイン（AI）からの確かめ */
 export function reviewSection(ctx, onChange) {
   const section = el("section", { class: "card review-list" });
   const message = el("p", { class: "error", role: "alert", hidden: true });
@@ -97,10 +100,11 @@ export function reviewSection(ctx, onChange) {
       el(
         "div",
         { class: "hint" },
-        item.is_guess ? el("span", { class: "guess-tag", text: "推測" }) : "",
+        item.is_guess ? el("span", { class: "guess-tag", text: "ツイン（AI）の推測" }) : "",
         ` ${dateWords(item.effective_date)}の話から`
       ),
-      el("p", { class: item.is_guess ? "" : "hand", text: item.body }),
+      item.origin ? el("p", { class: "review-origin hand", text: item.origin }) : "",
+      el("p", { class: item.is_guess ? "" : "hand", text: item.is_guess ? `${item.body} 合っていますか？` : item.body }),
       buttons,
       area
     );
@@ -112,10 +116,21 @@ export function reviewSection(ctx, onChange) {
         section.hidden = true;
         return;
       }
+      const rest = items.slice(REVIEW_SHOWN);
+      const more = el("button", {
+        type: "button",
+        class: "quiet",
+        text: "ほかの話も見る",
+        hidden: rest.length === 0,
+        onclick: () => {
+          more.replaceWith(...rest.map(drawItem));
+        },
+      });
       section.append(
-        el("h2", { text: "今日うかがったこと" }),
+        el("h2", { text: "ツイン（AI）からの確かめ" }),
         el("p", { class: "hint", text: "合っているかを教えてください。答えなくてもかまいません。直しても、前の記録は消えません。" }),
-        ...items.map(drawItem),
+        ...items.slice(0, REVIEW_SHOWN).map(drawItem),
+        more,
         message
       );
     })
@@ -211,7 +226,7 @@ function showGrowth(onDone) {
       },
     });
     const message = el("p", { class: "error", role: "alert", hidden: true });
-    inner.append(el("h2", { text: "10年後へ進みます" }), figure, year, message, done);
+    inner.append(el("h2", { text: "10年後へ進みます" }), figure, el("p", { class: "hint", text: "ツイン（AI）" }), year, message, done);
     try {
       let state = await api("/dev/advance", { method: "POST" });
       while (state.working) {
@@ -237,7 +252,7 @@ function showGrowth(onDone) {
 
 /* 記録の整理（固める処理）と、架空用の起動の「10年後へ進む」 */
 export function demoSection(ctx, onChange) {
-  const section = el("section", { class: "card" }, el("h2", { text: "記録を整理する" }));
+  const section = el("section", { class: "card" }, el("h2", { text: "デモの操作（架空データ）" }));
   const message = el("p", { role: "status", class: "hint" });
   const organize = el("button", {
     type: "button",

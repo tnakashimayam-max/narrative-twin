@@ -42,7 +42,7 @@ const TAB_LABELS = [
   ["talk", "トーク", renderTalk],
   ["timeline", "タイムライン", renderTimeline],
   ["records", "記録", renderRecords],
-  ["advocate", "ツインと話す", renderAdvocate],
+  ["advocate", "ツインに聞く", renderAdvocate],
   ["prorecords", "記録", renderProRecords],
 ];
 

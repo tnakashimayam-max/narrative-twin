@@ -11,12 +11,14 @@ import json
 
 import pytest
 
+from app import db
+from app.schemas import InferenceKind
 from scripts import make_examples
 
 ANSWER = {"direct_numbers": [1], "lead": "暮らしの記録です。"}
 
 
-def _line(op="AI：ツインの答え", outcome="成功", at="2026-11-03T15:00:00+09:00", question="どこで暮らしたいですか？"):
+def _line(op="AI：ツインの答え", outcome="成功", at="2026-11-03T15:00:00+09:00", question="畑のことをどう考えていましたか？"):
     return {
         "at": at,
         "op": op,
@@ -32,12 +34,12 @@ def _line(op="AI：ツインの答え", outcome="成功", at="2026-11-03T15:00:0
 def test_入力と答えの文字を変えずに写す():
     text, _ = make_examples.render([_line()], "")
 
-    assert "どこで暮らしたいですか？" in text
+    assert "畑のことをどう考えていましたか？" in text
     assert '"lead": "暮らしの記録です。"' in text
 
 
 def test_失敗の行と時刻より前の行は使わない():
-    lines = [_line(outcome="失敗", question="失敗の問いの暮らし"), _line(at="2026-11-03T09:00:00+09:00", question="朝の問いの暮らし")]
+    lines = [_line(outcome="失敗", question="失敗の問いの畑のことを"), _line(at="2026-11-03T09:00:00+09:00", question="朝の問いの畑のことを")]
 
     text, missing = make_examples.render(lines, "2026-11-03T10:00")
 
@@ -46,12 +48,21 @@ def test_失敗の行と時刻より前の行は使わない():
     assert "田中さんへの回答（要素を選ぶ）" in missing
 
 
+def test_終わりの時刻より後の行は使わない():
+    lines = [_line(at="2026-11-03T15:30:00+09:00", question="あとの問いの畑のことを")]
+
+    text, missing = make_examples.render(lines, "", "2026-11-03T15:00")
+
+    assert "あとの問い" not in text
+    assert "田中さんへの回答（要素を選ぶ）" in missing
+
+
 def test_語の条件に合う行を選ぶ():
-    lines = [_line(question="どこで暮らしたいですか？"), _line(question="好きな色は？")]
+    lines = [_line(question="畑のことをどう考えていましたか？"), _line(question="好きな色は？")]
 
     text, _ = make_examples.render(lines, "")
 
-    assert "どこで暮らしたいですか？" in text
+    assert "畑のことをどう考えていましたか？" in text
     assert "好きな色は？" not in text
 
 
@@ -59,15 +70,45 @@ def test_古い形の文字列のログも読める():
     line = _line()
     line["text"] = str(line["text"])
 
-    assert make_examples.texts_of(line)["入力"] == "どこで暮らしたいですか？"
+    assert make_examples.texts_of(line)["入力"] == "畑のことをどう考えていましたか？"
 
 
 def test_長い入力は切ったことを書く():
-    line = _line(question="暮らし" + "あ" * 7000)
+    line = _line(question="畑のことを" + "あ" * 7000)
 
     text, _ = make_examples.render([line], "")
 
-    assert "全体は 7,003 字" in text
+    assert "全体は 7,005 字" in text
+
+
+def test_届いた答えを架空用のデータベースから文字を変えずに写す(db_path, conn):
+    with conn:
+        db.insert_row(
+            conn,
+            "inference_logs",
+            {
+                "kind": InferenceKind.TWIN_ANSWER.value,
+                "question": "畑のことをどう考えていましたか？",
+                "result": json.dumps({"self_words": [{"body": "来年も畑をやりたい。"}]}, ensure_ascii=False),
+                "element_ids": [],
+                "statement_ids": [],
+                "created_at": "2026-11-03T15:00:00+09:00",
+            },
+        )
+
+    text, missing = make_examples.render_delivered(db_path)
+
+    assert "来年も畑をやりたい。" in text
+    assert "田中さんに届いた答え（本人の言葉がある問い）" not in missing
+    assert "田中さんに届いた推定の枠" in missing
+
+
+def test_自分用の記録の置き場のデータベースは読まない(tmp_path):
+    folder = tmp_path / "mine"
+    folder.mkdir()
+
+    with pytest.raises(SystemExit):
+        make_examples.render_delivered(folder / "narrative_twin.db")
 
 
 def test_自分用のログは読まない(tmp_path):

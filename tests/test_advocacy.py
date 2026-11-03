@@ -59,8 +59,12 @@ def _ask(client, question, key="k1"):
     return client.post("/api/advocacy/ask", json={"question": question, "client_key": key})
 
 
-def _pick(direct=(), related=(), kind="通常", lead=None):
-    return {"direct_numbers": list(direct), "related_numbers": list(related), "request_kind": kind, "lead": lead}
+def _pick(direct=(), related=(), kind="通常"):
+    return {"direct_numbers": list(direct), "related_numbers": list(related), "request_kind": kind}
+
+
+def _words(self_numbers=(), testimony=(), guess=(), lead=None):
+    return {"self_numbers": list(self_numbers), "testimony_numbers": list(testimony), "guess_numbers": list(guess), "lead": lead}
 
 
 def test_本人の言葉は記録の本文のまま日付と出どころつきで届く(login, wish, claude):
@@ -78,7 +82,8 @@ def test_本人の言葉は記録の本文のまま日付と出どころつき�
 
 
 def test_本人の言葉の引用はAIの出力のどの項目からも作られない(login, wish, claude):
-    claude.answers["ツインの答え"] = _pick(direct=[1], lead="誠一さんは目印の作り話をしています。")
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead="誠一さんは目印の作り話をしています。")
 
     turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
 
@@ -86,12 +91,12 @@ def test_本人の言葉の引用はAIの出力のどの項目からも作られ
     assert "目印の作り話" not in json.dumps(turn["self_words"], ensure_ascii=False)
 
 
-def test_AIに本人の言葉の本文を渡さない(login, wish, claude):
+def test_要素を選ぶ呼び出しには本人の言葉の本文を渡さない(login, wish, claude):
     claude.answers["ツインの答え"] = _pick(direct=[1])
 
     _ask(login("田中さん"), "願いは何ですか")
 
-    assert SELF_WORDS not in claude.sent_text()
+    assert SELF_WORDS not in json.dumps(claude.bodies("ツインの答え"), ensure_ascii=False)
 
 
 def test_本人の言葉の根拠がなければまだ聞けていませんと答え_質問の記録に残る(conn, login, wish, claude):
@@ -147,48 +152,229 @@ def test_言い切りと根拠のない推定は枠を出さない(login, wish, 
     assert _ask(login("田中さん"), "どう考えていましたか").json()["turn"]["estimate"] is None
 
 
-def _ask_with_related(login, claude, estimate):
-    claude.answers["ツインの答え"] = {"direct_numbers": [], "related_numbers": [1], "request_kind": "通常", "lead": "見当たりません。"}
-    claude.answers["推定意思"] = estimate
-    return login("田中さん").post("/api/advocacy/ask", json={"question": "好きな食べ物は？", "client_key": "k1"}).json()["turn"]
+def test_言葉を選ぶ係が問いそのものの言葉を選ぶと_関係のある要素の根拠でも本文のまま届き_推定は出ない(conn, login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead="見当たりません。")
 
-
-def test_推定の係が問いそのものの本人の言葉を選ぶと_本人の言葉として本文のまま届き_推定は出ない(conn, login, wish, claude):
-    turn = _ask_with_related(
-        login,
-        claude,
-        {
-            "estimate": "庭が好きかもしれません。",
-            "evidence_numbers": [1],
-            "quote_numbers": [1],
-            "confidence": 0.5,
-            "how_to_confirm": "本人に聞きます。",
-        },
-    )
+    turn = _ask(login("田中さん"), "好きな食べ物は？").json()["turn"]
 
     assert turn["self_words"][0]["body"] == wish.body
     assert turn["not_yet"] is None
     assert turn["estimate"] is None
     assert turn["lead"] is None
     assert conn.execute("SELECT COUNT(*) FROM question_logs").fetchone()[0] == 0
+    assert [item["element_id"] for item in turn["elements"]]
 
 
-def test_推定の係が渡していない番号を選んでも本人の言葉にならない(login, wish, claude):
-    turn = _ask_with_related(
-        login,
-        claude,
-        {
-            "estimate": "庭が好きかもしれません。",
-            "evidence_numbers": [1],
-            "quote_numbers": [99],
-            "confidence": 0.5,
-            "how_to_confirm": "本人に聞きます。",
-        },
-    )
+def test_言葉を選ぶ係が渡していない番号を選んでも本人の言葉にならない(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[99])
+
+    turn = _ask(login("田中さん"), "好きな食べ物は？").json()["turn"]
 
     assert turn["self_words"] == []
     assert turn["not_yet"] == "まだ聞けていません。"
-    assert turn["estimate"]["text"] == "庭が好きかもしれません。"
+
+
+def test_言葉を選ぶ係が返した番号は_出どころの枠と合うものだけ通る(conn, login, users, add_statement, add_utterance, make_draft, wish, claude):
+    utterance = add_utterance("父は施設だけは嫌だと言っていました。", speaker="美穂さん")
+    testimony = ledger.append_statement(
+        conn,
+        make_draft(
+            [utterance.id],
+            utterance.text,
+            source=Source.FAMILY_TESTIMONY,
+            speaker_user_id=users["美穂さん"].id,
+            share_scope=ShareScope.DECISION_SUPPORT,
+            theme=Theme.HOME,
+        ),
+    )
+    _element(conn, [wish.id, testimony.id], body="誠一さんと美穂さんの話。")
+    claude.answers["ツインの答え"] = _pick(direct=[1, 2])
+    # 本人の言葉の枠に、証言の番号も入れてくる
+    numbers = {}
+
+    def answer_with_swap(body):
+        for line in body.splitlines():
+            if "本人の言葉" in line:
+                numbers["self"] = int(line.split("]")[0].strip("["))
+            if "家族の証言" in line:
+                numbers["family"] = int(line.split("]")[0].strip("["))
+
+    client = login("田中さん")
+    claude.answers["言葉を選ぶ"] = None
+    _ask(client, "施設をどう話していましたか", key="first")
+    answer_with_swap(claude.bodies("言葉を選ぶ")[0]["messages"][0]["content"] if isinstance(claude.bodies("言葉を選ぶ")[0]["messages"][0]["content"], str) else claude.bodies("言葉を選ぶ")[0]["messages"][0]["content"][0]["text"])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[numbers["family"]], testimony=[numbers["self"]])
+
+    turn = _ask(client, "もう一度", key="second").json()["turn"]
+
+    assert turn["self_words"] == []
+    assert turn["testimony"] == []
+    assert turn["not_yet"] == "まだ聞けていません。"
+
+
+def test_言葉を選ぶ係が失敗しても_要素の根拠から本人の言葉が届く(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = 500
+
+    turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
+
+    assert turn["self_words"][0]["body"] == wish.body
+    assert turn["not_yet"] is None
+
+
+def test_言葉を選ぶ係が選ばなければ届かず_まだ聞けていませんになる(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+
+    turn = _ask(login("田中さん"), "床板のことは").json()["turn"]
+
+    assert turn["self_words"] == []
+    assert turn["not_yet"] == "まだ聞けていません。"
+
+
+def test_記録が増えても_言葉を選ぶ係に渡す件数は上限で変わらない(conn, login, add_statement, claude):
+    statements = [
+        add_statement(f"庭の話その{number}です。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME)
+        for number in range(config.MODEL_LIMITS["word_pool_self"] * 2)
+    ]
+    for start in range(0, len(statements), 3):
+        _element(conn, [item.id for item in statements[start : start + 3]], body=f"庭の要素{start}。")
+    claude.answers["ツインの答え"] = _pick(direct=list(range(1, 7)), related=list(range(7, 13)))
+
+    _ask(login("田中さん"), "庭のことは")
+
+    content = claude.bodies("言葉を選ぶ")[0]["messages"][0]["content"]
+    text = content if isinstance(content, str) else content[0]["text"]
+    lines = [line for line in text.splitlines() if line.startswith("[")]
+    assert len(lines) <= config.MODEL_LIMITS["word_pool_self"] + config.MODEL_LIMITS["word_pool_others"]
+    assert config.MODEL_LIMITS["selected_elements"] == 6
+
+
+def test_要素の根拠にない家族の証言も_候補に新しい順で入り_選ばれると証言の枠に出る(conn, login, users, add_utterance, make_draft, wish, claude):
+    utterance = add_utterance("木の話をするときの顔が生き生きしていました。", speaker="美穂さん")
+    testimony = ledger.append_statement(
+        conn,
+        make_draft(
+            [utterance.id],
+            utterance.text,
+            source=Source.FAMILY_TESTIMONY,
+            speaker_user_id=users["美穂さん"].id,
+            share_scope=ShareScope.DECISION_SUPPORT,
+            theme=Theme.FAMILY,
+        ),
+    )
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], testimony=[2])
+
+    turn = _ask(login("田中さん"), "ご家族から見た誠一さんは").json()["turn"]
+
+    assert [item["statement_id"] for item in turn["testimony"]] == [testimony.id]
+
+
+def test_本人だけの証言は候補に入らない(conn, login, users, add_utterance, make_draft, wish, claude):
+    utterance = add_utterance("目印の本人だけの証言です。", speaker="美穂さん")
+    ledger.append_statement(
+        conn,
+        make_draft(
+            [utterance.id],
+            utterance.text,
+            source=Source.FAMILY_TESTIMONY,
+            speaker_user_id=users["美穂さん"].id,
+            share_scope=ShareScope.SELF_ONLY,
+            theme=Theme.HARDSHIP,
+        ),
+    )
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+
+    _ask(login("田中さん"), "ご家族から見た誠一さんは")
+
+    assert "目印の本人だけの証言" not in json.dumps(claude.bodies("言葉を選ぶ"), ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    "estimate",
+    ["庭が好きです。和子さんも大切かもしれません。", "庭が好きかもしれません。和子さんが大切です。", "庭が好きです。"],
+)
+def test_推定は全部の文がかもしれませんで終わらなければ出さない(login, wish, claude, estimate):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": estimate, "evidence_numbers": [1], "confidence": 0.3, "how_to_confirm": "本人に聞きます。"}
+
+    turn = _ask(login("田中さん"), "泊まりのことは").json()["turn"]
+
+    assert turn["estimate"] is None
+    assert turn["not_yet"] == "まだ聞けていません。"
+
+
+@pytest.mark.parametrize(
+    "estimate", ["記録にはありませんが、庭が好きかもしれません。", "泊まりの話は見当たらないかもしれません。"]
+)
+def test_推定に記録がないという言い切りがあれば出さない(login, wish, claude, estimate):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": estimate, "evidence_numbers": [1], "confidence": 0.3, "how_to_confirm": "本人に聞きます。"}
+
+    turn = _ask(login("田中さん"), "泊まりのことは").json()["turn"]
+
+    assert turn["estimate"] is None
+
+
+def test_本人の言葉の根拠がない推定は_確からしさをとても低いにする(conn, login, users, add_utterance, make_draft, wish, claude):
+    utterance = add_utterance("施設は嫌だと言っていました。", speaker="美穂さん")
+    testimony = ledger.append_statement(
+        conn,
+        make_draft(
+            [utterance.id],
+            utterance.text,
+            source=Source.FAMILY_TESTIMONY,
+            speaker_user_id=users["美穂さん"].id,
+            share_scope=ShareScope.DECISION_SUPPORT,
+            theme=Theme.HOME,
+        ),
+    )
+    _element(conn, [testimony.id], body="美穂さんの話。")
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": "嫌かもしれません。", "evidence_numbers": [1], "confidence": 0.6, "how_to_confirm": "本人に聞きます。"}
+
+    turn = _ask(login("田中さん"), "泊まりのことは").json()["turn"]
+
+    assert turn["estimate"]["confidence"] == "とても低い"
+
+
+def test_案内に届ける本文の写しがあれば捨てる(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead=f"{wish.body}という話です。")
+
+    turn = _ask(login("田中さん"), "願いは何ですか").json()["turn"]
+
+    assert turn["self_words"][0]["body"] == wish.body
+    assert turn["lead"] is None
+
+
+def test_変化の要素があれば_言葉が変わっていることを知らせる(conn, login, add_statement, claude):
+    statement = add_statement("施設のことも考えていい。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME)
+    element = model_store.add_element(
+        conn,
+        kind=ElementKind.CHANGE,
+        body="誠一さんは施設についての考えが変わった。",
+        condition=None,
+        petals=[],
+        confidence=0.7,
+        status=ElementStatus.AI_VIEW,
+        valid_from=date(2033, 1, 1),
+        evidence_statement_ids=[statement.id],
+        unit=ConsolidationUnit.YEAR,
+    )
+    conn.commit()
+    assert element.kind is ElementKind.CHANGE
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+
+    turn = _ask(login("田中さん"), "施設のことは").json()["turn"]
+
+    assert turn["changed"] is True
 
 
 def test_上限で切っても_選ばれた要素の古い本人の言葉が残る(conn, login, add_statement, claude):
@@ -405,7 +591,8 @@ def test_AIの判定が語の一覧に重なる(login, wish, claude):
     ["私はそう思います。", "誠一さんは「庭が好き」とおっしゃいました。", "病気の心配があります。", "あ" * 200, "   "],
 )
 def test_通らない案内は捨てて_答えは返す(login, wish, claude, lead):
-    claude.answers["ツインの答え"] = _pick(direct=[1], lead=lead)
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    claude.answers["言葉を選ぶ"] = _words(self_numbers=[1], lead=lead)
 
     turn = _ask(login("田中さん"), "願いは").json()["turn"]
 

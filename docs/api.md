@@ -211,7 +211,7 @@
 
 | 道 | 内容 | 応答 |
 |---|---|---|
-| `GET /api/review` | 今日うかがったこと。まだ確かめていない本人の言葉と AI の推測を、推測を先にして8件まで | `{"items": [ReviewItem, ...]}` |
+| `GET /api/review` | ツイン（AI）からの確かめ。まだ確かめていない本人の言葉と AI の推測を、今日の話、推測の順に8件まで | `{"items": [ReviewItem, ...]}` |
 | `POST /api/statements/{番号}/confirm` | 「そうです」。確かめた行を足す | `ReviewItem` |
 | `POST /api/statements/{番号}/correct` | 「ちがいます」。`{"text": 文}`。本人の訂正の行を足す。元の行は履歴に残る | `ReviewItem` |
 | `POST /api/statements/{番号}/rest` | 「今は話したくない」。範囲を「本人だけ」に戻した行を足す | `ReviewItem` |
@@ -220,9 +220,9 @@
 
 すでに置き換えられた行を指すと 409 を返します。
 
-`ReviewItem`：`id`、`body`、`source`、`effective_date`、`is_guess`
+`ReviewItem`：`id`、`body`、`origin`（推測のもとの発言。推測でなければ `null`）、`source`、`effective_date`、`is_guess`
 
-`Handover`：`themes`、`all_themes`、`delegate_ids`、`family`（`id`、`name`）、`decided_on`
+`Handover`：`themes`、`all_themes`、`delegate_ids`、`family`（`id`、`name`）、`professionals`（招かれた専門職の名前）、`decided_on`
 
 ## 意思モデルとツインの色
 
@@ -246,7 +246,9 @@
 | `POST /api/observations` | 今の様子を入れる。`{"text": 文, "theme": テーマ}` | 201、`{"statement_id": 番号}` |
 | `GET /api/statements/{番号}/interpretations` | 言明の4つの視点の仮説。専門職だけ | `{"items": [{"perspective", "body", "confidence", "caution", "status"}]}` |
 
-`Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`estimate`（`Estimate`。なければ `null`）、`elements`
+`Turn`：`id`、`created_at`、`question`、`notice`（原則に触れる頼みへの決まった1文。なければ `null`）、`lead`（ツインの短い案内。なければ `null`）、`now`（`Now` の配列）、`self_words`、`testimony`、`guesses`（それぞれ `Quote` の配列）、`not_yet`（本人の言葉がないときの「まだ聞けていません。」。あれば `null`）、`changed`（届けた言葉の要素に「変化」があるか）、`estimate`（`Estimate`。なければ `null`）、`elements`（届けた言葉を根拠に持つ要素。`element_id`、`body`、`kind`、`unit`、`valid_from`、`confirmed`）
+
+`Now`：`statement_id`、`body`、`date`、`speaker`、`speaker_label`（続柄つきの呼び方。なければ `null`）、`source`
 
 `Quote`：`statement_id`、`body`（記録の本文のまま）、`lead_in`（プログラムが付ける前置き）、`date`、`source`、`speaker`、`confirm`
 

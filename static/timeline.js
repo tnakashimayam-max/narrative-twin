@@ -66,6 +66,7 @@ export function renderTimeline(container, ctx) {
       ),
       letter.photo_id ? photoImage(letter.photo_id, "letter-photo", "便りの写真") : null,
       el("div", { class: "letter-body", text: letter.body }),
+      el("p", { class: "hint letter-note", text: `ツイン（AI）の下書きを、${personName(author)}が確かめて共有しました。` }),
       el(
         "div",
         { class: "letter-thread" },

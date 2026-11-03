@@ -19,6 +19,24 @@ const ROLE_CHOICES = [
   ["専門職", "専門職"],
 ];
 
+/* 立場の言葉。託された人かどうかが分かるようにする。 */
+function otherRoleWords(me) {
+  if (me.role === "専門職") {
+    return "立場：専門職・招かれて担当しています";
+  }
+  return me.can_use_supporter_screen ? `立場：${me.role}・本人から託された人` : `立場：${me.role}`;
+}
+
+function otherGuide(me) {
+  if (me.role === "専門職") {
+    return "本人の記録を、ツイン（AI）に聞いて読めます。部屋の話はトークで読めます。";
+  }
+  if (me.can_use_supporter_screen) {
+    return "便りはタイムラインで、部屋の話はトークで読めます。本人が託した範囲の記録は、ツイン（AI）に聞いて読めます。";
+  }
+  return "便りはタイムラインで、部屋の話はトークで読めます。下のタブを押してください。";
+}
+
 /* ケアマネジャーを招く。招けないときは何も出さない。出すかどうかはサーバーが日付と立場で決める。 */
 function inviteSection(ctx, onDone) {
   const section = el("section", { class: "stack" });
@@ -32,7 +50,7 @@ function inviteSection(ctx, onDone) {
           "div",
           { class: "card" },
           el("h2", { text: "ケアマネジャーを招く" }),
-          el("p", { class: "hint", text: "招いた人に見えるのは、本人が「意思決定支援用」にした記録だけです。" }),
+          el("p", { class: "hint", text: "招いた人に見えるのは、本人が選んだテーマの話だけです。" }),
           el("button", { type: "button", class: "wide", text: "ケアマネジャーを招く", onclick: () => openInviteSheet(onDone) })
         )
       );
@@ -211,6 +229,7 @@ export function renderHome(container, ctx) {
     } catch {
       // 読めなくても、ほかの部分は使える
     }
+    panel.append(handoverSection(ctx, drawSelfHome));
     const mapSection = el("section", { class: "card map-card" });
     panel.append(mapSection);
     renderEcomap(mapSection, ctx, drawSelfHome);
@@ -234,7 +253,6 @@ export function renderHome(container, ctx) {
         onclick: () => openPersonForm(ctx, null, drawSelfHome),
       })
     );
-    panel.append(handoverSection(ctx, drawSelfHome));
     panel.append(demoSection(ctx, drawSelfHome));
     panel.append(inviteSection(ctx, drawSelfHome));
     panel.append(switcher);
@@ -244,12 +262,15 @@ export function renderHome(container, ctx) {
   function drawOtherHome() {
     panel.replaceChildren(
       el("div", { class: "row" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` })),
-      el("p", { class: "hint", text: `立場：${ctx.me.role}` }),
-      el("p", { text: "便りはタイムラインで、部屋の話はトークで読めます。下のタブを押してください。" }),
+      el("p", { class: "hint", text: otherRoleWords(ctx.me) }),
+      el("p", { text: otherGuide(ctx.me) }),
+      ctx.me.can_use_supporter_screen
+        ? el("button", { type: "button", class: "primary wide", text: "ツイン（AI）に聞く", onclick: () => ctx.openTab("advocate") })
+        : "",
       el("button", {
         type: "button",
         class: "wide",
-        text: "自分のことを直す",
+        text: "自分の名前や呼び方を直す",
         onclick: () =>
           openOwnForm(ctx, async () => {
             ctx.me = await ctx.refreshMe();

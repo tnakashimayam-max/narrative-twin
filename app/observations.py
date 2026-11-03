@@ -111,6 +111,8 @@ def now_view(conn: sqlite3.Connection, viewer: User, limit: int) -> list[dict]:
                 "body": item.body,
                 "date": item.effective_date.isoformat(),
                 "speaker": speaker.display_name if speaker else "はずした人",
+                # 「母は」と書かれた記録を読めるように、話した人の続柄を添える
+                "speaker_label": f"{speaker.relation}の{speaker.display_name}" if speaker and speaker.relation else None,
                 "source": item.source.value,
             }
         )

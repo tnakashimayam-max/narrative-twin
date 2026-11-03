@@ -1,13 +1,14 @@
 """実行結果の見本を docs/examples.md に書き出す。
 
-役割：開発のログ（logs/fictional.jsonl）から、役割ごとの実際の入力と出力を選び、手を加えずに書き出す。
+役割：開発のログ（logs/fictional.jsonl）から役割ごとの実際の入力と出力を、架空用のデータベースの推論の記録から
+      田中さんに届いた答えを選び、手を加えずに書き出す。
 4つの極：特定の極に属さない土台（開発の道具）。
-守る原則：8（架空用のログだけを読む。自分用のログは読まない）。
+守る原則：8（架空用のログとデータベースだけを読む。自分用の記録は読まない）。
 
 見本を手で整えると、実際の出力と食い違うので、ログの文字をそのまま写す。
 どの行を選ぶかだけを、下の EXAMPLES で決める。入力か答えに含まれる語で選ぶ。
 
-使い方：.venv\\Scripts\\python -m scripts.make_examples --since 2026-11-03T15:00
+使い方：.venv\\Scripts\\python -m scripts.make_examples --since 2026-11-03T14:00 --until 2026-11-03T15:00
 関連するテスト：tests/test_make_examples.py
 """
 
@@ -16,12 +17,16 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import sqlite3
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.schemas import InferenceKind
+
 ROOT = Path(__file__).resolve().parent.parent
 LOG = ROOT / "logs" / "fictional.jsonl"
+DB = ROOT / "data" / "narrative_twin.db"
 OUT = ROOT / "docs" / "examples.md"
 _MAX_CHARS = 6000
 
@@ -44,7 +49,7 @@ EXAMPLES = (
     Example(
         "田中さんへの回答（要素を選ぶ）",
         "AI：ツインの答え",
-        words=("暮らし",),
+        words=("畑のことを",),
         note="入力は問いだけで、意思モデルはキャッシュのブロックにある。AI は番号を選ぶだけで、本人の言葉の本文を読まない。",
     ),
     Example(
@@ -85,10 +90,11 @@ def texts_of(line: dict) -> dict:
     return {}
 
 
-def pick(lines: list[dict], example: Example, since: str) -> dict | None:
+def pick(lines: list[dict], example: Example, since: str, until: str = "9999") -> dict | None:
     """条件に合う、いちばん新しい成功の行を返す。"""
     for line in reversed(lines):
-        if line.get("op") != example.op or line.get("outcome") != "成功" or line.get("at", "") < since:
+        moment = line.get("at", "")
+        if line.get("op") != example.op or line.get("outcome") != "成功" or not since <= moment < until:
             continue
         texts = texts_of(line)
         if example.words and not any(word in str(texts.get("入力", "")) for word in example.words):
@@ -113,7 +119,75 @@ def _pretty(answer: str) -> str:
         return answer
 
 
-def render(lines: list[dict], since: str) -> tuple[str, list[str]]:
+@dataclass(frozen=True)
+class Delivered:
+    """田中さんに届いた答えの見本の1件。"""
+
+    title: str
+    kind: str
+    word: str
+    note: str = ""
+
+
+DELIVERED = (
+    Delivered(
+        "田中さんに届いた答え（本人の言葉がある問い）",
+        InferenceKind.TWIN_ANSWER.value,
+        "畑のことを",
+        "本文はプログラムが記録から取り出す。前置きもプログラムが付ける。AI が書くのは案内（lead）だけ。",
+    ),
+    Delivered(
+        "田中さんに届いた答え（本人の言葉がない問い）",
+        InferenceKind.TWIN_ANSWER.value,
+        "泊まり",
+        "「まだ聞けていません。」は決まった文。推定は estimate の枠に別に出る。",
+    ),
+    Delivered("田中さんに届いた推定の枠", InferenceKind.ESTIMATED_WILL.value, "泊まり", "根拠と反対の根拠の本文はプログラムが記録から取り出す。"),
+)
+
+
+def read_delivered(path: Path, item: Delivered) -> dict | None:
+    """架空用のデータベースの推論の記録から、問いの語に合う、いちばん新しい答えを読む。"""
+    if "mine" in {part.lower() for part in path.resolve().parts}:
+        raise SystemExit("自分用の記録は読みません。")
+    if not path.exists():
+        return None
+    connection = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+    try:
+        row = connection.execute(
+            "SELECT question, result FROM inference_logs WHERE kind = ? AND question LIKE ? ORDER BY rowid DESC LIMIT 1",
+            (item.kind, f"%{item.word}%"),
+        ).fetchone()
+    finally:
+        connection.close()
+    return {"question": row[0], "result": json.loads(row[1])} if row else None
+
+
+def render_delivered(path: Path) -> tuple[str, list[str]]:
+    """届いた答えの見本の文書と、見つからなかった見本の名前を返す。"""
+    parts: list[str] = []
+    missing = []
+    for item in DELIVERED:
+        found = read_delivered(path, item)
+        if found is None:
+            missing.append(item.title)
+            continue
+        parts += [
+            "",
+            f"## {item.title}",
+            "",
+            item.note,
+            "",
+            f"問い：{found['question']}",
+            "",
+            "```json",
+            json.dumps(found["result"], ensure_ascii=False, indent=2),
+            "```",
+        ]
+    return "\n".join(parts), missing
+
+
+def render(lines: list[dict], since: str, until: str = "9999") -> tuple[str, list[str]]:
     """見本の文書と、見つからなかった見本の名前を返す。"""
     parts = [
         "# 実行結果の見本",
@@ -122,7 +196,7 @@ def render(lines: list[dict], since: str) -> tuple[str, list[str]]:
     ]
     missing = []
     for example in EXAMPLES:
-        line = pick(lines, example, since)
+        line = pick(lines, example, since, until)
         if line is None:
             missing.append(example.title)
             continue
@@ -155,11 +229,15 @@ def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="実行結果の見本を書き出します。")
     parser.add_argument("--since", default="", help="この時刻より後の行だけを使う（例：2026-11-03T15:00）")
+    parser.add_argument("--until", default="9999", help="この時刻より前の行だけを使う")
     parser.add_argument("--log", type=Path, default=LOG)
+    parser.add_argument("--db", type=Path, default=DB)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)
-    text, missing = render(read_lines(args.log), args.since)
-    args.out.write_text(text, encoding="utf-8")
+    text, missing = render(read_lines(args.log), args.since, args.until)
+    delivered, not_found = render_delivered(args.db)
+    missing += not_found
+    args.out.write_text(text.rstrip("\n") + "\n" + delivered + "\n", encoding="utf-8")
     print(f"{args.out} に書きました。")
     if missing:
         print("見つからなかった見本：" + "、".join(missing))

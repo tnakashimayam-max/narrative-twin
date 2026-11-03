@@ -6,13 +6,13 @@
           記録がないことは「まだ聞けていません」）、10（根拠が見えない要素は使わない）、
           11（推定は別の枠に、根拠、反対の根拠、確からしさ、確かめ方を付ける）、12（本人になりきらない）。
 
-AI は要素の番号を選ぶだけにする。この呼び出しには本人の言葉の本文を渡さず、受け取らない。
-引用はプログラムが選ばれた要素の根拠から決める。AI の出力から本人の言葉が作られる道がないため、言い換えは起きない。
-要素の本文は AI の読み取りなので、本人の言葉としては出さない。
-
-直接答える要素がないときは、関係する要素の根拠の本文を読む2回目の呼び出し（推定意思）に進む。
-要素の文には「味噌汁が好き」のような細かい事柄が残らないことがあるので、ここで問いの事柄そのものを話している言葉の
-番号を受け取り、あれば本人の言葉として届ける。受け取るのは番号だけで、本文はプログラムが記録から取り出す。
+処理は3段に分ける。守る決まりは「AI の出力が本人の言葉の本文になる道がないこと」で、受け取るのは番号だけにする。
+1. 要素を選ぶ（役割：ツインの答え）：意思モデルを読み、問いに合う要素の番号を選ぶ。本文は渡さない。
+2. 言葉を選ぶ（役割：言葉を選ぶ）：選ばれた要素の根拠の本文を読み、問いに合う言葉の番号を選ぶ。番号が渡した候補にあり、
+   出どころが枠に合うかをプログラムが確かめる。失敗したら、プログラムが要素の根拠から順に取り出す道へ落とす。
+   API の一時の失敗が「記録がない」に見えないようにするため。
+3. 本人の言葉がなければ「まだ聞けていません」と決まった文で出し、推定（役割：推定意思）を別の枠に作る。
+要素の本文は AI の読み取りなので、本人の言葉としては出さない。届ける本文はプログラムが記録から取り出す。
 
 推論で読むのは意思モデルの上限までで、記録が増えても読む量はほぼ変わらない（model_store.for_reading）。
 
@@ -32,6 +32,7 @@ import json
 import re
 import sqlite3
 import time
+from dataclasses import dataclass
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -42,6 +43,7 @@ from app.auth import NOT_FOUND, current_user, get_conn
 from app.records import order_for_display
 from app.schemas import (
     ConfirmStatus,
+    ElementKind,
     InferenceKind,
     ModelElement,
     RequestKind,
@@ -49,6 +51,8 @@ from app.schemas import (
     Source,
     Statement,
     User,
+    WordPick,
+    _CLAIMS_ABOUT_RECORDS,
     _twin_voice,
 )
 
@@ -76,7 +80,7 @@ _NOTICES = {
 _ORDER = [RequestKind.NORMAL, RequestKind.ASSERT, RequestKind.REPHRASE, RequestKind.HEALTH, RequestKind.IMPERSONATE]
 
 _LEAD_MAX_CHARS = 80
-_HEDGED_END = re.compile(r"(かもしれません|かも知れません)[。！!]?$")
+_COPIED_RUN = 8
 _SELF_SOURCES = {Source.SELF_WORDS, Source.SELF_CORRECTION}
 _TESTIMONY_SOURCES = {Source.FAMILY_TESTIMONY, Source.CONNECTED_TESTIMONY}
 _CONFIRMED_LABELS = {
@@ -106,7 +110,12 @@ def stronger_kind(first: RequestKind, second: RequestKind) -> RequestKind:
     return max(first, second, key=_ORDER.index)
 
 
-def usable_lead(lead: str | None) -> str | None:
+def _shares_run(text: str, body: str) -> bool:
+    """案内の文に、届ける本文と同じ文字の並びがあるかを返す。"""
+    return any(body[index : index + _COPIED_RUN] in text for index in range(max(len(body) - _COPIED_RUN + 1, 0)))
+
+
+def usable_lead(lead: str | None, delivered: tuple[str, ...] | list[str] = ()) -> str | None:
     """AI の短い案内を確かめる。通らなければ捨てる。答えに関わらないので、やり直さない。"""
     if not lead:
         return None
@@ -115,6 +124,12 @@ def usable_lead(lead: str | None) -> str | None:
         return None
     # 仕組みの言葉は、読む人には意味がない
     if "番号" in text or "要素" in text:
+        return None
+    # 読んだのは記録の一部なので、記録全体の有無は言い切らない
+    if any(word in text for word in _CLAIMS_ABOUT_RECORDS):
+        return None
+    # AI は本文を読んでいるので、案内に写していないかを確かめる（原則9の言い換えを防ぐ）
+    if any(_shares_run(text, body) for body in delivered):
         return None
     if any(word in text for word in twin._NOT_TO_ASK):
         return None
@@ -169,9 +184,10 @@ def _closeness(statement: Statement, words: set[str]) -> int:
 
 
 def _evidence_groups(
-    elements: list[ModelElement], heads: dict[int, Statement], scopes, question: str
+    elements: list[ModelElement], heads: dict[int, Statement], scopes, question: str, per_element: int | None = None
 ) -> list[list[Statement]]:
     """選ばれた要素ごとに、根拠のうち見える先頭の行を、関係の近い順に集める。"""
+    per_element = per_element or LIMITS["quotes_per_element"]
     groups: list[list[Statement]] = []
     for element in elements:
         words = _bigrams(element.body) | _bigrams(question)
@@ -190,7 +206,7 @@ def _evidence_groups(
         group: list[Statement] = []
         for candidate in candidates:
             if candidate.source in _SELF_SOURCES:
-                if taken[candidate.source] >= LIMITS["quotes_per_element"]:
+                if taken[candidate.source] >= per_element:
                     continue
                 taken[candidate.source] += 1
             group.append(candidate)
@@ -250,14 +266,18 @@ def _materials(
     return ordered, lines
 
 
+def _readable(items: list[Statement]) -> list[Statement]:
+    """新しい順に並べ、ほかの引用に含まれる文は1つにまとめる。同じ言葉が二重に出ないようにする。"""
+    ordered = order_for_display(items)
+    return [
+        item
+        for item in ordered
+        if not any(other.id != item.id and item.body in other.body and item.body != other.body for other in ordered)
+    ]
+
+
 def _usable_estimate(draft, materials: list[Statement]) -> dict | None:
-    """推定の案を確かめる。言い切りと、渡していない番号の根拠を通さない。根拠がなければ枠を出さない。"""
-    if not _HEDGED_END.search(draft.estimate.strip()):
-        return None
-    try:
-        _twin_voice(draft.estimate)
-    except ValueError:
-        return None
+    """推定の案を確かめる。渡していない番号の根拠を通さない。根拠がなければ枠を出さない。言い切りは型で止めている。"""
     if any(word in draft.estimate for word in ("病気", "病名", "認知症", "診断")):
         return None
 
@@ -268,8 +288,16 @@ def _usable_estimate(draft, materials: list[Statement]) -> dict | None:
                 seen.setdefault(materials[number - 1].id, materials[number - 1])
         return list(seen.values())
 
-    evidence = pick(draft.evidence_numbers)
-    counter = [item for item in pick(draft.counter_numbers) if item.id not in {e.id for e in evidence}]
+    evidence = _readable(pick(draft.evidence_numbers))
+    evidence_ids = {item.id for item in evidence}
+    evidence_bodies = [item.body for item in evidence]
+    counter = _readable(
+        [
+            item
+            for item in pick(draft.counter_numbers)
+            if item.id not in evidence_ids and not any(item.body in body for body in evidence_bodies)
+        ]
+    )
     if not evidence:
         return None
     return {"text": draft.estimate.strip(), "evidence": evidence, "counter": counter, "draft": draft}
@@ -324,17 +352,125 @@ def _remember_question(conn: sqlite3.Connection, question: str) -> None:
     ledger.add_pending_question(conn, question=question)
 
 
-def _quotes_from_materials(numbers: list[int], materials: list[Statement]) -> list[Statement]:
-    """番号を材料の本人の言葉に直す。渡していない番号と、本人の言葉でない材料は捨てる。"""
-    seen: dict[int, Statement] = {}
-    for number in numbers:
-        if 1 <= number <= len(materials) and materials[number - 1].source in _SELF_SOURCES:
-            seen.setdefault(materials[number - 1].id, materials[number - 1])
-    return list(seen.values())
+@dataclass
+class WordPool:
+    """言葉を選ぶ係に渡す候補。番号（1始まり）から元の行を引く。"""
+
+    statements: list[Statement]
+    direct: list[str]
+    related: list[str]
+    others: list[str]
+
+
+def _word_line(conn: sqlite3.Connection, number: int, item: Statement) -> str:
+    return f"[{number}] {item.effective_date.isoformat()}／{item.source.value}／{_speaker_name(conn, item)}：{item.body}"
+
+
+def _build_word_pool(
+    conn: sqlite3.Connection,
+    viewer: User,
+    direct: list[ModelElement],
+    related: list[ModelElement],
+    heads: dict[int, Statement],
+    scopes,
+    question: str,
+) -> WordPool:
+    """候補を作る。定数で切るので、記録が増えても読む量は増えない。
+
+    本人の言葉は、直接答える要素を先に、要素ごとに順に取る。近い順で切ると、ほかの要素の言葉が落ちるため。
+    証言と推測は要素の根拠をほとんど通らないので、根拠にある分を先に入れ、足りない分を新しい順で埋める。
+    語の一致では探さない。質問のたびに似た文を探す方式にしないため（CLAUDE.md の「方式」）。
+    関連するテスト：tests/test_advocacy.py の test_記録が増えても_言葉を選ぶ係に渡す件数は上限で変わらない
+    """
+    per_element = LIMITS["word_pool_per_element"]
+    direct_picked = _take_evenly(_evidence_groups(direct, heads, scopes, question, per_element))
+    related_picked = _take_evenly(_evidence_groups(related, heads, scopes, question, per_element))
+    limit = LIMITS["word_pool_self"]
+    seen: set[int] = set()
+
+    def is_other(item: Statement) -> bool:
+        return item.source in _TESTIMONY_SOURCES or item.source is Source.AI_GUESS
+
+    def take(items: list[Statement], room: int) -> list[Statement]:
+        kept: list[Statement] = []
+        for item in items:
+            if len(kept) >= room:
+                break
+            if item.id not in seen:
+                seen.add(item.id)
+                kept.append(item)
+        return kept
+
+    direct_self = take([item for item in direct_picked if item.source in _SELF_SOURCES], limit)
+    related_self = take([item for item in related_picked if item.source in _SELF_SOURCES], limit - len(direct_self))
+    room = LIMITS["word_pool_others"]
+    direct_others = take([item for item in direct_picked if is_other(item)], room)
+    related_others = take([item for item in related_picked if is_other(item)], room - len(direct_others))
+    # 新しい順の証言を先に、次に推測。本人が話していないので、問いに関係があるかは言葉を選ぶ係が決める
+    visible = [item for item in consent.visible_statements(conn, viewer) if item.confirm_status is not ConfirmStatus.RESTING]
+    newest = sorted(visible, key=lambda item: item.effective_date, reverse=True)
+    testimonies = [item for item in newest if item.source in _TESTIMONY_SOURCES]
+    guesses = [item for item in newest if item.source is Source.AI_GUESS]
+    left = room - len(direct_others) - len(related_others)
+    other_testimonies = take(testimonies, left)
+    other_guesses = take(guesses, left - len(other_testimonies))
+
+    statements: list[Statement] = []
+
+    def lines_for(items: list[Statement]) -> list[str]:
+        lines = []
+        for item in items:
+            statements.append(item)
+            lines.append(_word_line(conn, len(statements), item))
+        return lines
+
+    direct_lines = lines_for([*direct_self, *direct_others])
+    related_lines = lines_for([*related_self, *related_others])
+    other_lines = lines_for([*other_testimonies, *other_guesses])
+    return WordPool(statements, direct_lines, related_lines, other_lines)
+
+
+def _chosen_statements(pick: WordPick, pool: WordPool) -> list[Statement]:
+    """番号を候補の行に直す。渡していない番号と、出どころが枠に合わない番号は捨てる（原則3）。"""
+
+    def frame(numbers: list[int], sources) -> list[Statement]:
+        kept: dict[int, Statement] = {}
+        for number in numbers:
+            if 1 <= number <= len(pool.statements) and pool.statements[number - 1].source in sources:
+                kept.setdefault(pool.statements[number - 1].id, pool.statements[number - 1])
+        return list(kept.values())
+
+    return [
+        *frame(pick.self_numbers, _SELF_SOURCES),
+        *frame(pick.testimony_numbers, _TESTIMONY_SOURCES),
+        *frame(pick.guess_numbers, {Source.AI_GUESS}),
+    ]
+
+
+def _elements_view(
+    elements: list[ModelElement], heads: dict[int, Statement], delivered_ids: set[int]
+) -> list[dict]:
+    """届けた言葉を根拠に持つ要素を返す。「根拠をたどる」で発言の原文まで確かめられるようにする。"""
+    shown = [
+        element
+        for element in elements
+        if any(number in heads and heads[number].id in delivered_ids for number in element.evidence_statement_ids)
+    ]
+    return [
+        {
+            "element_id": element.id,
+            "body": element.body,
+            "kind": element.kind.value,
+            "unit": element.unit.value,
+            "valid_from": element.valid_from.isoformat(),
+            "confirmed": model_store.confirmed_by_self(element, heads),
+        }
+        for element in shown
+    ]
 
 
 def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -> dict:
-    """問いに答える。AI の呼び出しは要素を選ぶ1回と、本人の言葉が見つからないときの1回だけ。"""
+    """問いに答える。読む量はどの段も上限で切る。"""
     started = time.monotonic()
     self_user = db.self_user(conn)
     self_name = self_user.display_name if self_user else "本人"
@@ -360,49 +496,63 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
     direct = chosen(pick.direct_numbers)
     related = [element for element in chosen(pick.related_numbers) if element.id not in {d.id for d in direct}]
     kind = stronger_kind(pick.request_kind, request_kind_from_words(question))
+
     picked = _take_evenly(_evidence_groups(direct, heads, scopes, question))
+    lead = None
+    pool = _build_word_pool(conn, viewer, direct, related, heads, scopes, question)
+    if pool.statements:
+        try:
+            words = ai.pick_words(
+                system=prompts.word_pick_system(self_name),
+                text=prompts.word_pick_user_text(question, pool.direct, pool.related, pool.others),
+                client=client,
+            )
+        except _AI_ERRORS:
+            # 要素の根拠から順に取り出す道へ落とす。一時の失敗を「記録がない」に見せないため
+            pass
+        else:
+            _log_call(conn, "言葉を選ぶ", words, "専門職の問い")
+            picked = _chosen_statements(words.value, pool)
+            lead = words.value.lead
     sections = _sections(conn, picked, self_name)
+    delivered = [item["body"] for key in ("self_words", "testimony", "guesses") for item in sections[key]]
     has_self_words = bool(sections["self_words"])
+    delivered_ids = {item["statement_id"] for key in ("self_words", "testimony", "guesses") for item in sections[key]}
     view: dict = {
         "question": question,
         "notice": _NOTICES.get(kind),
-        "lead": usable_lead(pick.lead),
+        "lead": usable_lead(lead, delivered),
         # いちばん上に今の様子を出す（原則2）。問いに関係なく、いつも入れる
         "now": observations.now_view(conn, viewer, LIMITS["now"]),
         **sections,
         "not_yet": None if has_self_words else NOT_YET,
-        "estimate": None,
-        "elements": [
-            {
-                "element_id": element.id,
-                "body": element.body,
-                "kind": element.kind.value,
-                "unit": element.unit.value,
-                "confirmed": model_store.confirmed_by_self(element, heads),
-            }
+        # 届けた言葉を根拠に持つ直接の要素が「変化」なら、時期によって言葉が変わっていることを画面で知らせる
+        "changed": any(
+            element.kind is ElementKind.CHANGE
+            and any(number in heads and heads[number].id in delivered_ids for number in element.evidence_statement_ids)
             for element in direct
-        ],
+        ),
+        "estimate": None,
+        "elements": _elements_view([*direct, *related], heads, delivered_ids),
     }
     estimate_log = None
     if not has_self_words:
         estimate_log = _estimate(conn, view, question, [*direct, *related], heads, scopes, self_name, client)
-        has_self_words = bool(view["self_words"])
-    if not has_self_words:
         _remember_question(conn, question)
-    statements = [item["statement_id"] for key in ("self_words", "testimony", "guesses") for item in view[key]]
-    answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, statements, result)
+    answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, sorted(delivered_ids), result)
     devlog.record(
         "専門職の問い",
         outcome=devlog.SUCCESS if has_self_words else devlog.NOT_YET,
         ms=devlog.since(started),
         question_chars=len(question),
         model_chars=len(model_text),
+        pool_statements=len(pool.statements),
     )
     return {"view": view, "answer_log": answer_log, "estimate_log": estimate_log}
 
 
 def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_name: str, client) -> int | None:
-    """根拠の本文を読み、問いそのものの本人の言葉を拾い直すか、推定の枠を作る。材料がなければ呼ばない。"""
+    """本人の言葉がないときに、推定の枠を作る。材料がなければ呼ばない。作れなくても答えは返す。"""
     if not elements:
         return None
     materials, lines = _materials(elements, heads, scopes, question, conn)
@@ -415,23 +565,17 @@ def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_nam
     except _AI_ERRORS:
         return None
     _log_call(conn, "推定意思", result, "専門職の問い")
-    quotes = _quotes_from_materials(result.value.quote_numbers, materials)
-    if quotes:
-        # 本人の言葉があるので、推定は出さない。最初の案内は「見当たらない」と書いていることがあるので外す
-        ordered = order_for_display(quotes)[: LIMITS["quotes_total"]]
-        view["self_words"] = [statement_view(conn, item, self_name) for item in ordered]
-        view["not_yet"] = None
-        view["lead"] = None
-        return None
     usable = _usable_estimate(result.value, materials)
     if usable is None:
         return None
     draft = usable["draft"]
+    # 本人の言葉の根拠がなければ、確からしさを上げない（原則11）。家族の言葉を本人の意思として扱わないため
+    has_self_ground = any(item.source in _SELF_SOURCES for item in usable["evidence"])
     view["estimate"] = {
         "text": usable["text"],
         "evidence": [statement_view(conn, item, self_name) for item in usable["evidence"]],
         "counter": [statement_view(conn, item, self_name) for item in usable["counter"]],
-        "confidence": _confidence_words(draft.confidence),
+        "confidence": _confidence_words(draft.confidence if has_self_ground else 0.0),
         "how_to_confirm": draft.how_to_confirm.strip(),
     }
     statements = [item.id for item in [*usable["evidence"], *usable["counter"]]]

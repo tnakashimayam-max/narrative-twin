@@ -57,6 +57,7 @@ from app.schemas import (
     SplitResult,
     ThreadQuestion,
     TwinAnswerPick,
+    WordPick,
     TwinClosing,
     TwinPhotoTurn,
     TwinTurn,
@@ -412,6 +413,11 @@ def pick_elements(
         schema=TwinAnswerPick,
         client=client,
     )
+
+
+def pick_words(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[WordPick]:
+    """候補の本文を読み、問いに合う言葉の番号を選ぶ。受け取るのは番号と短い案内だけ（原則9）。"""
+    return call_structured("言葉を選ぶ", system=system, content=text, schema=WordPick, client=client)
 
 
 def estimate_will(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[EstimateDraft]:

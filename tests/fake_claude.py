@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import anthropic
 import httpx2
@@ -59,6 +60,7 @@ class FakeClaude:
 _ROLE_MARKS = {
     "固める処理": "意思モデルを作る係",
     "ツインの答え": "要素の番号を選ぶ係",
+    "言葉を選ぶ": "番号で選ぶ係",
     "推定意思": "推定を書く係",
     "言明への分割": "記録の整理係",
     "人の候補": "話に出てきた人を抜き出します",
@@ -82,6 +84,32 @@ def role_of(body: dict) -> str:
     return "不明"
 
 
+_WORD_LINE = re.compile(r"^\[(\d+)\] [^／]+／([^／]+)／")
+
+
+def _user_text(body: dict) -> str:
+    content = body["messages"][0]["content"]
+    return content if isinstance(content, str) else "\n".join(block.get("text", "") for block in content)
+
+
+def _choose_direct(body: dict) -> dict:
+    """言葉を選ぶ係の既定の答え。直接答えそうな記録をすべて、出どころの枠に分けて選ぶ。"""
+    section = _user_text(body).split("## 問いに直接答えそうな記録", 1)[1].split("## 関係はありそうな記録", 1)[0]
+    frames: dict[str, list[int]] = {"self_numbers": [], "testimony_numbers": [], "guess_numbers": []}
+    for line in section.splitlines():
+        match = _WORD_LINE.match(line)
+        if not match:
+            continue
+        number, source = int(match.group(1)), match.group(2)
+        if source in ("本人の言葉", "本人の訂正"):
+            frames["self_numbers"].append(number)
+        elif source in ("家族の証言", "縁のある人の証言"):
+            frames["testimony_numbers"].append(number)
+        elif source == "AIの推測":
+            frames["guess_numbers"].append(number)
+    return {**frames, "lead": None}
+
+
 class RoleClaude:
     """役割ごとに決まった答えを返す。答えを決めていない役割は、中身のない答えを返す。
 
@@ -100,9 +128,11 @@ class RoleClaude:
             "今日はここまで": {"reply": "今日もお話をありがとうございました。", "tip": "夕方は少し冷えそうです。"},
             "ツインの会話": {"reply": "そうなのですね。"},
             "固める処理": {"elements": []},
-            "ツインの答え": {"direct_numbers": [], "related_numbers": [], "request_kind": "通常", "lead": None},
+            "ツインの答え": {"direct_numbers": [], "related_numbers": [], "request_kind": "通常"},
+            # None は、直接答えそうな記録をすべて選ぶ（_choose_direct）
+            "言葉を選ぶ": None,
             "推定意思": {
-                "estimate": "推定です。",
+                "estimate": "推定かもしれません。",
                 "evidence_numbers": [],
                 "counter_numbers": [],
                 "confidence": 0.3,
@@ -115,7 +145,10 @@ class RoleClaude:
     def __call__(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         body = json.loads(request.content)
-        answer = self.answers[role_of(body)]
+        role = role_of(body)
+        answer = self.answers[role]
+        if role == "言葉を選ぶ" and answer is None:
+            answer = _choose_direct(body)
         if isinstance(answer, list):
             answer = answer.pop(0) if len(answer) > 1 else answer[0]
         if isinstance(answer, int):

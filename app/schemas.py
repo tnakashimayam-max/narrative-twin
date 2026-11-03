@@ -826,6 +826,11 @@ def _twin_voice(text: str) -> str:
 _HIDDEN_QUESTION = re.compile(r"(?<!そう)(?:でしょうか|ますか|ましたか|ませんか|ですか|でしたか)[。！!…]*$")
 
 
+_HEDGED_END = re.compile(r"(かもしれません|かも知れません)[。！!]?$")
+# 読んだのは記録の一部なので、記録全体の有無を言い切る語は使わせない
+_CLAIMS_ABOUT_RECORDS = ("記録にな", "記録はな", "記録にあり", "記録があり", "見当たら", "見当たり", "見つから", "見つかり", "ありません")
+
+
 def _is_question(sentence: str) -> bool:
     return any(mark in sentence for mark in "？?") or bool(_HIDDEN_QUESTION.search(sentence.strip()))
 
@@ -1050,12 +1055,23 @@ class TwinAnswerPick(_Base):
     """ツインの答えの AI の出力。要素の番号を選ぶだけで、本人の言葉の本文は持たない。
 
     direct_numbers は問いに直接答える要素、related_numbers は関係はあるが直接は答えない要素。
-    lead は短い案内で、本人の言葉として扱わない。プログラムが確かめて、通らなければ捨てる。
     """
 
     direct_numbers: list[int] = []
     related_numbers: list[int] = []
     request_kind: RequestKind = RequestKind.NORMAL
+
+
+class WordPick(_Base):
+    """言葉を選ぶ係の AI の出力。番号と短い案内だけで、本文を書く項目を持たない。
+
+    AI の出力が本人の言葉の本文になる道がないことが、原則9を守る理由。番号はプログラムが、渡した候補にあるか、
+    出どころが枠に合うかを確かめる。lead は本人の言葉として扱わず、通らなければ捨てる。
+    """
+
+    self_numbers: list[int] = []
+    testimony_numbers: list[int] = []
+    guess_numbers: list[int] = []
     lead: str | None = None
 
 
@@ -1065,10 +1081,23 @@ class EstimateDraft(_Base):
     estimate: str = Field(min_length=1, max_length=200)
     evidence_numbers: list[int]
     counter_numbers: list[int] = []
-    # 問いの事柄そのものを本人が話している材料の番号。要素の文には細かい事柄が残らないことがあるので、ここで拾い直す
-    quote_numbers: list[int] = []
     confidence: Confidence
     how_to_confirm: str = Field(min_length=1, max_length=200)
+
+    @field_validator("estimate")
+    @classmethod
+    def _check_estimate(cls, value: str) -> str:
+        """全部の文を推測の形にする。文を落とすと AI が書いていない文章ができるので、落とさずに断ってやり直す。
+
+        AI は渡した材料しか読んでいないので、記録全体について「ない」とは言えない。
+        関連するテスト：tests/test_advocacy.py の test_推定は全部の文がかもしれませんで終わらなければ出さない
+        """
+        cleaned = _twin_voice(value)
+        if any(word in cleaned for word in _CLAIMS_ABOUT_RECORDS):
+            raise ValueError("記録全体について書かないでください")
+        if not all(_HEDGED_END.search(sentence.strip()) for sentence in _sentences(cleaned)):
+            raise ValueError("どの文も「かもしれません」で終えてください")
+        return cleaned
 
 
 class Evaluation(_Base):

@@ -123,6 +123,8 @@ def _handover_view(conn: sqlite3.Connection) -> dict:
         "all_themes": [theme.value for theme in Theme],
         "delegate_ids": [user.id for user in delegates if user.role is Role.FAMILY],
         "family": [{"id": user.id, "name": user.display_name} for user in family],
+        # 今だれに見えているかを本人が分かるように、招かれた専門職の名前を返す
+        "professionals": [user.display_name for user in delegates if user.role is Role.PROFESSIONAL],
         "decided_on": max(days).isoformat() if days else None,
     }
 
@@ -168,10 +170,16 @@ def save_handover(
     return _handover_view(conn)
 
 
-def _review_view(statement: Statement) -> dict:
+def _review_view(conn: sqlite3.Connection, statement: Statement) -> dict:
+    origin = None
+    # 推測には、もとの発言を添える。日付だけでは、本人が何の話か思い出せないため
+    if statement.source is Source.AI_GUESS and statement.source_utterance_ids:
+        utterance = ledger.get_utterance(conn, statement.source_utterance_ids[0])
+        origin = utterance.text if utterance else None
     return {
         "id": statement.id,
         "body": statement.body,
+        "origin": origin,
         "source": statement.source.value,
         "effective_date": statement.effective_date.isoformat(),
         "is_guess": statement.source is Source.AI_GUESS,
@@ -195,7 +203,7 @@ def read_review(
         key=lambda item: (item.effective_date == today, item.source is Source.AI_GUESS, item.effective_date),
         reverse=True,
     )
-    return {"items": [_review_view(item) for item in items[:_REVIEW_LIMIT]]}
+    return {"items": [_review_view(conn, item) for item in items[:_REVIEW_LIMIT]]}
 
 
 def _reviewable(conn: sqlite3.Connection, statement_id: int) -> Statement:
@@ -217,7 +225,7 @@ def confirm(
     """「そうです」。確かめた行を足す。"""
     _reviewable(conn, statement_id)
     return _review_view(
-        ledger.confirm_statement(conn, statement_id, actor_user_id=viewer.id, at=clock.now(request.app))
+        conn, ledger.confirm_statement(conn, statement_id, actor_user_id=viewer.id, at=clock.now(request.app))
     )
 
 
@@ -230,7 +238,7 @@ def rest(
 ) -> dict:
     """「今は話したくない」。本人だけに戻した行を足す。"""
     _reviewable(conn, statement_id)
-    return _review_view(ledger.rest_statement(conn, statement_id, actor_user_id=viewer.id, at=clock.now(request.app)))
+    return _review_view(conn, ledger.rest_statement(conn, statement_id, actor_user_id=viewer.id, at=clock.now(request.app)))
 
 
 def _confirm_conversation(conn: sqlite3.Connection, day: date) -> int:
@@ -283,4 +291,4 @@ def correct(
             effective_date=now.date(),
             at=now,
         )
-    return _review_view(corrected)
+    return _review_view(conn, corrected)
