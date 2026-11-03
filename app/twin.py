@@ -5,6 +5,8 @@
 守る原則：1（判断しない）、6（お休みの話題とつらい出来事は聞かない）、7（引き留めない）、
           12（本人になりきらない）、14（スレッドのツインは問いを1つ）、15（招かれた部屋だけを読む）。
 
+発言の中身と Haiku 5.5 の答えをプログラムが判断し、必要なときだけモデルを Sonnet 5.5 へ選択する（choose_turn、app/twin_model.py）。
+
 プロンプトの決まりは AI へのお願いで、守られるとは限らない。次のことはプログラムで決める。
 - 問いは1回に1つまで（型で受け止めと問いを分ける。app/schemas.py）。
 - お休みのテーマ、つらかったことのテーマ、同じ問い、本人が終えたそうなときの問いは落とす。
@@ -24,10 +26,12 @@ from __future__ import annotations
 import re
 import sqlite3
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from app import ai, config, db, devlog, ledger, memory, photos, prompts, room_store
+from app import ai, config, db, devlog, ledger, memory, photos, prompts, room_store, twin_model
 from app.schemas import (
     CareKind,
     Conversation,
@@ -398,6 +402,70 @@ def _ask(
         )
 
 
+# ---- モデルを選ぶ ----
+
+
+@dataclass(frozen=True)
+class ChosenTurn:
+    """答えと、モデルを Sonnet 5.5 へ選択した理由。Haiku 5.5 の答えを使うときの理由は None。"""
+
+    result: ai.AIResult
+    reason: twin_model.DeepReason | None
+
+
+def _shown_reply(reply: str, heard: str, care: CareKind) -> str:
+    """AI の返事を決まりに通した文を返す。全部の文が外れたら空を返し、呼ぶ側が決まった文に替える。"""
+    trimmed = trim_reply(reply, heard)
+    return drop_referrals(trimmed) if care is CareKind.HEALTH else trimmed
+
+
+def choose_turn(
+    *,
+    system: str,
+    text: str,
+    said: str,
+    keyword_care: CareKind,
+    record: Callable[..., None],
+    client=None,
+) -> ChosenTurn:
+    """発言の中身と Haiku 5.5 の答えをプログラムが判断し、必要なときだけモデルを Sonnet 5.5 へ選択する。
+
+    判断の決まりと理由は app/twin_model.py にある。record は AI を呼ぶたびに費用を残すために呼ぶ。
+    選んだモデルが答えられないときは、もう一方のモデルの答えで返す。本人を待たせて何も返さないより、
+    言葉の質が少し落ちても返すほうがよいため。API に届かないときは、もう一方でも届かないので例外のまま上げる。
+    関連するテスト：tests/test_twin_model.py
+    """
+
+    def ask(*, deep: bool):
+        role = config.TWIN_DEEP_ROLE if deep else "ツインの会話"
+        try:
+            result = ai.twin_turn(system=system, text=text, client=client, deep=deep)
+        except _SPENT_ERRORS as error:
+            record(role, error=error)
+            raise
+        record(role, result=result)
+        return result
+
+    reason = twin_model.reason_before_answer(said, keyword_care)
+    if reason is not None:
+        try:
+            return ChosenTurn(ask(deep=True), reason)
+        except _SPENT_ERRORS:
+            return ChosenTurn(ask(deep=False), None)
+    try:
+        light = ask(deep=False)
+    except _SPENT_ERRORS:
+        return ChosenTurn(ask(deep=True), twin_model.DeepReason.BAD_ANSWER)
+    care = _stronger(settled_ai_care(light.value.care, said), keyword_care)
+    reason = None if says_goodbye(said) else twin_model.reason_after_answer(_shown_reply(light.value.reply, said, care))
+    if reason is None:
+        return ChosenTurn(light, None)
+    try:
+        return ChosenTurn(ask(deep=True), reason)
+    except _ALL_AI_ERRORS:
+        return ChosenTurn(light, None)
+
+
 # ---- 本人とツインの部屋 ----
 
 
@@ -418,23 +486,41 @@ def respond_in_twin_room(
     keyword_care = detect_care(said)
     context = memory.build_twin_context(conn, room, conversation_id, self_user, now.date())
     system = prompts.twin_system(self_user.display_name)
-    role = "ツインの会話"
     photo = photos.get_photo(conn, message.photo_id) if message.photo_id else None
+    target = f"会話 {conversation_id}"
+
+    def record(role: str, *, result=None, error=None) -> None:
+        if error is not None:
+            _log_spent(conn, role, error, target)
+        else:
+            _log_result(conn, role, result, target)
+
+    deep_reason = None
     try:
         if photo is not None:
-            role = "写真の問い"
-            result = ai.twin_photo_turn(
-                photo,
-                photos.read_photo_bytes(photos_dir, photo),
+            try:
+                result = ai.twin_photo_turn(
+                    photo,
+                    photos.read_photo_bytes(photos_dir, photo),
+                    system=system,
+                    text=prompts.twin_user_text(**context) + "\n\n" + prompts.TWIN_PHOTO_INSTRUCTION,
+                    client=client,
+                )
+            except _SPENT_ERRORS as error:
+                record("写真の問い", error=error)
+                raise
+            record("写真の問い", result=result)
+        else:
+            chosen = choose_turn(
                 system=system,
-                text=prompts.twin_user_text(**context) + "\n\n" + prompts.TWIN_PHOTO_INSTRUCTION,
+                text=prompts.twin_user_text(**context),
+                said=said,
+                keyword_care=keyword_care,
+                record=record,
                 client=client,
             )
-        else:
-            result = ai.twin_turn(system=system, text=prompts.twin_user_text(**context), client=client)
-    except _ALL_AI_ERRORS as error:
-        if isinstance(error, _SPENT_ERRORS):
-            _log_spent(conn, role, error, f"会話 {conversation_id}")
+            result, deep_reason = chosen.result, chosen.reason
+    except _ALL_AI_ERRORS:
         if keyword_care is CareKind.NONE:
             raise
         # AI が断ったり答えなかったりしても、命や体に関わる言葉には、つなぎ先を必ず返す
@@ -443,7 +529,6 @@ def respond_in_twin_room(
             _say(conn, room, conversation_id, Place.DIARY_AND_TALK, _CARE_LINES[keyword_care], now)
             _answer_pending(conn, conversation_id, None)
         return
-    _log_result(conn, role, result, f"会話 {conversation_id}")
     turn = result.value
     ai_care = settled_ai_care(turn.care, said)
     care = _stronger(ai_care, keyword_care)
@@ -479,9 +564,7 @@ def respond_in_twin_room(
             )
         heard = said + (result.value.photo_description if photo is not None else "")
         fallback = _CARE_RECEIVE[care] if care is not CareKind.NONE else _HEARD_RECEIPT
-        trimmed = trim_reply(turn.reply, heard)
-        if care is CareKind.HEALTH:
-            trimmed = drop_referrals(trimmed)
+        trimmed = _shown_reply(turn.reply, heard, care)
         reply = trimmed or fallback
         if care is not CareKind.NONE and _HIDDEN_QUESTION.search(reply):
             reply = _CARE_RECEIVE[care]
@@ -494,6 +577,8 @@ def respond_in_twin_room(
             _ask(conn, room, conversation_id, Place.DIARY_AND_TALK, question, turn.question_theme, now)
             memory.mark_candidate_used(conn, question, now.date())
     notes = []
+    if deep_reason is not None:
+        notes.append(devlog.MODEL_CHOSEN)
     if turn.question and not question:
         notes.append(devlog.QUESTION_DROPPED)
     if not trimmed or reply != trimmed:
@@ -520,6 +605,7 @@ def respond_in_twin_room(
             "問い": question,
             "問いを落とした理由": dropped_because,
             "care": care.value,
+            "モデルを選んだ理由": deep_reason.value if deep_reason is not None else None,
             "写真の説明": result.value.photo_description if photo is not None else None,
         },
     )
@@ -554,20 +640,30 @@ def close_in_twin_room(
     if not lines:
         return
     target = f"会話 {conversation.id}"
-    try:
-        result = ai.twin_closing(
-            system=prompts.twin_closing_system(self_user.display_name),
-            text=f"## 今日の日付\n{memory.date_label(now.date())}\n\n## 今日の話\n" + "\n".join(lines),
-            client=client,
-        )
-    except _SPENT_ERRORS as error:
-        _log_spent(conn, "ツインの会話", error, target)
-        raise
-    _log_result(conn, "ツインの会話", result, target)
+    text = f"## 今日の日付\n{memory.date_label(now.date())}\n\n## 今日の話\n" + "\n".join(lines)
+    system = prompts.twin_closing_system(self_user.display_name)
+
+    def ask(*, deep: bool):
+        role = config.TWIN_DEEP_ROLE if deep else "ツインの会話"
+        try:
+            result = ai.twin_closing(system=system, text=text, client=client, deep=deep)
+        except _SPENT_ERRORS as error:
+            _log_spent(conn, role, error, target)
+            raise
+        _log_result(conn, role, result, target)
+        return result
+
+    closing = ask(deep=False).value
+    if advises_on_health(closing.tip):
+        # 答えをプログラムが判断し、モデルを Sonnet 5.5 へ選択して書き直す。それでも助言なら一言を出さない
+        try:
+            closing = ask(deep=True).value
+        except _ALL_AI_ERRORS:
+            pass
     with ledger.atomic(conn):
-        _say(conn, room, conversation.id, Place.DIARY_AND_TALK, result.value.reply, now)
-        if not advises_on_health(result.value.tip):
-            _say(conn, room, conversation.id, Place.DIARY_AND_TALK, result.value.tip, now)
+        _say(conn, room, conversation.id, Place.DIARY_AND_TALK, closing.reply, now)
+        if not advises_on_health(closing.tip):
+            _say(conn, room, conversation.id, Place.DIARY_AND_TALK, closing.tip, now)
 
 
 # ---- グループ ----

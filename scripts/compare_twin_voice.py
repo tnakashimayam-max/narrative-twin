@@ -1,12 +1,14 @@
-"""ツインの返事の言葉を、同じ架空の発言で比べる。
+"""ツインの返事の言葉と、選ばれたモデルを、同じ架空の発言で比べる。
 
 役割：今のプロンプトとプログラムの決まりを通した返事を並べ、結果をファイルに残す。
       プロンプトを直す前と後で流せば、同じ発言での違いが読める。
+      既定では、アプリと同じ twin.choose_turn を通し、どの発言がどのモデルに回ったかを出す。
+      --model を付けると、選ぶ処理を通さず、そのモデルだけで答えさせる。
 4つの極：1. 書く・話す。
 守る原則：6（聞かない話題）、8（送るのは架空の内容だけ）、9、12。
 
 結果は data/trial/verify/ に置き、Git には入れない。決めた結果は docs/tools.md にある。
-使い方：.venv\\Scripts\\python -m scripts.compare_twin_voice --label 直す前 [--model claude-sonnet-5-5]
+使い方：.venv\\Scripts\\python -m scripts.compare_twin_voice --label 名前 [--natural 40] [--model claude-sonnet-5-5]
 """
 
 from __future__ import annotations
@@ -16,12 +18,13 @@ import json
 import statistics
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 import anthropic
 from pydantic import ValidationError
 
-from app import config, prompts, twin
+from app import ai, config, prompts, twin
 from app.schemas import CareKind, TwinTurn
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,8 +62,8 @@ INPUTS = [
 ]
 
 
-def _call(client: anthropic.Anthropic, model: str, text: str) -> dict:
-    body = prompts.twin_user_text(
+def _user_text(text: str) -> str:
+    return prompts.twin_user_text(
         today=TODAY,
         summaries=[],
         self_words=SELF_WORDS,
@@ -69,6 +72,54 @@ def _call(client: anthropic.Anthropic, model: str, text: str) -> dict:
         resting=[],
         transcript=f"{SELF}：{text}",
     )
+
+
+def _natural_inputs(count: int) -> list[str]:
+    """物語の架空ログの本人の発言を、等間隔に選ぶ。どれくらい Sonnet に回るかを、ふだんの話で見るため。"""
+    said = []
+    for path in sorted((ROOT / "data" / "story").glob("log_*.json")):
+        for day in json.loads(path.read_text(encoding="utf-8")).values():
+            said.extend(turn["text"] for turn in day.get("turns", []) if turn.get("speaker") != "ツイン")
+    step = max(1, len(said) // count) if count else 1
+    return said[::step][:count]
+
+
+def _chosen(client: anthropic.Anthropic, text: str) -> dict:
+    """アプリと同じ判断でモデルを選んで答えさせる。判断をここに写さない。"""
+    calls: list[tuple[str, str, int, int]] = []
+
+    def record(role: str, *, result: ai.AIResult | None = None, error=None) -> None:
+        spent = result or error
+        calls.append((role, spent.model, spent.input_tokens, spent.output_tokens))
+
+    started = time.monotonic()
+    chosen = twin.choose_turn(
+        system=prompts.twin_system(SELF),
+        text=_user_text(text),
+        said=text,
+        keyword_care=twin.detect_care(text),
+        record=record,
+        client=client,
+    )
+    seconds = round(time.monotonic() - started, 2)
+    answer = chosen.result.value.model_dump_json()
+    row = {
+        "発言": text,
+        "秒": seconds,
+        "input_tokens": sum(call[2] for call in calls),
+        "output_tokens": sum(call[3] for call in calls),
+        "費用": sum(config.cost_usd(call[1], call[2], call[3]) for call in calls),
+        "呼んだ役割": [call[0] for call in calls],
+        "答えたモデル": chosen.result.model,
+        "理由": chosen.reason.value if chosen.reason else None,
+        "答え": answer,
+    }
+    row.update(_as_shown(text, answer))
+    return row
+
+
+def _call(client: anthropic.Anthropic, model: str, text: str) -> dict:
+    body = _user_text(text)
     started = time.monotonic()
     response = client.beta.messages.create(
         model=model,
@@ -87,6 +138,8 @@ def _call(client: anthropic.Anthropic, model: str, text: str) -> dict:
         "秒": seconds,
         "input_tokens": response.usage.input_tokens,
         "output_tokens": response.usage.output_tokens,
+        "費用": config.cost_usd(model, response.usage.input_tokens, response.usage.output_tokens),
+        "答えたモデル": model,
         "答え": answer,
     }
     row.update(_as_shown(text, answer))
@@ -124,12 +177,15 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="ツインの返事の言葉を比べる")
     parser.add_argument("--label", required=True, help="結果のファイル名に使う名前")
-    parser.add_argument("--model", default=config.MODEL_BY_ROLE["ツインの会話"])
+    parser.add_argument("--model", help="選ぶ処理を通さず、このモデルだけで答えさせる")
+    parser.add_argument("--natural", type=int, default=0, help="物語の架空ログから足す発言の数")
     args = parser.parse_args()
     client = anthropic.Anthropic(api_key=config.api_key(), max_retries=config.MAX_API_RETRIES)
-    rows = [_call(client, args.model, text) for text in INPUTS]
+    inputs = [*INPUTS, *_natural_inputs(args.natural)]
+    rows = [_call(client, args.model, text) if args.model else _chosen(client, text) for text in inputs]
     for row in rows:
         print(f"【{row['発言']}】")
+        print(f"  モデル：{row['答えたモデル']}（{row.get('理由') or '選ぶ理由なし'}）")
         print(f"  返事：{row.get('返事', row.get('型'))}")
         if row.get("切られた"):
             print(f"  （切られた。元の答え：{row['答え'][:120]}）")
@@ -141,12 +197,12 @@ def main() -> int:
     out = OUT_DIR / f"twin_voice_{args.label}.json"
     out.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
     times = [row["秒"] for row in rows]
-    total_in = sum(row["input_tokens"] for row in rows)
-    total_out = sum(row["output_tokens"] for row in rows)
     lengths = [len(row["返事"]) for row in rows if "返事" in row]
     print(f"\n秒 中央値 {statistics.median(times)}、最大 {max(times)}／字数 中央値 {statistics.median(lengths)}")
     print(f"切られた {sum(bool(row.get('切られた')) for row in rows)}件／型に合わない {sum('型' in row for row in rows)}件")
-    print(f"費用：${config.cost_usd(args.model, total_in, total_out):.4f}（入力 {total_in}／出力 {total_out}）")
+    deep = [row for row in rows if row.get("理由")]
+    print(f"Sonnet を選んだ {len(deep)}/{len(rows)} 件：{dict(Counter(row['理由'] for row in deep))}")
+    print(f"費用：${sum(row['費用'] for row in rows):.4f}")
     return 0
 
 

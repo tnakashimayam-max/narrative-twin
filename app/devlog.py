@@ -58,6 +58,7 @@ NOT_ASKED = "問いなし"
 QUESTION_DROPPED = "問いを落とした"
 REPLY_TRIMMED = "受け止めを短くした"
 REPLY_REPLACED = "決まった文に替えた"
+MODEL_CHOSEN = "Sonnet を選んだ"
 STATEMENT_DROPPED = "入らなかった言明あり"
 NOT_YET = "まだ聞けていない"
 _RESULTS = frozenset(
@@ -75,6 +76,7 @@ _RESULTS = frozenset(
         QUESTION_DROPPED,
         REPLY_TRIMMED,
         REPLY_REPLACED,
+        MODEL_CHOSEN,
         STATEMENT_DROPPED,
     }
 )

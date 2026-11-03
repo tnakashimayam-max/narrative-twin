@@ -331,6 +331,18 @@ def test_架空用のログにも人だけの部屋の本文は入らない(logi
     assert ROOM_TALK not in _raw(me)
 
 
+def test_自分用のログにはモデルを選んだ印だけを書き_理由は書かない(own, claude):
+    # 理由の「気持ちの話」や「体の話」は、話の内容が分かるため
+    claude.answers["ツインの会話"] = _turn()
+
+    _send(own, "なんだか寂しいな。")
+
+    turn = next(line for line in _lines(own) if line["op"] == "ツインの返事")
+    assert "Sonnet を選んだ" in turn["notes"]
+    assert "気持ちの話" not in _raw(own)
+    assert "モデルを選んだ理由" not in _raw(own)
+
+
 def test_ログで受け止めを短くしたことが分かる(login, claude):
     me = login("誠一さん")
     claude.answers["ツインの会話"] = {"reply": "急須ですね。大切に使われてきたのが伝わります。"}
@@ -349,7 +361,7 @@ def test_ログで決まった文に替えたことが分かる(login, claude):
 
     _send(me, "迷惑はかけたくない。")
 
-    assert next(line for line in _lines(me) if line["op"] == "ツインの返事")["notes"] == ["決まった文に替えた"]
+    assert "決まった文に替えた" in next(line for line in _lines(me) if line["op"] == "ツインの返事")["notes"]
 
 
 def test_ログで前の話を読めているかが分かる(login, claude):

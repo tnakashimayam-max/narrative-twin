@@ -326,9 +326,15 @@ def check_connection(client: anthropic.Anthropic | None = None) -> AIResult[Conn
     )
 
 
-def twin_turn(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[TwinTurn]:
-    """ツインの1回の返事。本人が待つので速いモデルを使う（config.MODEL_BY_ROLE）。"""
-    return call_structured("ツインの会話", system=system, content=text, schema=TwinTurn, client=client)
+def _twin_role(deep: bool) -> str:
+    return config.TWIN_DEEP_ROLE if deep else "ツインの会話"
+
+
+def twin_turn(
+    *, system: str, text: str, client: anthropic.Anthropic | None = None, deep: bool = False
+) -> AIResult[TwinTurn]:
+    """ツインの1回の返事。ふだんは本人を待たせない速いモデル、deep はプログラムが選んだ場面のモデル（app/twin_model.py）。"""
+    return call_structured(_twin_role(deep), system=system, content=text, schema=TwinTurn, client=client)
 
 
 def twin_photo_turn(
@@ -360,9 +366,11 @@ def twin_photo_turn(
     return call_structured("写真の問い", system=system, content=content, schema=TwinPhotoTurn, client=client)
 
 
-def twin_closing(*, system: str, text: str, client: anthropic.Anthropic | None = None) -> AIResult[TwinClosing]:
+def twin_closing(
+    *, system: str, text: str, client: anthropic.Anthropic | None = None, deep: bool = False
+) -> AIResult[TwinClosing]:
     """「今日はここまで」の返事。"""
-    return call_structured("ツインの会話", system=system, content=text, schema=TwinClosing, client=client)
+    return call_structured(_twin_role(deep), system=system, content=text, schema=TwinClosing, client=client)
 
 
 def summarize_conversation(
