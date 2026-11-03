@@ -267,6 +267,17 @@ def test_判定には腕の名前を出さず_同じ言葉の組は1つにまと
     assert all(ARM_MODEL not in label and ARM_BM25 not in label for label, _ in options)
 
 
+def test_定型句を外すのは問いの終わりだけ():
+    assert compare_rag.strip_boilerplate("入浴の介助について、どう話していましたか") == "入浴の介助"
+    assert compare_rag.strip_boilerplate("趣味や娯楽について、ご本人はどう話していましたか？") == "趣味や娯楽"
+    assert compare_rag.strip_boilerplate("最近、転倒したことはありますか？") == "最近、転倒したことはありますか？"
+
+
+def test_上位に入る正解の割合は上限で割る(world):
+    assert compare_rag.top_potential(world, "風呂について", ["風呂は一人で入りたいんだ。"]) == 1.0
+    assert compare_rag.top_potential(world, "風呂について", ["この家で庭を見ていたい。"]) == 0.0
+
+
 def test_同じ種からは同じ言葉を抜く(world):
     first = compare_rag.draw_sample(world.self_statements, 1, 7)
     second = compare_rag.draw_sample(world.self_statements, 1, 7)

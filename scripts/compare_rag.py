@@ -24,6 +24,7 @@
   python -m scripts.compare_rag run       腕を流す。--rep 1 か 2
   python -m scripts.compare_rag judge     届いた言葉を目隠しで判定する
   python -m scripts.compare_rag repeat    同じ記録で今の方式を2回流し、揺れを測る
+  python -m scripts.compare_rag probe     定型句の影響と、入れ直しによる要素の並びの違いを測る（AI を呼ばない）
   python -m scripts.compare_rag report    表を書き出す（AI を呼ばない）
 
 関連するテスト：tests/test_compare_rag.py
@@ -34,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import sqlite3
 import sys
 import tempfile
@@ -689,6 +691,59 @@ def cmd_repeat() -> int:
     return 0
 
 
+# ---- probe ----
+
+_BOILERPLATE = re.compile(r"(について)?、?(ご本人は)?どう(話して|感じて|考えて|思って)(い)?(ました|います)か?[？。]?$")
+
+
+def strip_boilerplate(question: str) -> str:
+    """問いの終わりの定型句を外す。どの問いにも付くので、BM25 が短い文を上位に出す原因になるかを見るため。"""
+    return _BOILERPLATE.sub("", question)
+
+
+def top_potential(world: World, question: str, gold: list[str], top: int = SELF_LIMIT) -> float:
+    """BM25 の上位に入る正解の割合。選ぶ係を通す前に、候補の時点でどこまで届く見込みがあるかを見る。"""
+    bodies = {world.self_statements[number].body for number, _ in world.index.rank(question)[:top]}
+    return min(1.0, len(bodies & set(gold)) / min(len(set(gold)), QUOTE_LIMIT))
+
+
+def cmd_probe() -> int:
+    """AI を呼ばずに、結果を読むための2つの数字を測る。"""
+    questions = _read_questions()
+    answered = [case for case in questions if case["gold"]]
+    orders: list[list[str]] = []
+    result: dict = {}
+    for attempt in range(2):
+        with tempfile.TemporaryDirectory() as folder:
+            _, conn, _, viewer = _open(Path(folder))
+            try:
+                world = open_world(conn, viewer)
+                orders.append([element.body for element in world.reading])
+                if attempt == 0:
+                    result["boilerplate_questions"] = sum(strip_boilerplate(case["question"]) != case["question"] for case in answered)
+                    result["answered_questions"] = len(answered)
+                    result["top30_as_asked"] = mean([top_potential(world, case["question"], case["gold"]) for case in answered])
+                    result["top30_stripped"] = mean([top_potential(world, strip_boilerplate(case["question"]), case["gold"]) for case in answered])
+                    result["top8_as_asked"] = mean([top_potential(world, case["question"], case["gold"], TOP_WITHOUT_PICKER) for case in answered])
+                    result["top8_stripped"] = mean([top_potential(world, strip_boilerplate(case["question"]), case["gold"], TOP_WITHOUT_PICKER) for case in answered])
+                    changed = [case for case in questions if case["group"] in ("要素から辿れる言葉", "要素から辿れない言葉")]
+
+                    def in_top(question: str, body: str) -> bool:
+                        return body in {world.self_statements[number].body for number, _ in world.index.rank(question)[:SELF_LIMIT]}
+
+                    result["changed_words_questions"] = len(changed)
+                    result["changed_words_in_top30"] = sum(in_top(case["question"], case["source_body"]) for case in changed)
+                    result["changed_words_in_top30_stripped"] = sum(in_top(strip_boilerplate(case["question"]), case["source_body"]) for case in changed)
+            finally:
+                conn.close()
+    result["reading_elements"] = len(orders[0])
+    result["reading_same_set"] = sorted(orders[0]) == sorted(orders[1])
+    result["reading_order_differs_at"] = sum(first != second for first, second in zip(*orders, strict=False))
+    (WORK / "probe.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(json.dumps(result, ensure_ascii=False, indent=1))
+    return 0
+
+
 # ---- report ----
 
 
@@ -892,6 +947,19 @@ def cmd_report() -> int:
             f"- 届いた本人の言葉の組が同じ問い：{sum(row['words_same'] for row in rows)}/{len(rows)}",
             f"- 候補が同じ問いのうち、組も同じ問い：{sum(row['words_same'] for row in rows if row['pool_same'])}/{sum(row['pool_same'] for row in rows)}",
         ]
+    probe_path = WORK / "probe.json"
+    if probe_path.exists():
+        probe = json.loads(probe_path.read_text(encoding="utf-8"))
+        lines += [
+            "",
+            "## AI を呼ばずに測った数字",
+            "",
+            f"- 定型句のある問い：正解のある{probe['answered_questions']}問のうち{probe['boilerplate_questions']}問",
+            f"- BM25 の上位30件に入る正解（上限で割る）：問いのまま {probe['top30_as_asked'] * 100:.1f}%、定型句を外す {probe['top30_stripped'] * 100:.1f}%",
+            f"- BM25 の上位8件に入る正解（上限で割る）：問いのまま {probe['top8_as_asked'] * 100:.1f}%、定型句を外す {probe['top8_stripped'] * 100:.1f}%",
+            f"- 語を変えた{probe['changed_words_questions']}問で、もとにした言葉が上位30件に入る：問いのまま {probe['changed_words_in_top30']}問、定型句を外す {probe['changed_words_in_top30_stripped']}問",
+            f"- 記録を入れ直したときの、読む要素{probe['reading_elements']}個：組が同じ {probe['reading_same_set']}、並びが違う位置 {probe['reading_order_differs_at']}",
+        ]
     agreement = WORK / "gold_agreement.json"
     if agreement.exists():
         value = json.loads(agreement.read_text(encoding="utf-8"))
@@ -929,7 +997,7 @@ def cmd_report() -> int:
 def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="今の方式と BM25 の RAG を比べます。")
-    parser.add_argument("command", choices=["sample", "gold", "run", "judge", "repeat", "report"])
+    parser.add_argument("command", choices=["sample", "gold", "run", "judge", "repeat", "probe", "report"])
     parser.add_argument("--rep", type=int, default=1, choices=[1, 2], help="run の何回目か")
     args = parser.parse_args(argv)
     if args.command == "sample":
@@ -942,6 +1010,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_judge()
     if args.command == "repeat":
         return cmd_repeat()
+    if args.command == "probe":
+        return cmd_probe()
     return cmd_report()
 
 
