@@ -35,6 +35,7 @@ from app.schemas import (
     InterpretationStatus,
     Letter,
     LetterDraft,
+    LifeStage,
     Period,
     Perspective,
     Petal,
@@ -90,6 +91,20 @@ def atomic(conn: sqlite3.Connection) -> Iterator[None]:
         conn.rollback()
         raise
     conn.commit()
+
+
+def life_stage_on(conn: sqlite3.Connection, day: date) -> LifeStage:
+    """その日の人生の段階を、その日までの最後の会話から求める。
+
+    会話を作るときは必ずこれを渡す。既定の「元気な時期」のままだと、2036年の今の様子や訂正の会話で
+    「元気な時期」の期間が2036年まで伸び、固める処理がほかの人生の段階の要素を閉じてしまうため。
+    関連するテスト：tests/test_demo.py の test_その場の言葉を流し直しても_ほかの人生の段階の要素は閉じない
+    """
+    row = conn.execute(
+        "SELECT life_stage FROM conversations WHERE conversation_date <= ? ORDER BY conversation_date DESC, rowid DESC LIMIT 1",
+        (day.isoformat(),),
+    ).fetchone()
+    return LifeStage(row["life_stage"]) if row else LifeStage.ACTIVE
 
 
 def add_conversation(conn: sqlite3.Connection, draft: ConversationDraft) -> Conversation:

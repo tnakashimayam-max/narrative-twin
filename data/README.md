@@ -28,7 +28,7 @@ python -m fiction.generate split-collect
 python -m fiction.consolidate_story         # 固める（月は Sonnet 5.5、年と人生の段階は Opus 5.5）
 ```
 
-保存した JSON は、AI を呼ばずに読み込めます（`fiction/load.py`）。物語を差し替えるときは `fiction/plan.py` を直し、変わった会話の鍵を JSON から除いて、上を流し直します。プロンプトは `fiction/generate.py` と `app/prompts.py` にあります。
+保存した JSON は、AI を呼ばずに読み込めます（`fiction/load.py`）。AI が作った文に英語が1か所混ざっていたので、`log_2036.json` と `split_2036.json` の同じ文を手で直しました（`tests/test_fiction.py` で確かめます）。物語を差し替えるときは `fiction/plan.py` を直し、変わった会話の鍵を JSON から除いて、上を流し直します。プロンプトは `fiction/generate.py` と `app/prompts.py` にあります。
 
 ## 「10年後へ進む」の前へ戻す
 
@@ -68,7 +68,7 @@ python -m fiction.consolidate_story         # 固める（月は Sonnet 5.5、�
 
 4. ブラウザを開き直します。田中さんでログインしたままなら、名前を選ぶ画面に戻ります。田中さんは戻した時点にはいないためです。
 
-戻す前のデータベースと写真は消さず、`data/trial/replaced/` へ移します。「10年後へ進む」をもう一度押すと、その場で入れた言葉の分だけ固める処理が本物の API で流れます。読み込みそのものは AI を呼びません。
+戻す前のデータベースと写真は消さず、`data/trial/replaced/` へ移します。「10年後へ進む」をもう一度押すと、その場で入れた言葉の分だけ固める処理が本物の API で流れ、1回あたり約 $0.17 かかりました（`docs/tools.md`）。読み込みそのものは AI を呼びません。
 
 ## 2026年分の小さな試しの作り方
 

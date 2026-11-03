@@ -16,7 +16,7 @@ from datetime import date
 
 import pytest
 
-from app import advocacy, ai, ledger, model_store
+from app import advocacy, ai, config, ledger, model_store
 from app.schemas import ConsolidationUnit, ElementKind, ElementStatus, RequestKind, ShareScope, Source, Theme
 from tests.fake_claude import RoleClaude
 
@@ -189,6 +189,32 @@ def test_推定の係が渡していない番号を選んでも本人の言葉�
     assert turn["self_words"] == []
     assert turn["not_yet"] == "まだ聞けていません。"
     assert turn["estimate"]["text"] == "庭が好きかもしれません。"
+
+
+def test_上限で切っても_選ばれた要素の古い本人の言葉が残る(conn, login, add_statement, claude):
+    # 新しい言葉だけで上限を超える要素を3つ作り、古い言葉の要素を最後に選ばせる
+    for group in range(3):
+        recent = [
+            add_statement(
+                f"最近の話{group}の{number}です。",
+                scope=ShareScope.DECISION_SUPPORT,
+                theme=Theme.HOME,
+                effective_date=date(2034, group + 1, number + 1),
+            )
+            for number in range(config.MODEL_LIMITS["quotes_per_element"])
+        ]
+        _element(conn, [item.id for item in recent], body=f"誠一さんの最近の話{group}。")
+    old = add_statement("来年も裏の畑で玉ねぎを作りたい。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME, effective_date=date(2026, 11, 3))
+    _element(conn, [old.id], body="誠一さんは畑で玉ねぎを作りたい。")
+    claude.answers["ツインの答え"] = _pick(direct=[1, 2, 3, 4])
+
+    turn = _ask(login("田中さん"), "畑のことをどう考えていましたか？").json()["turn"]
+
+    bodies = [item["body"] for item in turn["self_words"]]
+    assert len(bodies) == config.MODEL_LIMITS["quotes_total"]
+    assert old.body in bodies
+    # 選んだあとは、新しい順に並べる
+    assert bodies[-1] == old.body
 
 
 def test_本人の言葉の引用があるときは推定を呼ばない(login, wish, claude):

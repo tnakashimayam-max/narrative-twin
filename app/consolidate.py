@@ -402,15 +402,6 @@ def _changed_months(conn: sqlite3.Connection) -> list[tuple[int, int]]:
     return changed
 
 
-def stage_of_day(conn: sqlite3.Connection, day: date) -> LifeStage:
-    """その日の人生の段階を、その日までの最後の会話から求める。"""
-    row = conn.execute(
-        "SELECT life_stage FROM conversations WHERE conversation_date <= ? ORDER BY conversation_date DESC, rowid DESC LIMIT 1",
-        (day.isoformat(),),
-    ).fetchone()
-    return LifeStage(row["life_stage"]) if row else LifeStage.ACTIVE
-
-
 @dataclass
 class RunReport:
     """固める処理の結果。"""
@@ -433,7 +424,7 @@ def run_recent(conn: sqlite3.Connection, now: datetime, client=None) -> RunRepor
         request = build_year(conn, year)
         if request is not None:
             report.elements += len(run_request(conn, request, now, client=client, force=True))
-        stages.add(stage_of_day(conn, date(year, 12, 31) if year < now.year else now.date()))
+        stages.add(ledger.life_stage_on(conn, date(year, 12, 31) if year < now.year else now.date()))
     for stage in stages:
         request = build_stage(conn, stage)
         if request is not None:

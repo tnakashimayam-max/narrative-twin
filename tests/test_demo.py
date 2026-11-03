@@ -10,14 +10,26 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app import ai, clock, config, db, demo, ledger, model_store
+from app import ai, clock, config, consolidate, db, demo, ledger, model_store
 from app.main import create_app
-from app.schemas import ConfirmStatus, LifeStage, ShareScope, Theme
+from app.schemas import (
+    ConfirmStatus,
+    ConsolidationUnit,
+    ConversationDraft,
+    LifeStage,
+    Period,
+    Place,
+    ShareScope,
+    Source,
+    StatementDraft,
+    Theme,
+    UtteranceDraft,
+)
 from fiction import load, plan, snapshot, stage
 from tests.fake_claude import RoleClaude
 
@@ -147,6 +159,25 @@ RUNS = [
             }
         ],
     },
+    {
+        "id": "stage-2031-01-01",
+        "unit": "人生の段階",
+        "start": "2031-01-01",
+        "end": "2033-12-31",
+        "model": "claude-opus-5-5",
+        "input_tokens": 10,
+        "output_tokens": 5,
+        "input_keys": ["conv-2033-06-12#0"],
+        "elements": [
+            {
+                "kind": "価値",
+                "body": "誠一さんは要支援の時期に施設のことも考えるようになった。",
+                "petals": ["結びつき"],
+                "confidence": 0.7,
+                "evidence_keys": ["conv-2033-06-12#0"],
+            }
+        ],
+    },
 ]
 
 
@@ -180,6 +211,37 @@ def fresh(tmp_path, story):
     users = {user.name: user for user in db.list_users(connection)}
     yield app, connection, lambda name: TestClient(app, headers={"X-NT-User": str(users[name].id)}), users
     connection.close()
+
+
+@pytest.fixture
+def add_later():
+    """本人の言葉を、発言ごと今日の日付で入れる。裏の分割が言明を作ったのと同じ形にする。"""
+
+    def _add(conn, body, theme):
+        self_user = db.self_user(conn)
+        now = datetime.now().astimezone()
+        conversation = ledger.add_conversation(conn, ConversationDraft(conversation_date=now.date()))
+        utterance = ledger.add_utterance(
+            conn,
+            UtteranceDraft(conversation_id=conversation.id, speaker_user_id=self_user.id, text=body, spoken_at=now, place=Place.DIARY_AND_TALK),
+        )
+        return ledger.append_statement(
+            conn,
+            StatementDraft(
+                source_utterance_ids=[utterance.id],
+                subject_user_id=self_user.id,
+                speaker_user_id=self_user.id,
+                source=Source.SELF_WORDS,
+                body=body,
+                period=Period.NOW,
+                theme=theme,
+                share_scope=ShareScope.SELF_ONLY,
+                effective_date=now.date(),
+                created_at=now,
+            ),
+        )
+
+    return _add
 
 
 def _set_handover(client, users):
@@ -401,6 +463,60 @@ def test_最初の起動のときに控えを取り_2回目の起動では取ら
 
     saved = snapshot.list_snapshots(deployment)
     assert [item.name.endswith(snapshot.FIRST_START) for item in saved] == [True]
+
+
+def test_今の様子を入れても人生の段階の期間は伸びない(fresh, claude):
+    _, conn, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+
+    me.post("/api/dev/advance")
+
+    assert consolidate.stage_span(conn, LifeStage.ACTIVE)[1].year == PRIVATE.day.year
+
+
+def test_その場の言葉を流し直しても_ほかの人生の段階の要素は閉じない(fresh, claude):
+    _, conn, person, users = fresh
+    me = person("誠一さん")
+    guess = next(item for item in ledger.current_statements(conn) if item.body == plan.DEMO_GUESS)
+    me.post(f"/api/statements/{guess.id}/correct", json={"text": "妻と過ごした場所だから大切です。"})
+    _set_handover(me, users)
+    claude.answers["固める処理"] = {
+        "elements": [
+            {"kind": "価値", "body": "誠一さんは妻と過ごした場所を大切にしている。", "petals": ["結びつき"], "confidence": 0.8, "evidence_numbers": [1]}
+        ]
+    }
+
+    me.post("/api/dev/advance")
+
+    bodies = {element.body for element in model_store.active_elements(conn, ConsolidationUnit.LIFE_STAGE)}
+    assert "誠一さんは要支援の時期に施設のことも考えるようになった。" in bodies
+
+
+def test_託す範囲を決めたあとに入れた言葉も_記録を整理すると本人の決めた範囲になる(fresh, claude, add_later):
+    _, conn, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+    shared = add_later(conn, "来年も畑をやりたい。", Theme.LIKES)
+    private = add_later(conn, "兄のことはまだ話せない。", Theme.HARDSHIP)
+    claude.answers["固める処理"] = {"elements": []}
+
+    assert me.post("/api/model/consolidate").status_code == 200
+
+    assert ledger.head_of(conn, shared.id).share_scope is ShareScope.DECISION_SUPPORT
+    assert ledger.head_of(conn, private.id).share_scope is ShareScope.SELF_ONLY
+
+
+def test_託す範囲を決めたあとに入れた言葉も_10年後へ進むと本人の決めた範囲になる(fresh, claude, add_later):
+    _, conn, person, users = fresh
+    me = person("誠一さん")
+    _set_handover(me, users)
+    shared = add_later(conn, "来年も畑をやりたい。", Theme.LIKES)
+    claude.answers["固める処理"] = {"elements": []}
+
+    me.post("/api/dev/advance")
+
+    assert ledger.head_of(conn, shared.id).share_scope is ShareScope.DECISION_SUPPORT
 
 
 def test_本人だけの話は託すテーマでも広がらない(fresh, claude):

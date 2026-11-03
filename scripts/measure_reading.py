@@ -1,6 +1,6 @@
 """試しの40回と10年分で、1回の問いに読む量を比べる。
 
-役割：同じ問いを、40回分の記録と10年分の記録で田中さんとして聞き、読んだ字数とトークン数を並べる。
+役割：同じ問いを、大きさの違う記録で田中さんとして聞き、読んだ字数とトークン数を並べる。
 4つの極：4. 10年後に代弁する。
 守る原則：8（架空のデータだけを使う）。記録が増えても読む量を増やさないことを、実測で確かめる。
 
@@ -32,7 +32,8 @@ QUESTIONS = (
     "ふだんの暮らしで大切にしてきたことは何ですか？",
     "泊まりを使うことを、どう考えていましたか？",
 )
-FIRST_CONVERSATIONS = 40
+# 読む量は上限（config.MODEL_LIMITS の element_chars）まで増えて、そこで止まる。止まるところが見えるよう、途中の大きさも測る
+SIZES = (40, 100, 200, None)
 
 
 def _build(folder: Path, items: list[plan.PlanItem], runs: list[dict]) -> tuple:
@@ -58,7 +59,7 @@ def _count(connection, name: str) -> int:
     return connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
 
 
-def measure(label: str, folder: Path, items: list[plan.PlanItem], runs: list[dict]) -> dict:
+def measure(label: str, folder: Path, items: list[plan.PlanItem], runs: list[dict], questions=QUESTIONS) -> dict:
     """1つの大きさの記録で測る。"""
     _, connection, tanaka = _build(folder, items, runs)
     try:
@@ -69,7 +70,7 @@ def measure(label: str, folder: Path, items: list[plan.PlanItem], runs: list[dic
         lines = [model_store.describe(element, number, heads) for number, element in enumerate(reading, start=1)]
         bodies = [row["body"] for row in connection.execute("SELECT body FROM statements")]
         answers = []
-        for question in QUESTIONS:
+        for question in questions:
             before = _count(connection, "ai_calls")
             response = tanaka.post("/api/advocacy/ask", json={"question": question, "client_key": uuid.uuid4().hex})
             response.raise_for_status()
@@ -143,15 +144,16 @@ def main(argv: list[str] | None = None) -> int:
     logs = load.read_logs()
     items = [item for item in items if item.key in logs]
     runs = load.read_models()
-    last_day = items[FIRST_CONVERSATIONS - 1].day
-    first_runs = [run for run in runs if date.fromisoformat(run["end"]) <= date(last_day.year, 12, 31)]
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as small, tempfile.TemporaryDirectory(
-        ignore_cleanup_errors=True
-    ) as large:
-        results = [
-            measure(f"試しの{FIRST_CONVERSATIONS}回", Path(small), items[:FIRST_CONVERSATIONS], first_runs),
-            measure("10年分", Path(large), items, runs),
-        ]
+    results = []
+    for size in SIZES:
+        chosen = items if size is None else items[:size]
+        last_day = chosen[-1].day
+        chosen_runs = [run for run in runs if date.fromisoformat(run["end"]) <= date(last_day.year, 12, 31)]
+        label = "10年分" if size is None else f"はじめの{size}回"
+        # 費用を抑えるため、途中の大きさは最初の問いだけにする
+        questions = QUESTIONS if size in (SIZES[0], SIZES[-1]) else QUESTIONS[:1]
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:
+            results.append(measure(label, Path(folder), chosen, chosen_runs, questions))
     if args.json:
         args.json.write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
     print(as_markdown(results))

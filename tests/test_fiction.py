@@ -7,8 +7,10 @@
 
 from __future__ import annotations
 
+import re
+
 from app.schemas import LifeStage, Theme
-from fiction import plan
+from fiction import load, plan
 
 
 def test_予定は同じ結果が毎回できる():
@@ -95,3 +97,16 @@ def test_決めたコメントは決めた日の予定に入る():
 
     for comment in plan.FIXED_COMMENTS:
         assert (comment.speaker, comment.words) in by_day[comment.day].must_comments
+
+
+def test_入れてある架空ログの本文に英字が混ざらない():
+    """AI が作った文に英語が混ざることがあった。画面に映るので、入れてあるログを確かめる。"""
+    mixed = re.compile(r"[A-Za-z]{2,}")
+    logs = load.read_logs()
+    words = [turn["text"] for log in logs.values() for turn in log["turns"]]
+    words += [log["letter"] for log in logs.values() if log.get("letter")]
+    words += [comment["text"] for log in logs.values() for comment in log.get("comments") or []]
+    words += [item["body"] for unit in load.read_splits().values() for item in unit.get("statements", [])]
+
+    assert [word for word in words if mixed.search(word)] == []
+

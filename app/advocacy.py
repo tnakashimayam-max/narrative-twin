@@ -168,11 +168,11 @@ def _closeness(statement: Statement, words: set[str]) -> int:
     return len(_bigrams(statement.body) & words)
 
 
-def _evidence_heads(
+def _evidence_groups(
     elements: list[ModelElement], heads: dict[int, Statement], scopes, question: str
-) -> list[Statement]:
-    """選ばれた要素の根拠のうち、見える先頭の行を、要素ごとに関係の近い順に集める。"""
-    chosen: dict[int, Statement] = {}
+) -> list[list[Statement]]:
+    """選ばれた要素ごとに、根拠のうち見える先頭の行を、関係の近い順に集める。"""
+    groups: list[list[Statement]] = []
     for element in elements:
         words = _bigrams(element.body) | _bigrams(question)
         candidates = [
@@ -187,25 +187,43 @@ def _evidence_heads(
             reverse=True,
         )
         taken = {Source.SELF_WORDS: 0, Source.SELF_CORRECTION: 0}
+        group: list[Statement] = []
         for candidate in candidates:
             if candidate.source in _SELF_SOURCES:
                 if taken[candidate.source] >= LIMITS["quotes_per_element"]:
                     continue
                 taken[candidate.source] += 1
-            chosen.setdefault(candidate.id, candidate)
+            group.append(candidate)
+        groups.append(group)
+    return groups
+
+
+def _take_evenly(groups: list[list[Statement]]) -> list[Statement]:
+    """要素ごとに1件ずつ順に取り出す。
+
+    新しい順に並べてから上限で切ると、古い年の言葉がいつも落ちる。
+    2026年に話した言葉が2036年に届かなくなるので、選んでから並べる。
+    関連するテスト：tests/test_advocacy.py の test_上限で切っても_選ばれた要素の古い本人の言葉が残る
+    """
+    chosen: dict[int, Statement] = {}
+    for rank in range(max((len(group) for group in groups), default=0)):
+        for group in groups:
+            if rank < len(group):
+                chosen.setdefault(group[rank].id, group[rank])
     return list(chosen.values())
 
 
 def _sections(conn: sqlite3.Connection, picked: list[Statement], self_name: str) -> dict:
-    """出どころごとに分けて、上限まで並べる（原則2、3）。"""
-    ordered = order_for_display(picked)
-    self_words = [item for item in ordered if item.source in _SELF_SOURCES][: LIMITS["quotes_total"]]
-    testimony = [item for item in ordered if item.source in _TESTIMONY_SOURCES][: LIMITS["testimonies"]]
-    guesses = [item for item in ordered if item.source is Source.AI_GUESS][: LIMITS["guesses"]]
+    """出どころごとに上限まで選び、原則2の順に並べる（原則2、3）。picked は _take_evenly の順。"""
+
+    def choose(sources, limit: int) -> list[dict]:
+        kept = [item for item in picked if item.source in sources][:limit]
+        return [statement_view(conn, item, self_name) for item in order_for_display(kept)]
+
     return {
-        "self_words": [statement_view(conn, item, self_name) for item in self_words],
-        "testimony": [statement_view(conn, item, self_name) for item in testimony],
-        "guesses": [statement_view(conn, item, self_name) for item in guesses],
+        "self_words": choose(_SELF_SOURCES, LIMITS["quotes_total"]),
+        "testimony": choose(_TESTIMONY_SOURCES, LIMITS["testimonies"]),
+        "guesses": choose({Source.AI_GUESS}, LIMITS["guesses"]),
     }
 
 
@@ -221,8 +239,10 @@ def _materials(
     elements: list[ModelElement], heads: dict[int, Statement], scopes, question: str, conn: sqlite3.Connection
 ) -> tuple[list[Statement], list[str]]:
     """推定の材料を、上限まで番号つきで作る。本人の言葉を先に、証言と分かるように並べる。"""
-    picked = _evidence_heads(elements, heads, scopes, question)
-    ordered = order_for_display(picked)[: LIMITS["estimate_statements"]]
+    picked = _take_evenly(_evidence_groups(elements, heads, scopes, question))
+    # 本人の言葉を先に残す。読む量の上限で切ってから、原則2の順に並べる
+    picked.sort(key=lambda item: item.source not in _SELF_SOURCES)
+    ordered = order_for_display(picked[: LIMITS["estimate_statements"]])
     lines = [
         f"[{number}] {item.effective_date.isoformat()}／{item.source.value}／{_speaker_name(conn, item)}：{item.body}"
         for number, item in enumerate(ordered, start=1)
@@ -340,7 +360,7 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
     direct = chosen(pick.direct_numbers)
     related = [element for element in chosen(pick.related_numbers) if element.id not in {d.id for d in direct}]
     kind = stronger_kind(pick.request_kind, request_kind_from_words(question))
-    picked = _evidence_heads(direct, heads, scopes, question)
+    picked = _take_evenly(_evidence_groups(direct, heads, scopes, question))
     sections = _sections(conn, picked, self_name)
     has_self_words = bool(sections["self_words"])
     view: dict = {

@@ -62,7 +62,14 @@ def save_observation(
     """今の様子を、会話、発言、言明の順に1つの処理で入れる。"""
     with ledger.atomic(conn):
         conversation = ledger.add_conversation(
-            conn, ConversationDraft(conversation_date=at.date(), trigger=TRIGGER, theme=theme, closed_at=at)
+            conn,
+            ConversationDraft(
+                conversation_date=at.date(),
+                trigger=TRIGGER,
+                theme=theme,
+                closed_at=at,
+                life_stage=ledger.life_stage_on(conn, at.date()),
+            ),
         )
         utterance = ledger.add_utterance(
             conn,

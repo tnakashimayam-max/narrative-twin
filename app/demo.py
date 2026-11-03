@@ -45,6 +45,19 @@ def _snapshot():
     return snapshot
 
 
+def _consolidate_recent(conn: sqlite3.Connection, moment) -> consolidate.RunReport:
+    """本人の決めた範囲を新しい言葉に当ててから固める。
+
+    託す範囲を決めたあとに入った言葉は「本人だけ」のまま入ってくる。先に当てないと、その言葉を根拠に持つ要素が
+    田中さんに見えない。画面では「選んだテーマの話は見えます」と伝えているので、それと同じ動きにする。
+    関連するテスト：tests/test_demo.py の test_託す範囲を決めたあとに入れた言葉も_記録を整理すると本人の決めた範囲になる
+    """
+    self_user = db.self_user(conn)
+    if self_user is not None:
+        handover.apply_handover(conn, self_user, at=moment)
+    return consolidate.run_recent(conn, moment)
+
+
 @router.post("/model/consolidate")
 def run_consolidate(
     request: Request, _: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
@@ -52,7 +65,7 @@ def run_consolidate(
     """言明が変わった月と、その年と人生の段階を固める。同じ入力なら AI を呼ばない。"""
     with request.app.state.consolidate_lock:
         try:
-            report = consolidate.run_recent(conn, clock.now(request.app))
+            report = _consolidate_recent(conn, clock.now(request.app))
         except _AI_ERRORS as error:
             raise HTTPException(status_code=503, detail=AI_FAILED_MESSAGE) from error
     devlog.record("固める処理", outcome=devlog.SUCCESS)
@@ -83,7 +96,7 @@ def story_status(
 def _after_advance(app, moment) -> None:
     """読み込みのあとで、その場で入れた言葉の分を固める。失敗しても2036年には進んでいる。"""
     def work(conn) -> None:
-        consolidate.run_recent(conn, moment)
+        _consolidate_recent(conn, moment)
 
     try:
         jobs._guarded(app, "固める処理", "10年後へ進む", work)
