@@ -1,0 +1,827 @@
+[
+{
+"id": "month-2034-01-01",
+"unit": "月",
+"start": "2034-01-01",
+"end": "2034-01-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7168,
+"output_tokens": 281,
+"input_keys": [
+"conv-2034-01-20#2",
+"conv-2034-01-05#0",
+"conv-2034-01-20#0",
+"conv-2034-01-20#1",
+"conv-2034-01-05#1"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、庭の木を見上げ、冬でも緑が見えることを心にとめていて、健太さんが来ると一緒に木を見上げる。",
+"condition": null,
+"petals": [
+"共にあること",
+"くつろぎ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-01-05#0",
+"conv-2034-01-05#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、班長になってから皆にお茶を淹れてきたことを覚えていて、今は和子さんが淹れてくれている。",
+"condition": null,
+"petals": [
+"結びつき",
+"たずさわること"
+],
+"confidence": 0.55,
+"evidence_keys": [
+"conv-2034-01-20#2",
+"conv-2034-01-20#0",
+"conv-2034-01-20#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-02-01",
+"unit": "月",
+"start": "2034-02-01",
+"end": "2034-02-28",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7199,
+"output_tokens": 127,
+"input_keys": [
+"conv-2034-02-05#2",
+"conv-2034-02-20#1",
+"conv-2034-02-20#0",
+"conv-2034-02-05#0",
+"conv-2034-02-05#1",
+"conv-2034-02-20#2"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、将棋をたまに指し、相手が来ると楽しいと感じている。",
+"condition": null,
+"petals": [
+"たずさわること",
+"結びつき"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-02-20#1",
+"conv-2034-02-20#0",
+"conv-2034-02-20#2"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-03-01",
+"unit": "月",
+"start": "2034-03-01",
+"end": "2034-03-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7154,
+"output_tokens": 488,
+"input_keys": [
+"conv-2034-03-23#1",
+"conv-2034-03-08#1",
+"conv-2034-03-23#0",
+"conv-2034-03-08#0"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、製材所で木を見る仕事をしていたことを、いまも自分の言葉で語っている。",
+"condition": null,
+"petals": [
+"自分らしさ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-03-08#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、まっすぐ育つのを待つ杉の木に、好きなものとして心を寄せている。",
+"condition": null,
+"petals": [
+"自分らしさ",
+"たずさわること"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-03-08#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、陽がよく当たって縁側まで明るい家の様子を心地よく感じている。",
+"condition": null,
+"petals": [
+"くつろぎ"
+],
+"confidence": 0.4,
+"evidence_keys": [
+"conv-2034-03-23#0"
+],
+"previous_key": null
+},
+{
+"kind": "判断の決まり",
+"body": "誠一さんは、手を貸してもらうことにはもう慣れ、ありがたいと受け止めている。",
+"condition": "人に手を貸してもらうとき",
+"petals": [
+"結びつき"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-03-23#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-04-01",
+"unit": "月",
+"start": "2034-04-01",
+"end": "2034-04-30",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7231,
+"output_tokens": 270,
+"input_keys": [
+"conv-2034-04-08#0",
+"letter-2034-04-08#0",
+"letter-2034-04-08#1",
+"conv-2034-04-23#0",
+"conv-2034-04-08#1",
+"conv-2034-04-23#1"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、和子さんが毎朝淹れてくれるお茶を、うまいと感じて大切にしている。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"結びつき"
+],
+"confidence": 0.7,
+"evidence_keys": [
+"conv-2034-04-08#0",
+"conv-2034-04-08#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、班長をしていた経験を今も心に留め、美穂さんが来ると仕事の話をする時間を持っているかもしれない。",
+"condition": null,
+"petals": [
+"自分らしさ",
+"結びつき"
+],
+"confidence": 0.4,
+"evidence_keys": [
+"conv-2034-04-23#0",
+"conv-2034-04-23#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-05-01",
+"unit": "月",
+"start": "2034-05-01",
+"end": "2034-05-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7409,
+"output_tokens": 414,
+"input_keys": [
+"conv-2034-05-20#1",
+"letter-2034-05-20#0",
+"conv-2034-05-24#1",
+"conv-2034-05-20#0",
+"conv-2034-05-24#0",
+"conv-2034-05-08#1",
+"conv-2034-05-24#2",
+"conv-2034-05-08#0",
+"conv-2034-05-08#2"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、窓や縁側から庭の緑や木が見えることを、毎朝の大切なものにしている。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"自分らしさ"
+],
+"confidence": 0.7,
+"evidence_keys": [
+"conv-2034-05-20#1",
+"conv-2034-05-20#0",
+"conv-2034-05-24#0",
+"conv-2034-05-08#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、手入れをちゃんとやることと、土を大事にすることを大切にしている。",
+"condition": null,
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"confidence": 0.65,
+"evidence_keys": [
+"conv-2034-05-24#1",
+"conv-2034-05-24#2"
+],
+"previous_key": null
+},
+{
+"kind": "変化",
+"body": "美穂さんは、誠一さんが施設だけは嫌だと言っていたと話している。",
+"condition": null,
+"petals": [],
+"confidence": 0.4,
+"evidence_keys": [
+"letter-2034-05-20#0"
+],
+"previous_key": "year-2033-01-01#3"
+}
+]
+},
+{
+"id": "month-2034-06-01",
+"unit": "月",
+"start": "2034-06-01",
+"end": "2034-06-30",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7063,
+"output_tokens": 119,
+"input_keys": [
+"conv-2034-06-24#1",
+"conv-2034-06-24#0",
+"conv-2034-06-08#0"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、縁側でお茶を飲む時間を大切にしているかもしれない。",
+"condition": null,
+"petals": [
+"くつろぎ"
+],
+"confidence": 0.4,
+"evidence_keys": [
+"conv-2034-06-24#0"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-07-01",
+"unit": "月",
+"start": "2034-07-01",
+"end": "2034-07-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7196,
+"output_tokens": 492,
+"input_keys": [
+"conv-2034-07-09#0",
+"conv-2034-07-25#0",
+"conv-2034-07-09#1",
+"letter-2034-07-09#0",
+"conv-2034-07-25#1"
+],
+"elements": [
+{
+"kind": "判断の決まり",
+"body": "誠一さんは、台所と洗濯のように一人では難しいことは、来てくれる人に頼んでいる。",
+"condition": "台所や洗濯など、一人では難しいとき",
+"petals": [
+"結びつき"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-07-09#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、班長の仕事と同じように、みんなの段取りを見ることを今も大切にしているようだ。",
+"condition": null,
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-07-09#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "美穂さんは、父が今も役目を持っていると聞いてうれしく思ったと話している。",
+"condition": null,
+"petals": [
+"結びつき"
+],
+"confidence": 0.3,
+"evidence_keys": [
+"letter-2034-07-09#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、縁側から見えた大きな柿の木の思い出を大切にしているかもしれない。",
+"condition": null,
+"petals": [
+"くつろぎ"
+],
+"confidence": 0.3,
+"evidence_keys": [
+"conv-2034-07-25#0",
+"conv-2034-07-25#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-08-01",
+"unit": "月",
+"start": "2034-08-01",
+"end": "2034-08-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7074,
+"output_tokens": 145,
+"input_keys": [
+"conv-2034-08-09#0",
+"conv-2034-08-25#0",
+"conv-2034-08-09#1"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、庭が見えると落ち着き、鳥が来ることや木の葉が揺れる様子を眺めるのが好きである。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"自分らしさ"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-08-09#0",
+"conv-2034-08-09#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-09-01",
+"unit": "月",
+"start": "2034-09-01",
+"end": "2034-09-30",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7057,
+"output_tokens": 382,
+"input_keys": [
+"conv-2034-09-24#1",
+"conv-2034-09-09#0",
+"conv-2034-09-24#0"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、和子さんが家にいることが多いと話していて、和子さんが身近にいる暮らしを受け止めているかもしれない。",
+"condition": null,
+"petals": [
+"共にあること"
+],
+"confidence": 0.35,
+"evidence_keys": [
+"conv-2034-09-24#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、美穂さんと健太さんが週末に一緒に来ることを、家族とのつながりとして受け止めているかもしれない。",
+"condition": null,
+"petals": [
+"結びつき"
+],
+"confidence": 0.4,
+"evidence_keys": [
+"conv-2034-09-24#1"
+],
+"previous_key": null
+},
+{
+"kind": "判断の決まり",
+"body": "誠一さんは、人に押してもらったことを話していて、手を借りることを受け入れているかもしれない。",
+"condition": "一人では難しいことがあるとき",
+"petals": [],
+"confidence": 0.3,
+"evidence_keys": [
+"conv-2034-09-09#0"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-10-01",
+"unit": "月",
+"start": "2034-10-01",
+"end": "2034-10-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7274,
+"output_tokens": 378,
+"input_keys": [
+"letter-2034-10-25#1",
+"conv-2034-10-10#1",
+"conv-2034-10-25#0",
+"conv-2034-10-25#2",
+"conv-2034-10-25#1",
+"conv-2034-10-10#0",
+"letter-2034-10-25#0"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、縁側から庭の松の木を眺めることを好きなこととして大切にしている。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"自分らしさ"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-10-25#0",
+"conv-2034-10-25#2",
+"conv-2034-10-25#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、製材所で班長を務め、木の目を見てきたことを自分の仕事の記憶として語っている。",
+"condition": null,
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-10-10#1",
+"conv-2034-10-10#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "和子さんは、あの松の木は昔から庭にあり、誠一さんが縁側でよく眺めていると話している。",
+"condition": null,
+"petals": [
+"くつろぎ"
+],
+"confidence": 0.3,
+"evidence_keys": [
+"letter-2034-10-25#0"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-11-01",
+"unit": "月",
+"start": "2034-11-01",
+"end": "2034-11-30",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7064,
+"output_tokens": 249,
+"input_keys": [
+"conv-2034-11-10#1",
+"conv-2034-11-10#0",
+"conv-2034-11-25#0"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、お茶を飲む時間と縁側で過ごす時間が好きで、大切にしている。",
+"condition": null,
+"petals": [
+"くつろぎ"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-11-10#1",
+"conv-2034-11-10#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、美穂さんが来る日と、庭をよく手入れしてきたことを大切にしてきた。",
+"condition": null,
+"petals": [
+"結びつき",
+"自分らしさ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-11-25#0"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "month-2034-12-01",
+"unit": "月",
+"start": "2034-12-01",
+"end": "2034-12-31",
+"model": "claude-sonnet-5-5",
+"input_tokens": 7117,
+"output_tokens": 353,
+"input_keys": [
+"conv-2034-12-11#0",
+"conv-2034-12-26#1",
+"conv-2034-12-11#1",
+"conv-2034-12-26#0"
+],
+"elements": [
+{
+"kind": "判断の決まり",
+"body": "誠一さんは、人が来てくれると助かると受け止め、手を借りることをありがたいと感じている。",
+"condition": "人の手を借りるとき",
+"petals": [
+"結びつき"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-12-11#0",
+"conv-2034-12-11#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、製材所の木を大切にしてきたものとして挙げている。",
+"condition": null,
+"petals": [
+"自分らしさ"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-12-26#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、和子さんと美穂さんが小さかったころを家族の大切な思い出として話している。",
+"condition": null,
+"petals": [
+"結びつき"
+],
+"confidence": 0.5,
+"evidence_keys": [
+"conv-2034-12-26#1"
+],
+"previous_key": null
+}
+]
+},
+{
+"id": "year-2034-01-01",
+"unit": "年",
+"start": "2034-01-01",
+"end": "2034-12-31",
+"model": "claude-opus-5-5",
+"input_tokens": 5943,
+"output_tokens": 1973,
+"input_keys": [
+"conv-2034-09-24#1",
+"conv-2034-02-20#1",
+"conv-2034-11-10#1",
+"conv-2034-06-24#0",
+"conv-2034-02-20#0",
+"conv-2034-01-20#2",
+"conv-2034-04-08#0",
+"conv-2034-12-11#0",
+"conv-2034-08-09#0",
+"conv-2034-05-20#1",
+"letter-2034-05-20#0",
+"conv-2034-01-05#0",
+"conv-2034-01-20#0",
+"conv-2034-05-24#1",
+"conv-2034-01-20#1",
+"conv-2034-12-26#1",
+"conv-2034-05-20#0",
+"conv-2034-10-10#1",
+"conv-2034-07-09#0",
+"conv-2034-03-23#1",
+"conv-2034-10-25#0",
+"conv-2034-05-24#0",
+"conv-2034-03-08#1",
+"conv-2034-09-09#0",
+"conv-2034-05-24#2",
+"conv-2034-12-11#1",
+"conv-2034-10-25#2",
+"conv-2034-03-23#0",
+"conv-2034-11-10#0",
+"conv-2034-08-09#1",
+"conv-2034-10-25#1",
+"conv-2034-04-23#0",
+"conv-2034-04-08#1",
+"conv-2034-07-25#0",
+"conv-2034-05-08#0",
+"conv-2034-07-09#1",
+"conv-2034-12-26#0",
+"letter-2034-07-09#0",
+"conv-2034-09-24#0",
+"conv-2034-04-23#1",
+"conv-2034-03-08#0",
+"conv-2034-11-25#0",
+"conv-2034-10-10#0",
+"letter-2034-10-25#0",
+"conv-2034-07-25#1",
+"conv-2034-01-05#1",
+"conv-2034-02-20#2"
+],
+"elements": [
+{
+"kind": "価値",
+"body": "誠一さんは、窓や縁側から庭の松や杉などの木、緑、鳥、揺れる葉を眺めることが好きで、落ち着く毎朝の大切なものにしている。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"自分らしさ"
+],
+"confidence": 0.85,
+"evidence_keys": [
+"conv-2034-08-09#0",
+"conv-2034-05-20#1",
+"conv-2034-01-05#0",
+"conv-2034-05-20#0",
+"conv-2034-10-25#0",
+"conv-2034-05-24#0",
+"conv-2034-03-08#1",
+"conv-2034-10-25#2",
+"conv-2034-08-09#1",
+"conv-2034-10-25#1",
+"conv-2034-07-25#0",
+"conv-2034-05-08#0",
+"conv-2034-07-25#1",
+"conv-2034-01-05#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、和子さんが毎朝淹れてくれるお茶をうまいと感じ、陽の当たる明るい縁側でお茶を飲んで過ごす時間を大切にしている。",
+"condition": null,
+"petals": [
+"くつろぎ",
+"結びつき"
+],
+"confidence": 0.85,
+"evidence_keys": [
+"conv-2034-11-10#1",
+"conv-2034-06-24#0",
+"conv-2034-01-20#2",
+"conv-2034-04-08#0",
+"conv-2034-01-20#0",
+"conv-2034-01-20#1",
+"conv-2034-03-23#0",
+"conv-2034-11-10#0",
+"conv-2034-04-08#1"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、製材所で班長を務め木の目を見てきた仕事と、みんなの段取りを見ることを、今も自分の言葉で語り大切にしている。",
+"condition": null,
+"petals": [
+"自分らしさ",
+"たずさわること"
+],
+"confidence": 0.8,
+"evidence_keys": [
+"conv-2034-01-20#2",
+"conv-2034-01-20#0",
+"conv-2034-01-20#1",
+"conv-2034-10-10#1",
+"conv-2034-04-23#0",
+"conv-2034-07-09#1",
+"conv-2034-12-26#0",
+"conv-2034-04-23#1",
+"conv-2034-03-08#0",
+"conv-2034-10-10#0"
+],
+"previous_key": null
+},
+{
+"kind": "変化",
+"body": "誠一さんは、台所や洗濯など一人では難しいことを来てくれる人に頼み、手を借りることにはもう慣れて、ありがたいと受け止めている。",
+"condition": "台所や洗濯など、一人では難しいとき",
+"petals": [
+"共にあること"
+],
+"confidence": 0.75,
+"evidence_keys": [
+"conv-2034-12-11#0",
+"conv-2034-07-09#0",
+"conv-2034-03-23#1",
+"conv-2034-09-09#0",
+"conv-2034-12-11#1"
+],
+"previous_key": "stage-2031-01-01#2"
+},
+{
+"kind": "価値",
+"body": "誠一さんは、美穂さんや健太さんが訪ねてくる日や、和子さんが身近にいる暮らし、娘が小さかった頃の思い出を、家族のつながりとして大切にしている。",
+"condition": null,
+"petals": [
+"結びつき"
+],
+"confidence": 0.7,
+"evidence_keys": [
+"conv-2034-09-24#1",
+"conv-2034-12-26#1",
+"conv-2034-09-24#0",
+"conv-2034-11-25#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、庭の手入れをちゃんとやることと、土を大事にすることを大切にしてきた。",
+"condition": null,
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"confidence": 0.7,
+"evidence_keys": [
+"conv-2034-05-24#1",
+"conv-2034-05-24#2",
+"conv-2034-11-25#0"
+],
+"previous_key": null
+},
+{
+"kind": "価値",
+"body": "誠一さんは、今も将棋をたまに指し、相手が来てくれると楽しいと感じている。",
+"condition": null,
+"petals": [
+"結びつき"
+],
+"confidence": 0.6,
+"evidence_keys": [
+"conv-2034-02-20#1",
+"conv-2034-02-20#0",
+"conv-2034-02-20#2"
+],
+"previous_key": null
+},
+{
+"kind": "変化",
+"body": "美穂さんは、誠一さんが施設だけは嫌だと言っていたと話している。",
+"condition": null,
+"petals": [],
+"confidence": 0.3,
+"evidence_keys": [
+"letter-2034-05-20#0"
+],
+"previous_key": "stage-2031-01-01#6"
+}
+]
+}
+]
