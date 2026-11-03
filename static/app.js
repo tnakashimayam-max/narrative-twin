@@ -1,10 +1,11 @@
 /*
   役割：画面の入口。起動の種類を読み、ログインと、下のタブの切り替えを行う。
   4つの極：1. 書く・話す、2. 分かち合う。
-  守る原則：7（催促や数の表示を作らない）、8（画面の隅の表示）、10（見える範囲はサーバーが決める）。
+  守る原則：7（催促や連続の数の表示を作らない）、8（画面の隅の表示）、10（見える範囲はサーバーが決める）。
 
   ログインは名前を押すだけで、切り替えも一度押すだけにする。だれとして使っているかはウィンドウごとに覚える。
   タブは本人に4つ、本人以外に3つ。「記録」は本人だけが開けるので、本人以外には出さない。
+  トークのタブには、人どうしの新しい発言の数を出す。画面の中だけの表示で、通知はしない。
 */
 
 import { ApiError, api, currentUserId, forgetUser, rememberUser, uploadPhoto } from "./api.js";
@@ -22,6 +23,8 @@ const loginNote = document.getElementById("login-note");
 let me = null;
 let leaveCurrent = null;
 let currentTab = "home";
+let unreadTotal = 0;
+const UNREAD_POLL_MS = 5000;
 
 function clearView() {
   if (leaveCurrent) {
@@ -56,10 +59,30 @@ function drawTabs() {
           onclick: () => openTab(key),
         },
         tabIcon(key),
-        label
+        label,
+        key === "talk" && unreadTotal
+          ? el("span", { class: "unread-count", "aria-label": `新しい発言 ${unreadTotal}件`, text: String(unreadTotal) })
+          : ""
       )
     )
   );
+}
+
+/* トークのタブの数を読み直す。ログインしていないときと、読めないときは何もしない。 */
+async function refreshUnread() {
+  if (me && !tabs.hidden) {
+    try {
+      const { items } = await api("/rooms");
+      const total = items.reduce((sum, room) => sum + (room.unread_count || 0), 0);
+      if (total !== unreadTotal) {
+        unreadTotal = total;
+        drawTabs();
+      }
+    } catch {
+      // 次の読み込みで直る
+    }
+  }
+  setTimeout(refreshUnread, UNREAD_POLL_MS);
 }
 
 /* 部品に渡す入れ物。タブの切り替えや、別のタブを開く操作を持たせる。 */
@@ -222,3 +245,4 @@ async function start() {
 }
 
 start();
+refreshUnread();

@@ -26,7 +26,7 @@
 | `GET /api/mode` | 起動の種類。ログイン不要 | `{"mine": 真偽, "label": "架空データ" か "自分の記録で試用中", "needs_self": 本人の登録が要るか}` |
 | `GET /api/users` | ログイン画面に出す名前。はずした人と亡くなった方は出ない。ログイン不要 | `{"items": [LoginName, ...]}` |
 | `POST /api/login` | `{"user_id": 番号}`。その人として使えるかを確かめる | `Person` |
-| `GET /api/me` | ログイン中の人 | `Person` |
+| `GET /api/me` | ログイン中の人 | `Person` に `can_invite_professional`（専門職を招けるか）を足したもの |
 | `POST /api/self` | 本人の登録。本人がまだいないときだけ。ログイン不要 | 201、`Person` |
 
 `LoginName`：`id`、`name`、`called_name`、`role`
@@ -47,6 +47,15 @@
 | `GET /api/people/{番号}/role-preview?role=家族` | 立場を変えると見えるようになるものを言葉で返す | `{"sees": [文], "stops": [文], "same": [文]}` |
 | `POST /api/people/{番号}/remove` | はずす。消さない。過去の発言は残る。本人ははずせない | 204 |
 
+次の2つは本人以外も使えます。
+
+| 道 | 内容 | 応答 |
+|---|---|---|
+| `GET /api/people/choices` | 部屋の相手を選ぶ一覧。ログインできる人だけ。自分は入らない | `{"items": [Person, ...]}` |
+| `POST /api/people/professional` | 専門職を招く。`name`、`called_name`、`relation`。本人と、立場が家族の託された人だけ。架空用の起動では2036年1月1日以降だけ。それ以外は 404 | 201、`Person` |
+
+架空用の起動では、2036年1月1日より前の日付のとき、専門職はログイン一覧と相手の一覧に出ず、ログインもできません。自分用の起動では日付で切り替えません。
+
 ## 写真
 
 | 道 | 内容 | 応答 |
@@ -63,11 +72,14 @@
 | 道 | 内容 | 応答 |
 |---|---|---|
 | `GET /api/rooms` | 見える部屋の一覧。本人にはいちばん上にツインとの部屋 | `{"items": [Room, ...]}` |
-| `POST /api/rooms` | 部屋を作る。`{"kind": "1対1" か "グループ", "member_ids": [番号], "name": "名前"}`。本人だけ | 201、`Room` |
+| `POST /api/rooms` | 部屋を作る。`{"kind": "1対1" か "グループ", "member_ids": [番号], "name": "名前"}`。作った人は必ず入る | 201、`Room` |
 | `GET /api/rooms/{番号}/messages?after=数` | 部屋の発言。`after` より後だけを返す。部屋の人以外は 404 | `RoomView` |
 | `POST /api/rooms/{番号}/messages` | 発言する。`{"text": 文, "photo_id": 番号, "client_key": 文}` | `{"message": Message, "replies": [Message, ...]}` |
 | `POST /api/rooms/{番号}/close` | ツインとの部屋で「今日はここまで」。本人だけ | `{"closed": 真偽, "replies": [Message, ...], "conversation_id": 番号}` |
-| `POST /api/rooms/{番号}/twin` | グループにツインを入れる、はずす。`{"present": 真偽}`。本人だけ | `RoomView` |
+| `POST /api/rooms/{番号}/twin` | グループにツインを入れる、はずす。`{"present": 真偽}`。部屋にいる本人と、立場が家族の託された人だけ。本人がいない部屋は 400 | `RoomView` |
+| `POST /api/rooms/{番号}/members/{番号}/remove` | グループから人をはずす。作った人と、部屋にいる本人だけ。本人はほかの人にはずされない | 204 |
+| `POST /api/rooms/{番号}/leave` | 自分でグループを出る。本人が出たらツインもはずれる | 204 |
+| `POST /api/rooms/{番号}/read` | 読んだ位置を進める。`{"seq": 数}`。画面が見えているときに送る。ツインとの部屋は 400 | 204 |
 | `POST /api/questions/{番号}/rest` | 問いの話題をお休みにする。本人だけ | 204 |
 | `GET /api/resting-themes` | お休みにしている話題。本人だけ | `{"items": [テーマ, ...]}` |
 | `POST /api/resting-themes/resume` | 話題のお休みをやめる。`{"theme": テーマ}`。本人だけ | 204 |
@@ -75,9 +87,9 @@
 - `client_key` は画面が作る文字列です。同じ `client_key` で送り直しても、発言は増えません。発言が保存されたあとに返事だけが失敗したときは、送り直すと返事だけを作り直します。
 - ツインとの部屋で AI が失敗すると 503 を返します。そのときも本人の発言は保存されています。
 
-`Room`：`id`、`kind`、`name`、`members`（`Person` の配列）、`twin_present`、`last_text`（最後の発言の冒頭）、`last_at`。未読の数は持ちません。
+`Room`：`id`、`kind`、`name`、`members`（`Person` の配列）、`twin_present`、`last_text`（最後の発言の冒頭）、`last_at`、`can_manage_twin`（ツインを操作できるか）、`can_remove_members`（人をはずせるか）、`unread_count`（未読の数。ツインとの部屋にはない）
 
-`RoomView`：`room`（`Room`）、`items`（`Message` の配列）、`people`（`Person` の配列）、`last_seq`、`thinking`（ツインが考えているか）、`shareable_conversation_id`（共有できる直前の会話の番号。なければ `null`）
+`RoomView`：`room`（`Room`）、`items`（`Message` の配列）、`people`（`Person` の配列）、`last_seq`、`thinking`（ツインが考えているか）、`shareable_conversation_id`（共有できる直前の会話の番号。なければ `null`）、`first_unread_seq`（最初の未読の順番。なければ `null`）、`others_read_seqs`（部屋にいるほかの人の読んだ位置を小さい順に並べた配列。名前は返さない）。最後の2つはツインとの部屋にはない
 
 `Message`
 

@@ -507,6 +507,43 @@ label.check input {
   min-width: 0;
 }
 
+.unread-count {
+  flex: none;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent, #7a5c3e);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.tabs button .unread-count {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+}
+
+.tabs button {
+  position: relative;
+}
+
+.new-divider span {
+  background: var(--accent, #7a5c3e);
+  color: #fff;
+}
+
+.read-mark {
+  display: inline;
+}
+
+.room-actions {
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
 /* ---- トークの部屋 ---- */
 
 .room-header {

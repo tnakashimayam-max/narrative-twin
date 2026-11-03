@@ -2,8 +2,9 @@
   役割：トークとスレッドで同じ形の吹き出しを出す部品。
   4つの極：1. 書く・話す、2. 分かち合う。
   守る原則：3（だれの言葉かを分ける）、12（ツインには姿と「ツイン（AI）」を必ず出す）、
-            14（いいねの数、既読、通知は作らない）。
+            14（タイムラインには、いいねの数、既読、通知を作らない）。
 
+  トークの自分の発言には、既読の印の場所を持つ。数を入れるのは static/talk.js で、タイムラインでは空のまま。
   LINE のように、相手を左（アイコンと名前つき）、自分を右に出す。
   人の言葉は手書き風の文字にし、ツインの言葉はふつうの文字にする。
   ツインの問いは枠を太くして、問いだと分かるようにする。
@@ -48,6 +49,11 @@ export function bubble(message, { viewerId, people, onRest } = {}) {
     body.append(el("div", { class: "bubble-line" }, photoImage(message.photo_id)));
   }
   const time = el("span", { class: "bubble-time", text: timeLabel(message.sent_at) });
+  if (mine) {
+    const mark = el("span", { class: "read-mark" });
+    mark.dataset.seq = message.seq;
+    time.prepend(mark);
+  }
   if (message.text) {
     const classes = ["bubble"];
     if (!isTwin) {

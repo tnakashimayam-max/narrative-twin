@@ -10,13 +10,74 @@ import { api } from "./api.js";
 import { renderEcomap } from "./ecomap_ui.js";
 import { openGenogram } from "./genogram_ui.js";
 import { openOwnForm, openPersonForm, personRow } from "./people_ui.js";
-import { avatar, el, twinFigure } from "./ui.js";
+import { avatar, el, openSheet, twinFigure } from "./ui.js";
 
 const ROLE_CHOICES = [
   ["家族", "家族"],
   ["縁のある人", "縁のある人"],
   ["専門職", "専門職"],
 ];
+
+/* ケアマネジャーを招く。招けないときは何も出さない。出すかどうかはサーバーが日付と立場で決める。 */
+function inviteSection(ctx, onDone) {
+  const section = el("section", { class: "stack" });
+  api("/me")
+    .then((me) => {
+      if (!me.can_invite_professional) {
+        return;
+      }
+      section.append(
+        el(
+          "div",
+          { class: "card" },
+          el("h2", { text: "ケアマネジャーを招く" }),
+          el("p", { class: "hint", text: "招いた人に見えるのは、本人が「意思決定支援用」にした記録だけです。" }),
+          el("button", { type: "button", class: "wide", text: "ケアマネジャーを招く", onclick: () => openInviteSheet(onDone) })
+        )
+      );
+    })
+    .catch(() => {
+      // 読めなくても、ほかの部分は使える
+    });
+  return section;
+}
+
+function openInviteSheet(onDone) {
+  return openSheet((inner, close) => {
+    const name = el("input", { type: "text", maxLength: 40, autocomplete: "off" });
+    const relation = el("input", { type: "text", maxLength: 40, value: "ケアマネジャー", autocomplete: "off" });
+    const message = el("p", { class: "error", role: "alert", hidden: true });
+    inner.append(
+      el("h2", { text: "ケアマネジャーを招く" }),
+      el("label", { class: "field" }, "お名前（例：田中さん）", name),
+      el("label", { class: "field" }, "続柄や役割", relation),
+      message,
+      el(
+        "div",
+        { class: "row" },
+        el("button", {
+          type: "button",
+          class: "primary",
+          text: "招く",
+          onclick: async () => {
+            try {
+              await api("/people/professional", {
+                method: "POST",
+                json: { name: name.value, relation: relation.value || null },
+              });
+              close();
+              onDone();
+            } catch (error) {
+              message.textContent = error.message;
+              message.hidden = false;
+            }
+          },
+        }),
+        el("button", { type: "button", class: "quiet", text: "やめる", onclick: close })
+      )
+    );
+  });
+}
 
 function candidateCard(candidate, onDone) {
   // 続柄だけで呼ばれた人（父、孫など）には「さん」を付けない
@@ -171,6 +232,7 @@ export function renderHome(container, ctx) {
         onclick: () => openPersonForm(ctx, null, drawSelfHome),
       })
     );
+    panel.append(inviteSection(ctx, drawSelfHome));
     panel.append(switcher);
     loadSwitcher();
   }
@@ -190,6 +252,7 @@ export function renderHome(container, ctx) {
             drawOtherHome();
           }),
       }),
+      inviteSection(ctx, drawOtherHome),
       switcher
     );
     loadSwitcher();
