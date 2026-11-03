@@ -250,7 +250,7 @@
 
 `Now`：`statement_id`、`body`、`date`、`speaker`、`speaker_label`（続柄つきの呼び方。なければ `null`）、`source`
 
-`Quote`：`statement_id`、`body`（記録の本文のまま）、`lead_in`（プログラムが付ける前置き）、`date`、`source`、`speaker`、`confirm`
+`Quote`：`statement_id`、`body`（記録の本文のまま）、`lead_in`（プログラムが付ける前置き）、`date`、`source`、`speaker`、`confirm`、`top`（先に見せる言葉の印。問いに近い言葉と、いちばん新しい言葉）
 
 `Estimate`：`text`、`evidence`、`counter`（`Quote` の配列）、`confidence`（とても低い／低い／中くらい）、`how_to_confirm`
 

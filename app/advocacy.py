@@ -242,8 +242,13 @@ def _sections(conn: sqlite3.Connection, picked: list[Statement], self_name: str)
         same = [item for item in picked if item.source in sources]
         bodies = [item.body for item in same]
         kept = [item for item in same if not any(item.body in other and item.body != other for other in bodies)][:limit]
-        # 問いに近い言葉に印を付ける。画面は印のある言葉を先に見せ、残りは本人が開いたときに出す。答えが長くなりすぎるため
-        top = {item.id for item in kept[: LIMITS["quotes_first_shown"]]}
+        # 問いに近い言葉に印を付ける。画面は印のある言葉を先に見せ、残りは本人が開いたときに出す。答えが長くなりすぎるため。
+        # いちばん新しい言葉は必ず印を付ける。今の本人を最優先するため（原則2）
+        first = kept[: LIMITS["quotes_first_shown"]]
+        newest = max(kept, key=lambda item: item.effective_date, default=None)
+        if newest is not None and newest not in first:
+            first = [*first[:-1], newest]
+        top = {item.id for item in first}
         return [{**statement_view(conn, item, self_name), "top": item.id in top} for item in order_for_display(kept)]
 
     return {
@@ -495,7 +500,7 @@ def _elements_view(
     ]
 
 
-def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -> dict:
+def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None, today: date | None = None) -> dict:
     """問いに答える。読む量はどの段も上限で切る。"""
     started = time.monotonic()
     self_user = db.self_user(conn)
@@ -571,7 +576,7 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
     }
     estimate_log = None
     if not has_self_words:
-        estimate_log = _estimate(conn, view, question, [*direct, *related], heads, scopes, self_name, client)
+        estimate_log = _estimate(conn, view, question, [*direct, *related], heads, scopes, self_name, client, today)
         if kind is not RequestKind.HEALTH:
             _remember_question(conn, question)
     answer_log = _log_inference(conn, InferenceKind.TWIN_ANSWER, question, view, direct, sorted(delivered_ids), result)
@@ -586,7 +591,7 @@ def answer(conn: sqlite3.Connection, viewer: User, question: str, client=None) -
     return {"view": view, "answer_log": answer_log, "estimate_log": estimate_log}
 
 
-def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_name: str, client) -> int | None:
+def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_name: str, client, today=None) -> int | None:
     """本人の言葉がないときに、推定の枠を作る。材料がなければ呼ばない。作れなくても答えは返す。"""
     if not elements:
         return None
@@ -595,7 +600,7 @@ def _estimate(conn, view: dict, question: str, elements, heads, scopes, self_nam
         return None
     try:
         result = ai.estimate_will(
-            system=prompts.estimate_system(self_name), text=prompts.estimate_user_text(question, lines), client=client
+            system=prompts.estimate_system(self_name), text=prompts.estimate_user_text(question, lines, today), client=client
         )
     except _AI_ERRORS:
         return None
@@ -660,7 +665,7 @@ def ask(
         if existing is not None:
             return {"turn": _turn_view(conn, existing)}
         try:
-            outcome = answer(conn, viewer, question)
+            outcome = answer(conn, viewer, question, today=clock.now(request.app).date())
         except _AI_ERRORS as error:
             raise HTTPException(status_code=503, detail=AI_FAILED_MESSAGE) from error
         now = clock.now(request.app).isoformat()

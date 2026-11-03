@@ -347,6 +347,52 @@ def test_選ばれた順の先頭3件に印を付け_表示は新しい順のま
     assert sum(1 for item in turn["self_words"] if item["top"]) == config.MODEL_LIMITS["quotes_first_shown"]
 
 
+def test_先に見せる言葉には_いちばん新しい言葉が必ず入る(conn, login, add_statement, claude):
+    statements = [
+        add_statement(f"家の話その{number}です。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME, effective_date=date(2026, 1, number + 1))
+        for number in range(4)
+    ]
+    newest = add_statement("施設のことも考えていい。", scope=ShareScope.DECISION_SUPPORT, theme=Theme.HOME, effective_date=date(2033, 6, 12))
+    _element(conn, [item.id for item in [*statements, newest]], body="誠一さんの家の話。")
+    claude.answers["ツインの答え"] = _pick(direct=[1])
+    # AI は古い言葉を先に選ぶ
+    claude.answers["言葉を選ぶ"] = None
+
+    client = login("田中さん")
+    _ask(client, "どこで暮らしたいですか", key="first")
+    content = claude.bodies("言葉を選ぶ")[0]["messages"][0]["content"]
+    text = content if isinstance(content, str) else content[0]["text"]
+    numbers = {line.split("：", 1)[1]: int(line.split("]")[0].strip("[")) for line in text.splitlines() if line.startswith("[")}
+    claude.answers["言葉を選ぶ"] = _words(
+        self_numbers=[numbers[f"家の話その{index}です。"] for index in range(4)] + [numbers[newest.body]]
+    )
+
+    turn = _ask(client, "どこで暮らしたいですか", key="second").json()["turn"]
+
+    top = [item["body"] for item in turn["self_words"] if item["top"]]
+    assert newest.body in top
+    assert len(top) == config.MODEL_LIMITS["quotes_first_shown"]
+
+
+def test_推定に最近と書いたら出さない(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+    claude.answers["推定意思"] = {"estimate": "最近は遠くへ出かけないかもしれません。", "evidence_numbers": [1], "confidence": 0.3, "how_to_confirm": "本人に聞きます。"}
+
+    turn = _ask(login("田中さん"), "旅行のことは").json()["turn"]
+
+    assert turn["estimate"] is None
+
+
+def test_推定の係に今日の日付を渡す(login, wish, claude):
+    claude.answers["ツインの答え"] = _pick(related=[1])
+    claude.answers["言葉を選ぶ"] = _words()
+
+    _ask(login("田中さん"), "旅行のことは")
+
+    assert "今日の日付" in json.dumps(claude.bodies("推定意思"), ensure_ascii=False)
+
+
 def test_言葉を選ぶ係が食い違いを示すと_言葉が変わっていることを知らせる(login, wish, claude):
     claude.answers["ツインの答え"] = _pick(direct=[1])
     claude.answers["言葉を選ぶ"] = {**_words(self_numbers=[1]), "words_differ": True}

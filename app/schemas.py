@@ -1103,6 +1103,9 @@ class EstimateDraft(_Base):
         # 鉤括弧があると、推定の文の一部が本人の言葉に見える（原則11）
         if "「" in cleaned or "『" in cleaned:
             raise ValueError("鉤括弧を使わないでください")
+        # 材料は何年も前の記録のことがある。AI の言う「最近」は確かめられない
+        if "最近" in cleaned:
+            raise ValueError("「最近」と書かないでください")
         if not all(_HEDGED_END.search(sentence.strip()) for sentence in _sentences(cleaned)):
             raise ValueError("どの文も「かもしれません」で終えてください")
         return cleaned
