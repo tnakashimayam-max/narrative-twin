@@ -8,42 +8,176 @@
   1対1とグループには未読の数と既読を出す。通知は作らず、読んだ人の名前も出さない。
   画面が見えているときにだけ、読んだ位置を送る。開いたままの別のウィンドウで既読にしないため。
 
+  PC版は一覧、部屋、この部屋のことを横に並べ、スマホ版は1画面ずつ出す。部品は同じで、並べ方だけが違う（static/device.js）。
+  電話、音声の入力、通知、読んだ人の顔は作らない（CLAUDE.md の作らないもの）。
+
   使い心地のために次のようにしている。
   - 送ると自分の言葉がすぐ出る。失敗しても、書いた文と写真を消さず「もう一度送る」で送り直せる。
   - 同じ client_key で送り直すので、発言は増えない。送っている間はボタンを止めるので、二重に送れない。
-  - 送るのはボタンだけ。日本語の変換を決める Enter で送らないよう、Enter は改行のままにする。
+  - 日本語の変換を決める Enter で送らないよう、Enter は改行のままにする。Ctrl+Enter でも送れる。
   - 開いている部屋は3秒ごとに新しい発言を取りに行く。途中で閉じても、開き直すと続きが見える。
+  - 書きかけの文と写真は、人と部屋ごとに覚える。PC版とスマホ版を切り替えても、部屋を移っても消えないようにするため。
 */
 
 import { api, uploadPhoto } from "./api.js";
-import { bubble, dateDivider, newDateTracker, personName, TWIN_NAME } from "./bubbles.js";
+import { addToGroup, breakGroup, dateDivider, newDateTracker, newGroupTracker, personName, TWIN_NAME } from "./bubbles.js";
+import { isPc } from "./device.js";
 import { shrinkPhoto } from "./photo.js";
+import { BANNER_NO_TWIN, BANNER_TWIN, createRoomInfo, groupIcon, roleWords } from "./room_info.js";
 import { openShareSheet } from "./share.js";
-import { avatar, el, openSheet, twinFigure } from "./ui.js";
+import { avatar, dateKey, el, openSheet, svg, timeLabel, twinFigure } from "./ui.js";
 
 const POLL_MS = 3000;
 // サーバーの上限（app/rooms.py の text）と同じにする
 const MAX_MESSAGE_CHARS = 4000;
-const BANNER_NO_TWIN = "ツイン（AI）はこの部屋を読みません";
-const BANNER_TWIN = "ツイン（AI）がいます。ここでの話を読みます";
 const GUESS_ENDING = "合っていますか？";
 const GUESS_ANSWERS = ["そうです", "ちがいます", "今は話したくない"];
 const DISMISSED_SHARE = "nt_dismissed_share";
+const ICON_PHOTO = "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9.5v.5";
+const ICON_SEND = "M4 12l16-8-6 16-3-6z";
+
+// 人ごとに、開いていた部屋を覚える。デモでは同じウィンドウで人を切り替えるので、混ざらないようにする
+const lastRooms = new Map();
+// 書きかけは「人:部屋」ごとに覚える
+const drafts = new Map();
+// PC版の右のペインを開いているか。部屋を移っても同じままにする
+let infoOpen = true;
 
 function newKey() {
   return crypto.randomUUID();
 }
 
-/* トークの一覧 */
+function lineIcon(path) {
+  return svg(
+    "svg",
+    { class: "line-icon", viewBox: "0 0 24 24", "aria-hidden": "true" },
+    svg("path", { d: path, fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" })
+  );
+}
+
+/* いま開いている部屋の番号。PC版とスマホ版を切り替えても同じ部屋を続けるために app.js が読む。 */
+export function currentRoomId(me) {
+  return lastRooms.get(me.id) ?? null;
+}
+
+/* トークの入口。PC版は3つのペイン、スマホ版は一覧か部屋を1画面で出す。 */
 export function renderTalk(container, ctx, options = {}) {
+  if (isPc()) {
+    return renderPanes(container, ctx, options);
+  }
   if (options.roomId) {
     return openRoom(container, ctx, options.roomId);
   }
+  container.className = "view talk-view";
+  const list = roomListPane(ctx, { onOpen: (roomId) => ctx.openTab("talk", { roomId }) });
+  container.append(list.node);
+  return list.stop;
+}
+
+/* PC版の3つのペイン。部屋を移るときは真ん中と右だけを入れ替え、一覧は作り直さない。 */
+function renderPanes(container, ctx, options) {
+  container.className = "view talk-panes";
+  // 部屋を開くまでは、中身のない右のペインを出さない
+  container.dataset.info = "closed";
+  const noRoom = el("p", { class: "room-notice" });
+  const roomHost = el("section", { class: "pane-room", "aria-label": "部屋" }, noRoom);
+  const infoHost = el("aside", { class: "pane-info", "aria-label": "この部屋のこと" });
+  let leaveRoom = null;
+  let shownId = null;
+
+  function show(roomId) {
+    if (roomId === shownId) {
+      return;
+    }
+    leaveRoom?.();
+    roomHost.replaceChildren();
+    shownId = roomId;
+    container.dataset.info = infoOpen ? "open" : "closed";
+    list.setCurrent(roomId);
+    leaveRoom = openRoom(roomHost, ctx, roomId, {
+      infoHost,
+      panes: container,
+      onGone: () => {
+        // 開けなくなった部屋を覚えたままにしない。次は一覧のいちばん上を開く
+        lastRooms.delete(ctx.me.id);
+        ctx.openTab("talk");
+      },
+    });
+  }
+
+  const list = roomListPane(ctx, {
+    onOpen: show,
+    onLoaded: (rooms) => {
+      if (shownId === null && rooms.length > 0) {
+        show(rooms[0].id);
+      } else if (shownId === null) {
+        noRoom.textContent = "「新しい部屋」から部屋を作れます。";
+      }
+    },
+  });
+  container.append(list.node, roomHost, infoHost);
+  const wanted = options.roomId ?? lastRooms.get(ctx.me.id) ?? null;
+  if (wanted !== null) {
+    show(wanted);
+  }
+  return () => {
+    list.stop();
+    leaveRoom?.();
+    delete container.dataset.info;
+  };
+}
+
+/* 部屋の一覧。開いている間に届いた発言が分かるよう、読み直す。 */
+function roomListPane(ctx, { onOpen, onLoaded }) {
   let alive = true;
+  let rooms = [];
+  let currentId = null;
+  let word = "";
+  let drawn = null;
   const list = el("ul", { class: "room-list" });
   const message = el("p", { class: "error", role: "alert", hidden: true });
-  const panel = el("section", {}, list, message);
-  container.append(panel);
+  const search = el("input", {
+    class: "search-box",
+    type: "search",
+    placeholder: "部屋を探す",
+    "aria-label": "部屋を探す",
+    oninput: () => {
+      word = search.value.trim();
+      draw();
+    },
+  });
+  const node = el(
+    "section",
+    { class: "pane-list", "aria-label": "部屋の一覧" },
+    el(
+      "div",
+      { class: "list-head" },
+      el("h2", { text: "トーク" }),
+      el("button", { type: "button", class: "quiet", text: "新しい部屋", onclick: () => openNewRoomSheet(ctx) })
+    ),
+    el("div", { class: "list-search" }, search),
+    list,
+    message,
+    el("p", { class: "list-note hint", text: "家族や知人と話す部屋です。ツイン（AI）は招かれた部屋だけを読みます。" })
+  );
+
+  function draw() {
+    const shown = rooms.filter((room) => !word || room.name.includes(word));
+    // 同じ中身なら作り直さない。押そうとした行が動いたり、写真が読み直されたりしないようにするため
+    const signature = JSON.stringify([shown, currentId]);
+    if (signature === drawn) {
+      return;
+    }
+    drawn = signature;
+    const focused = document.activeElement?.dataset?.roomId;
+    list.replaceChildren(...shown.map((room) => el("li", {}, roomRow(room, ctx, room.id === currentId, onOpen))));
+    if (shown.length === 0) {
+      list.append(el("li", { class: "room-list-empty hint", text: rooms.length ? "見つかりませんでした。" : "入っている部屋はまだありません。" }));
+    }
+    if (focused) {
+      list.querySelector(`[data-room-id="${focused}"]`)?.focus();
+    }
+  }
 
   async function load() {
     try {
@@ -51,62 +185,63 @@ export function renderTalk(container, ctx, options = {}) {
       if (!alive) {
         return;
       }
-      list.replaceChildren(...items.map((room) => el("li", {}, roomRow(room, ctx))));
-      if (items.length === 0) {
-        list.append(el("li", { class: "panel" }, el("p", { class: "hint", text: "入っている部屋はまだありません。" })));
-      }
+      rooms = items;
+      message.hidden = true;
+      draw();
+      onLoaded?.(items);
     } catch (error) {
       message.textContent = error.message;
       message.hidden = false;
     }
   }
-  panel.append(
-    el(
-      "div",
-      { class: "panel" },
-      el("p", { class: "hint", text: "家族や知人と話す部屋です。ツイン（AI）は招かれた部屋だけを読みます。" }),
-      el("button", {
-        type: "button",
-        class: "wide",
-        text: "新しい部屋を作る",
-        onclick: () => openNewRoomSheet(ctx),
-      })
-    )
-  );
   load();
-  // 開いている間に届いた発言が分かるよう、一覧を読み直す
   const timer = setInterval(load, POLL_MS);
-  return () => {
-    alive = false;
-    clearInterval(timer);
+  return {
+    node,
+    setCurrent(id) {
+      currentId = id;
+      draw();
+    },
+    stop() {
+      alive = false;
+      clearInterval(timer);
+    },
   };
 }
 
-function roomRow(room, ctx) {
+/* 一覧の時刻。今日なら時刻、それ以外は月と日。 */
+function whenWords(iso) {
+  const day = new Date(iso);
+  return dateKey(iso) === dateKey(new Date().toISOString()) ? timeLabel(iso) : `${day.getMonth() + 1}/${day.getDate()}`;
+}
+
+function roomRow(room, ctx, current, onOpen) {
   const pinned = room.kind === "ツイン";
-  const icon = pinned ? twinFigure() : room.kind === "1対1" ? avatar(room.members.find((m) => m.id !== ctx.me.id)) : groupIcon();
+  const icon = pinned ? twinFigure() : room.kind === "1対1" ? avatar(room.members.find((m) => m.id !== ctx.me.id)) : groupIcon(room, ctx.me.id);
   return el(
     "button",
     {
       type: "button",
-      class: `room-item${pinned ? " pinned" : ""}`,
-      onclick: () => ctx.openTab("talk", { roomId: room.id }),
+      class: `room-item${pinned ? " pinned" : ""}${room.unread_count ? " has-unread" : ""}`,
+      "aria-current": current ? "true" : null,
+      "data-room-id": room.id,
+      onclick: () => onOpen(room.id),
     },
     icon,
     el(
       "span",
       { class: "room-text" },
-      el("span", { class: "room-name", text: room.name }),
-      el("span", { class: "room-preview", text: room.last_text || (pinned ? "写真やひとことを送ってみてください" : "") })
-    ),
-    room.unread_count
-      ? el("span", { class: "unread-count", "aria-label": `新しい発言 ${room.unread_count}件`, text: String(room.unread_count) })
-      : ""
+      el("span", { class: "room-line" }, el("span", { class: "room-name", text: room.name }), room.last_at ? el("span", { class: "room-when", text: whenWords(room.last_at) }) : ""),
+      el(
+        "span",
+        { class: "room-line" },
+        el("span", { class: "room-preview", text: room.last_text || (pinned ? "写真やひとことを送ってみてください" : "") }),
+        room.unread_count
+          ? el("span", { class: "unread-count", "aria-label": `新しい発言 ${room.unread_count}件`, text: String(room.unread_count) })
+          : ""
+      )
+    )
   );
-}
-
-function groupIcon() {
-  return el("span", { class: "avatar", "aria-hidden": "true" }, "組");
 }
 
 /* 新しい部屋を作る */
@@ -164,38 +299,45 @@ async function openNewRoomSheet(ctx) {
   });
 }
 
-/* 部屋の画面 */
-export function openRoom(container, ctx, roomId) {
-  container.className = "view talk-view";
-  ctx.showTabs(false);
+/*
+  部屋の画面。infoHost を渡されたら PC版で、右のペインへ「この部屋のこと」を出す。
+  渡されなければスマホ版で、同じ中身を部屋の中の別の画面として開く。
+*/
+export function openRoom(container, ctx, roomId, { infoHost = null, panes = null, onGone = null } = {}) {
+  const pc = Boolean(infoHost);
+  if (!pc) {
+    container.className = "view talk-view";
+    ctx.showTabs(false);
+  }
+  lastRooms.set(ctx.me.id, roomId);
+  const draftKey = `${ctx.me.id}:${roomId}`;
+  const draft = drafts.get(draftKey) ?? { text: "", attached: null }; // attached は送る前の写真 { blob, url }
+  drafts.set(draftKey, draft);
+
   let alive = true;
   let timer = null;
   let lastSeq = 0;
   let room = null;
+  let drawnRoom = null;
   let sending = false;
-  let attached = null; // 送る前の写真 { blob, url }
   let shownShare = null;
   let firstUnreadSeq = null;
   let firstLoad = true;
   let readSent = 0;
   const people = new Map();
   const tracker = newDateTracker();
+  const groups = newGroupTracker();
   const seen = new Set();
   const pendings = new Map();
+  const allMessages = [];
 
   const title = el("div", { class: "room-title" });
+  const subtitle = el("div", { class: "room-subtitle" });
   const headerIcon = el("span", {});
-  const closeDayButton = el("button", { type: "button", class: "close-day", text: "今日はここまで", hidden: true });
-  const twinToggle = el("button", { type: "button", class: "quiet", hidden: true });
-  const removeButton = el("button", { type: "button", class: "quiet", text: "人をはずす", hidden: true });
-  const leaveButton = el("button", { type: "button", class: "quiet", text: "部屋を出る", hidden: true });
-  const bannerText = el("div", {});
-  const banner = el(
-    "div",
-    { class: "room-banner", hidden: true },
-    bannerText,
-    el("div", { class: "row room-actions" }, twinToggle, removeButton, leaveButton)
-  );
+  const closeDayButton = el("button", { type: "button", class: "close-day", text: "今日はここまで" });
+  const closeDayRow = el("div", { class: "composer-actions", hidden: true }, closeDayButton);
+  const infoButton = el("button", { type: "button", class: "quiet room-info-button", text: "くわしく" });
+  const banner = el("div", { class: "room-banner", hidden: true });
   const emptyNote = el("p", { class: "room-notice", text: "写真やひとことを送ってみてください。", hidden: true });
   const messagesInner = el("div", { class: "messages-inner" }, emptyNote);
   const pendingArea = el("div", {});
@@ -207,33 +349,95 @@ export function openRoom(container, ctx, roomId) {
 
   const textBox = el("textarea", { rows: 1, placeholder: "ひとこと", "aria-label": "送る言葉" });
   const fileInput = el("input", { type: "file", accept: "image/*", class: "visually-hidden", "aria-label": "写真を選ぶ" });
-  const photoButton = el("label", { class: "button photo-button" }, "写真", fileInput);
-  const sendButton = el("button", { type: "button", class: "primary send-button", text: "送る" });
+  const photoButton = el("label", { class: "button photo-button" }, lineIcon(ICON_PHOTO), "写真", fileInput);
+  const sendButton = el("button", { type: "button", class: "primary send-button", title: pc ? "Ctrl+Enter でも送れます" : null }, lineIcon(ICON_SEND), "送る");
   const previewArea = el("div", {});
   const composer = el(
     "div",
     { class: "composer" },
-    el("div", { class: "composer-inner" }, statusLine, previewArea, el("div", { class: "composer-row" }, photoButton, textBox, sendButton))
+    el("div", { class: "composer-inner" }, statusLine, closeDayRow, previewArea, el("div", { class: "composer-row" }, photoButton, textBox, sendButton))
   );
 
-  container.append(
+  const roomBody = el(
+    "div",
+    { class: "room-body" },
     el(
       "div",
       { class: "room-header" },
-      el("button", {
-        type: "button",
-        class: "quiet",
-        text: "一覧へ",
-        onclick: () => ctx.openTab("talk"),
-      }),
+      pc
+        ? null
+        : el("button", {
+            type: "button",
+            class: "quiet",
+            text: "一覧へ",
+            onclick: () => ctx.openTab("talk"),
+          }),
       headerIcon,
-      title,
-      closeDayButton
+      el("div", { class: "room-head-text" }, title, subtitle),
+      infoButton
     ),
     banner,
     messagesBox,
     composer
   );
+  container.append(roomBody);
+
+  // スマホ版の「この部屋のこと」。部屋を閉じずに重ねて開く。読み込みを止めず、戻ったときに続きが見えるようにするため
+  const infoPane = infoHost ?? el("section", { class: "pane-info room-info-screen", "aria-label": "この部屋のこと", hidden: true });
+  if (!pc) {
+    container.append(infoPane);
+  }
+  let scrollBeforeInfo = 0;
+
+  function setInfoOpen(open) {
+    if (pc) {
+      infoOpen = open;
+      panes.dataset.info = open ? "open" : "closed";
+      infoButton.setAttribute("aria-expanded", String(open));
+      return;
+    }
+    if (open) {
+      scrollBeforeInfo = messagesBox.scrollTop;
+      ctx.setPlate("TALK", room?.name ?? "トーク");
+    } else {
+      ctx.setPlate("TALK", "トーク");
+    }
+    roomBody.hidden = open;
+    infoPane.hidden = !open;
+    if (!open) {
+      messagesBox.scrollTop = scrollBeforeInfo;
+      infoButton.focus();
+    }
+  }
+
+  /* 探した発言や写真の発言へ移り、少しの間だけ印を付ける。 */
+  function jumpTo(messageId) {
+    if (!pc) {
+      setInfoOpen(false);
+    }
+    const line = messagesInner.querySelector(`[data-msg="${messageId}"]`);
+    if (!line) {
+      return;
+    }
+    line.scrollIntoView({ block: "center" });
+    line.classList.add("msg-flash");
+    setTimeout(() => line.classList.remove("msg-flash"), 1800);
+  }
+
+  const info = createRoomInfo(infoPane, ctx, {
+    closeLabel: pc ? "閉じる" : "部屋へ",
+    onClose: () => setInfoOpen(false),
+    onJump: jumpTo,
+    onRoomData: applyRoomView,
+    onLeft: () => {
+      lastRooms.delete(ctx.me.id);
+      ctx.openTab("talk");
+    },
+  });
+  infoButton.addEventListener("click", () => setInfoOpen(pc ? !infoOpen : true));
+  if (pc) {
+    infoButton.setAttribute("aria-expanded", String(infoOpen));
+  }
 
   // いちばん下を見ている間は、新しい吹き出しや写真が出ても下についていく
   let stick = true;
@@ -266,39 +470,43 @@ export function openRoom(container, ctx, roomId) {
     statusLine.hidden = !text;
   }
 
-  function setRoom(info) {
-    room = info;
+  function setRoom(data) {
+    room = data;
+    info.setRoom(room);
+    // 中身が変わったときだけ作り直す。読み込みのたびにアイコンを作り直さないため
+    const signature = JSON.stringify([room.name, room.kind, room.twin_present, room.members]);
+    if (signature === drawnRoom) {
+      return;
+    }
+    drawnRoom = signature;
     title.textContent = room.name;
-    // 幅の狭い画面では帯に入りきらないので、見出しの札に部屋の名前を出す
-    ctx.setPlate("TALK", room.name);
     if (room.kind === "ツイン") {
       headerIcon.replaceChildren(twinFigure());
-      closeDayButton.hidden = false;
+      subtitle.textContent = "話を聞く相棒";
+      closeDayRow.hidden = false;
       banner.hidden = true;
     } else {
-      headerIcon.replaceChildren(room.kind === "1対1" ? avatar(room.members.find((m) => m.id !== ctx.me.id)) : groupIcon());
+      const other = room.kind === "1対1" ? room.members.find((m) => m.id !== ctx.me.id) : null;
+      headerIcon.replaceChildren(other ? avatar(other) : groupIcon(room, ctx.me.id));
+      subtitle.textContent = other ? roleWords(other) : `${room.members.length}人の部屋`;
       banner.hidden = false;
-      const others = room.members.filter((member) => member.id !== ctx.me.id).map((member) => member.called_name);
-      bannerText.replaceChildren(
+      banner.replaceChildren(
         el("div", { text: room.twin_present ? BANNER_TWIN : BANNER_NO_TWIN }),
-        room.twin_present ? el("div", { text: "「@ツイン」と書くと、ツイン（AI）が答えます" }) : "",
-        room.kind === "グループ" ? el("div", { class: "hint", text: `この部屋の人：${others.join("、")}` }) : ""
+        room.twin_present ? el("div", { text: "「@ツイン」と書くと、ツイン（AI）が答えます" }) : ""
       );
-      twinToggle.hidden = !room.can_manage_twin;
-      twinToggle.textContent = room.twin_present ? "ツイン（AI）をはずす" : "ツイン（AI）を入れる";
-      removeButton.hidden = !room.can_remove_members;
-      leaveButton.hidden = room.kind !== "グループ";
     }
   }
 
-  /* 自分の発言の既読の印を、ほかの人の読んだ位置から作る。名前は出さない。 */
+  /* 既読は、読まれた発言のうちいちばん新しい所にだけ出す。読んだ人の位置から数え、名前も顔も出さない。 */
   function drawReadMarks(positions) {
-    for (const mark of messagesInner.querySelectorAll(".read-mark")) {
+    let shown = false;
+    for (const mark of [...messagesInner.querySelectorAll(".read-mark")].reverse()) {
       const count = positions.filter((seq) => seq >= Number(mark.dataset.seq)).length;
-      if (count === 0) {
-        mark.textContent = "";
-      } else {
+      if (!shown && count > 0) {
         mark.textContent = room?.kind === "1対1" ? "既読 " : `既読 ${count}人 `;
+        shown = true;
+      } else {
+        mark.textContent = "";
       }
     }
   }
@@ -344,27 +552,40 @@ export function openRoom(container, ctx, roomId) {
 
   function addMessages(items) {
     const following = stick;
+    let added = false;
+    let twinSpoke = false;
     for (const item of items) {
       if (seen.has(item.id)) {
         continue;
       }
       seen.add(item.id);
+      added = true;
+      twinSpoke = twinSpoke || item.is_twin;
+      allMessages.push(item);
       if (item.client_key && pendings.has(item.client_key)) {
         dropPending(item.client_key);
       }
       if (firstUnreadSeq !== null && item.seq === firstUnreadSeq) {
+        breakGroup(groups);
         messagesInner.append(el("div", { class: "date-divider new-divider" }, el("span", { text: "ここから新しい発言" })));
       }
       const divider = dateDivider(tracker, item.sent_at);
       if (divider) {
+        breakGroup(groups);
         messagesInner.append(divider);
       }
-      messagesInner.append(bubble(item, { viewerId: ctx.me.id, people, onRest: ctx.me.role === "本人" ? restQuestion : null }));
+      addToGroup(messagesInner, groups, item, { viewerId: ctx.me.id, people, onRest: ctx.me.role === "本人" ? restQuestion : null });
       // いちばん新しい行が本人への推測の問いのときだけ、答えのボタンを出す
       clearGuessAnswers();
       if (room?.kind === "ツイン" && item.is_twin && item.is_question && item.text?.endsWith(GUESS_ENDING)) {
         showGuessAnswers(item);
       }
+    }
+    if (added) {
+      info.setMessages(allMessages, people);
+    }
+    if (twinSpoke) {
+      info.reviewChanged();
     }
     if (following) {
       scrollDown();
@@ -391,9 +612,19 @@ export function openRoom(container, ctx, roomId) {
       thinkingArea.append(
         el(
           "div",
-          { class: "bubble-row" },
-          twinFigure({ thinking: true }),
-          el("div", { class: "bubble-body" }, el("span", { class: "bubble-name", text: TWIN_NAME }), el("span", { class: "hint", role: "status", text: "考えています" }))
+          { class: "msg-group" },
+          el("div", { class: "msg-who", text: TWIN_NAME }),
+          el(
+            "div",
+            { class: "msg-line" },
+            el("span", { class: "msg-slot" }, twinFigure({ thinking: true })),
+            el(
+              "div",
+              { class: "bubble", role: "status" },
+              "考えています",
+              el("span", { class: "thinking-dots", "aria-hidden": "true" }, el("i"), el("i"), el("i"))
+            )
+          )
         )
       );
       scrollDown();
@@ -444,6 +675,15 @@ export function openRoom(container, ctx, roomId) {
     }
   }
 
+  /* サーバーが返した RoomView を画面へ反映する。ツインを入れる、はずすの答えもここを通る。 */
+  function applyRoomView(data) {
+    setRoom(data.room);
+    addMessages(data.items);
+    // 発言がないと入力欄しか見えず、何をする場所か分からないので案内を出す
+    emptyNote.hidden = seen.size > 0 || pendings.size > 0;
+    lastSeq = Math.max(lastSeq, data.last_seq);
+  }
+
   async function poll() {
     try {
       const data = await api(`/rooms/${roomId}/messages?after=${lastSeq}`);
@@ -453,16 +693,12 @@ export function openRoom(container, ctx, roomId) {
       for (const person of data.people) {
         people.set(person.id, person);
       }
-      setRoom(data.room);
       // 線を引くのは開いたときの1回だけ。開いている間に届いた発言には引かない
       if (firstLoad) {
         firstUnreadSeq = data.first_unread_seq ?? null;
         firstLoad = false;
       }
-      addMessages(data.items);
-      // 発言がないと入力欄しか見えず、何をする場所か分からないので案内を出す
-      emptyNote.hidden = seen.size > 0 || pendings.size > 0;
-      lastSeq = Math.max(lastSeq, data.last_seq);
+      applyRoomView(data);
       if (data.others_read_seqs) {
         drawReadMarks(data.others_read_seqs);
       }
@@ -475,6 +711,7 @@ export function openRoom(container, ctx, roomId) {
       if (error.status === 404 || error.status === 401) {
         showStatus("この部屋は開けません。");
         alive = false;
+        onGone?.();
         return;
       }
       // 通信の一時的な失敗では止めない。次の読み込みでつながる。
@@ -487,20 +724,20 @@ export function openRoom(container, ctx, roomId) {
   /* 送る前の写真の表示 */
   function drawPreview() {
     previewArea.replaceChildren();
-    if (!attached) {
+    if (!draft.attached) {
       return;
     }
     previewArea.append(
       el(
         "div",
         { class: "composer-preview" },
-        el("img", { src: attached.url, alt: "送る写真" }),
+        el("img", { src: draft.attached.url, alt: "送る写真" }),
         el("button", {
           type: "button",
           class: "quiet",
           text: "写真をやめる",
           onclick: () => {
-            attached = null;
+            draft.attached = null;
             drawPreview();
           },
         })
@@ -517,7 +754,7 @@ export function openRoom(container, ctx, roomId) {
     showStatus("");
     try {
       const blob = await shrinkPhoto(file);
-      attached = { blob, url: URL.createObjectURL(blob) };
+      draft.attached = { blob, url: URL.createObjectURL(blob) };
       drawPreview();
     } catch (error) {
       showStatus(error.message);
@@ -525,15 +762,15 @@ export function openRoom(container, ctx, roomId) {
   });
 
   function drawPending(pending) {
-    const body = el("div", { class: "bubble-body" });
+    const group = el("div", { class: "msg-group mine" });
     if (pending.url) {
-      body.append(el("div", { class: "bubble-line" }, el("img", { class: "bubble-photo", src: pending.url, alt: "送る写真" })));
+      group.append(el("div", { class: "msg-line" }, el("img", { class: "bubble-photo", src: pending.url, alt: "送る写真" })));
     }
     if (pending.text) {
-      body.append(el("div", { class: "bubble-line" }, el("div", { class: "bubble person", text: pending.text })));
+      group.append(el("div", { class: "msg-line" }, el("div", { class: "bubble person", text: pending.text })));
     }
     if (pending.failed) {
-      body.append(
+      group.append(
         el("p", { class: "bubble-state error", text: pending.failed }),
         el("button", {
           type: "button",
@@ -542,15 +779,14 @@ export function openRoom(container, ctx, roomId) {
         })
       );
     } else {
-      body.append(el("span", { class: "bubble-time", text: "送っています" }));
+      group.append(el("div", { class: "msg-foot" }, el("span", { class: "bubble-time", text: "送っています" })));
     }
-    const row = el("div", { class: "bubble-row mine" }, body);
     if (pending.node) {
-      pending.node.replaceWith(row);
+      pending.node.replaceWith(group);
     } else {
-      pendingArea.append(row);
+      pendingArea.append(group);
     }
-    pending.node = row;
+    pending.node = group;
   }
 
   function dropPending(key) {
@@ -600,7 +836,7 @@ export function openRoom(container, ctx, roomId) {
   async function send() {
     emptyNote.hidden = true;
     const text = textBox.value.trim();
-    if (sending || (!text && !attached)) {
+    if (sending || (!text && !draft.attached)) {
       return;
     }
     // 長すぎる言葉は送っても受け付けられず、「もう一度送る」でも通らない。消さずに残して、短くしてもらう
@@ -609,22 +845,35 @@ export function openRoom(container, ctx, roomId) {
       return;
     }
     showStatus("");
-    const pending = { key: newKey(), text, blob: attached?.blob, url: attached?.url };
+    const pending = { key: newKey(), text, blob: draft.attached?.blob, url: draft.attached?.url };
     pendings.set(pending.key, pending);
     clearGuessAnswers();
     shownShare = null;
     shareArea.replaceChildren();
     textBox.value = "";
     textBox.style.height = "";
-    attached = null;
+    draft.text = "";
+    draft.attached = null;
     drawPreview();
     await deliver(pending);
   }
 
-  sendButton.addEventListener("click", send);
-  textBox.addEventListener("input", () => {
+  function sizeTextBox() {
     textBox.style.height = "auto";
     textBox.style.height = `${Math.min(textBox.scrollHeight + 2, 140)}px`;
+  }
+
+  sendButton.addEventListener("click", send);
+  textBox.addEventListener("input", () => {
+    draft.text = textBox.value;
+    sizeTextBox();
+  });
+  // 変換を決める Enter では送らない。Ctrl+Enter だけ送る
+  textBox.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+      event.preventDefault();
+      send();
+    }
   });
 
   closeDayButton.addEventListener("click", async () => {
@@ -655,95 +904,22 @@ export function openRoom(container, ctx, roomId) {
 
   document.addEventListener("visibilitychange", sendRead);
 
-  leaveButton.addEventListener("click", () =>
-    openSheet((inner, close) => {
-      const message = el("p", { class: "error", role: "alert", hidden: true });
-      inner.append(
-        el("h2", { text: "この部屋を出ますか？" }),
-        el("p", { text: "出ると、この部屋の話は読めなくなります。話したことは記録に残ります。" }),
-        ctx.me.role === "本人" && room?.twin_present ? el("p", { text: "ツイン（AI）も一緒にはずれます。" }) : "",
-        message,
-        el(
-          "div",
-          { class: "row" },
-          el("button", {
-            type: "button",
-            class: "primary",
-            text: "部屋を出る",
-            onclick: async () => {
-              try {
-                await api(`/rooms/${roomId}/leave`, { method: "POST" });
-                close();
-                ctx.openTab("talk");
-              } catch (error) {
-                message.textContent = error.message;
-                message.hidden = false;
-              }
-            },
-          }),
-          el("button", { type: "button", class: "quiet", text: "やめる", onclick: close })
-        )
-      );
-    })
-  );
-
-  removeButton.addEventListener("click", () =>
-    openSheet((inner, close) => {
-      const message = el("p", { class: "error", role: "alert", hidden: true });
-      const others = room.members.filter((member) => member.id !== ctx.me.id && member.role !== "本人");
-      inner.append(
-        el("h2", { text: "この部屋からはずす人" }),
-        el("p", { class: "hint", text: "はずれた人は、この部屋の話を読めなくなります。部屋に表示します。" }),
-        ...others.map((member) =>
-          el(
-            "div",
-            { class: "person-row" },
-            el("div", { class: "person-text", text: personName(member) }),
-            el("button", {
-              type: "button",
-              class: "quiet",
-              text: "はずす",
-              onclick: async () => {
-                try {
-                  await api(`/rooms/${roomId}/members/${member.id}/remove`, { method: "POST" });
-                  close();
-                } catch (error) {
-                  message.textContent = error.message;
-                  message.hidden = false;
-                }
-              },
-            })
-          )
-        ),
-        others.length === 0 ? el("p", { text: "はずせる人はいません。" }) : "",
-        message,
-        el("button", { type: "button", class: "quiet", text: "閉じる", onclick: close })
-      );
-    })
-  );
-
-  twinToggle.addEventListener("click", async () => {
-    twinToggle.disabled = true;
-    try {
-      const data = await api(`/rooms/${roomId}/twin`, { method: "POST", json: { present: !room.twin_present } });
-      setRoom(data.room);
-      addMessages(data.items);
-      // 発言がないと入力欄しか見えず、何をする場所か分からないので案内を出す
-      emptyNote.hidden = seen.size > 0 || pendings.size > 0;
-      lastSeq = Math.max(lastSeq, data.last_seq);
-    } catch (error) {
-      showStatus(error.message);
-    } finally {
-      twinToggle.disabled = false;
-    }
-  });
+  // 切り替えの前に書いていた文と写真を戻す
+  textBox.value = draft.text;
+  if (draft.text) {
+    sizeTextBox();
+  }
+  drawPreview();
 
   poll();
   return () => {
     alive = false;
     clearTimeout(timer);
     document.removeEventListener("visibilitychange", sendRead);
-    ctx.showTabs(true);
-    ctx.setPlate("TALK", "トーク");
+    info.destroy();
+    if (!pc) {
+      ctx.showTabs(true);
+      ctx.setPlate("TALK", "トーク");
+    }
   };
 }

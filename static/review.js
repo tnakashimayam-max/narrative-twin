@@ -30,8 +30,8 @@ async function refreshColor() {
 // 一度に出す数。ほぼ同じ推測に何度も答えることにならないよう、少なくして、残りは本人が開いたときだけ出す
 const REVIEW_SHOWN = 3;
 
-/* ツイン（AI）からの確かめ */
-export function reviewSection(ctx, onChange) {
+/* ツイン（AI）からの確かめ。onLoaded は読み込めたときに一覧を渡す（トークの右のペインが、中身の変化を見るため）。 */
+export function reviewSection(ctx, onChange, { onLoaded } = {}) {
   const section = el("section", { class: "card review-list" });
   const message = el("p", { class: "error", role: "alert", hidden: true });
 
@@ -109,6 +109,7 @@ export function reviewSection(ctx, onChange) {
 
   api("/review")
     .then(({ items }) => {
+      onLoaded?.(items);
       if (items.length === 0) {
         section.hidden = true;
         return;

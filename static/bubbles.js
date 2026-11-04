@@ -4,10 +4,15 @@
   守る原則：3（だれの言葉かを分ける）、12（ツインには姿と「ツイン（AI）」を必ず出す）、
             14（タイムラインには、いいねの数、既読、通知を作らない）。
 
-  トークの自分の発言には、既読の印の場所を持つ。数を入れるのは static/talk.js で、タイムラインでは空のまま。
-  LINE のように、相手を左（アイコンと名前つき）、自分を右に出す。
+  相手を左（アイコンと名前つき）、自分を右に出す。
   人の言葉は手書き風の文字にし、ツインの言葉はふつうの文字にする。
   ツインの問いは枠を太くして、問いだと分かるようにする。
+
+  トークの部屋では addToGroup で発言をかたまりにする。同じ人が続けて話した間は吹き出しをつなげ、
+  アイコンは最後の吹き出しの横に、時刻はかたまりの下に1つだけ出す。
+  かたまりの自分の発言には既読の印の場所を持つ。数を入れるのは static/talk.js で、読んだ人の名前も顔も出さない。
+  ツインの名前はかたまりごとに必ず出し（原則12）、問いと推測は角を丸いまま残す（原則3、4）。
+  記録の画面の吹き出しは bubble で1行ずつ出す。日ごとに読み返す画面で、かたまりにする理由がないため。
 */
 
 import { avatar, dateKey, dateLabel, el, photoImage, timeLabel, twinFigure } from "./ui.js";
@@ -71,6 +76,128 @@ export function threadComment(message, { people } = {}) {
     message.text ? el("div", { class: textClass, text: message.text }) : null,
     el("div", { class: "comment-time", text: `${dateLabel(message.sent_at)} ${timeLabel(message.sent_at)}` })
   );
+}
+
+// 同じ人の発言をつなげる間隔
+const GROUP_GAP_MS = 5 * 60 * 1000;
+const GUESS_ENDING = "合っていますか？";
+
+function isGuessMessage(message) {
+  return message.is_twin && Boolean(message.text?.endsWith(GUESS_ENDING));
+}
+
+/* 今のかたまりを覚えておく入れ物。 */
+export function newGroupTracker() {
+  return { current: null };
+}
+
+/* 日付の区切りやお知らせのあとは、前のかたまりにつなげない。 */
+export function breakGroup(tracker) {
+  tracker.current = null;
+}
+
+function startGroup(message, who, { viewerId, people }) {
+  const isTwin = message.is_twin;
+  const mine = !isTwin && message.sender_user_id === viewerId;
+  const person = isTwin ? null : people?.get(message.sender_user_id);
+  const time = el("span", { class: "bubble-time" });
+  const mark = mine ? el("span", { class: "read-mark" }) : null;
+  const foot = el("div", { class: "msg-foot" }, mark, time);
+  const node = el(
+    "div",
+    { class: `msg-group${mine ? " mine" : ""}` },
+    mine ? null : el("div", { class: "msg-who", text: isTwin ? TWIN_NAME : personName(person) }),
+    foot
+  );
+  return { who, mine, node, foot, time, mark, figure: mine ? null : isTwin ? twinFigure() : avatar(person), lastAt: 0 };
+}
+
+/* 吹き出しか写真の行を足す。アイコンは最後の行へ移す。 */
+function addLine(group, content, messageId) {
+  const slot = group.mine ? null : el("span", { class: "msg-slot" });
+  const line = el("div", { class: "msg-line", "data-msg": messageId }, slot, content);
+  group.node.insertBefore(line, group.foot);
+  if (slot) {
+    slot.append(group.figure);
+  }
+}
+
+/* 問いと推測は線で見分けるので、つなげない。つなげるのは隣り合うふつうの吹き出しだけにする。 */
+function joinCorners(group) {
+  const plainBubble = (node) => {
+    const bubbleNode = node?.classList?.contains("msg-line") ? node.querySelector(".bubble") : null;
+    return bubbleNode && !bubbleNode.matches(".question, .guess") ? bubbleNode : null;
+  };
+  for (const line of group.node.querySelectorAll(":scope > .msg-line")) {
+    const own = plainBubble(line);
+    if (own) {
+      own.classList.toggle("join-top", Boolean(plainBubble(line.previousElementSibling)));
+      own.classList.toggle("join-bottom", Boolean(plainBubble(line.nextElementSibling)));
+    }
+  }
+}
+
+/* 発言を1つ、かたまりに足す。message は docs/api.md の Message の形。 */
+export function addToGroup(container, tracker, message, { viewerId, people, onRest } = {}) {
+  if (message.kind === "お知らせ") {
+    breakGroup(tracker);
+    container.append(el("p", { class: "room-notice", text: message.text }));
+    return;
+  }
+  const who = message.is_twin ? "twin" : message.sender_user_id;
+  const at = new Date(message.sent_at).getTime();
+  let group = tracker.current;
+  if (!group || group.who !== who || at - group.lastAt >= GROUP_GAP_MS) {
+    group = startGroup(message, who, { viewerId, people });
+    tracker.current = group;
+    container.append(group.node);
+  }
+  group.lastAt = at;
+
+  if (message.photo_id) {
+    addLine(group, photoImage(message.photo_id), message.id);
+  }
+  if (message.text) {
+    const isGuess = isGuessMessage(message);
+    // 問いと推測は、線だけでなく言葉でも分かるようにする（原則3、4）
+    if (isGuess) {
+      group.node.insertBefore(el("div", { class: "msg-after" }, el("span", { class: "guess-tag", text: "推測" })), group.foot);
+    } else if (message.is_twin && message.is_question) {
+      group.node.insertBefore(el("div", { class: "msg-after" }, el("span", { class: "source-tag question", text: "問い" })), group.foot);
+    }
+    const classes = ["bubble"];
+    if (!message.is_twin) {
+      classes.push("person");
+    }
+    if (isGuess) {
+      classes.push("guess");
+    } else if (message.is_question) {
+      classes.push("question");
+    }
+    addLine(group, el("div", { class: classes.join(" "), text: message.text }), message.id);
+  }
+  if (message.question_id && message.is_twin && onRest) {
+    group.node.insertBefore(
+      el(
+        "div",
+        { class: "msg-after" },
+        message.question_rested
+          ? el("span", { class: "hint", text: "この話はお休みにしました。" })
+          : el("button", {
+              type: "button",
+              class: "link",
+              text: "この話はお休みにする",
+              onclick: (event) => onRest(message, event.currentTarget),
+            })
+      ),
+      group.foot
+    );
+  }
+  group.time.textContent = timeLabel(message.sent_at);
+  if (group.mark) {
+    group.mark.dataset.seq = message.seq;
+  }
+  joinCorners(group);
 }
 
 /* 1行の吹き出しを作る。message は docs/api.md の Message の形。 */

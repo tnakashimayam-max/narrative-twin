@@ -4,6 +4,7 @@
   守る原則：8（画面の隅の表示）、12（ツインの表示）、14（SNS の仕掛けを作らない）。
 
   幅360pxを第一に作る。本文は16px以上、ボタンは高さ44px以上にする。高齢の本人が迷わず押せるようにするため。
+  PC版（body の data-device="pc"）は見出しとタブを1本の帯にし、トークを3つのペインに分ける。文字とボタンの決まりは同じ。
   見出しの札の英字だけは飾りで、読み上げない。
   人の言葉は手書き風の文字にし、ツインの言葉はふつうの文字のままにする。だれの言葉かを見分けやすくするため。
   外部のフォントは読み込まない。使う人の機器にある教科書体を使う。
@@ -137,7 +138,6 @@ html {
 }
 
 /* 藍の帯の上では、選んでいる場所の枠を山吹にする */
-.composer :focus-visible,
 .tabs :focus-visible {
   outline-color: var(--sun);
 }
@@ -716,28 +716,57 @@ body[data-screen="login"] .site-header {
   gap: 12px;
   width: 100%;
   min-height: 68px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: none;
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: 0;
+  border-radius: 12px;
   background: transparent;
   color: var(--ink);
   font-weight: 400;
   text-align: left;
 }
 
-.room-item.pinned {
-  background: var(--card);
+.room-item:hover {
+  background: var(--paper);
+}
+
+.room-item[aria-current="true"] {
+  background: var(--accent-soft);
+}
+
+.room-item .room-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.45;
+}
+
+.room-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .room-item .room-name {
-  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   font-weight: 700;
   font-size: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-when {
+  flex: none;
+  color: var(--ink-soft);
+  font-size: 16px;
 }
 
 .room-item .room-preview {
-  display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--ink-soft);
   font-size: 16px;
@@ -745,9 +774,9 @@ body[data-screen="login"] .site-header {
   text-overflow: ellipsis;
 }
 
-.room-item .room-text {
-  flex: 1;
-  min-width: 0;
+.room-item.has-unread .room-preview {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .unread-count {
@@ -794,30 +823,44 @@ body[data-screen="login"] .site-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 60px;
   padding: 6px 10px;
   border-bottom: 1px solid var(--line-soft);
-  background: var(--paper);
+  background: var(--card);
 }
 
 .room-header > span {
   display: flex;
 }
 
-.room-header .room-title {
+.room-head-text {
   flex: 1;
   min-width: 0;
+  line-height: 1.35;
+}
+
+.room-header .room-title,
+.room-subtitle {
   overflow: hidden;
-  font-weight: 700;
-  line-height: 1.3;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* 幅の狭い画面では、部屋の名前は見出しの札で読む。帯は操作だけにする */
-@media (max-width: 480px) {
-  .room-header .room-title {
-    visibility: hidden;
-  }
+.room-header .room-title {
+  font-weight: 700;
+}
+
+.room-subtitle {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.room-info-button {
+  flex: none;
+}
+
+.room-info-button[aria-expanded="true"] {
+  background: var(--accent-soft);
 }
 
 .room-banner {
@@ -1034,16 +1077,18 @@ body[data-screen="login"] .site-header {
   margin-top: 4px;
 }
 
-/* 入力の帯は藍。中の文字欄だけ白い */
+/* 入力の帯は面の色で、欄は丸い。藍は上の帯に残す */
 .composer {
   flex: none;
-  background: var(--rail);
-  padding: 8px;
+  padding: 6px 10px 10px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--card);
 }
 
-.composer .error,
-.composer .hint {
-  color: #ffffff;
+.composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
 }
 
 .composer-inner {
@@ -1062,26 +1107,36 @@ body[data-screen="login"] .site-header {
   min-width: 0;
   min-height: 44px;
   max-height: 140px;
+  padding: 8px 16px;
+  border-radius: 22px;
+  background: var(--paper);
   resize: none;
+  font-family: var(--hand);
   font-size: 18px;
   line-height: 1.4;
+}
+
+.composer textarea::placeholder {
+  font-family: var(--plain);
 }
 
 .composer .photo-button {
   flex: none;
   padding: 6px 10px;
-  border-color: rgba(255, 255, 255, 0.45);
-  background: transparent;
-  color: #ffffff;
-}
-
-.composer .photo-button:hover {
-  background: var(--rail-current);
+  border-radius: 22px;
+  color: var(--accent);
 }
 
 .composer .send-button {
   flex: none;
   padding: 6px 14px;
+  border-radius: 22px;
+}
+
+.line-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
 }
 
 .composer-preview {
@@ -2188,4 +2243,620 @@ body[data-look="modern"] .source-card.self .quote {
   .meeting-panel .advocate-composer .primary {
     min-width: 7rem;
   }
+}
+
+/* ---- トークの発言のかたまり ---- */
+
+/* 続けて話すと吹き出しをつなげ、アイコンは最後の吹き出しの横に、時刻はかたまりの下に1つだけ出す */
+.msg-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 10px 0;
+}
+
+.msg-group.mine {
+  align-items: flex-end;
+}
+
+.msg-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(90%, 38rem);
+}
+
+.msg-group.mine .msg-line {
+  max-width: min(84%, 34rem);
+}
+
+/* アイコンの幅（44px）と間（8px）の分だけ、名前や時刻を吹き出しにそろえる */
+.msg-slot {
+  flex: none;
+  display: flex;
+  width: 44px;
+}
+
+.msg-who,
+.msg-after,
+.msg-foot {
+  margin-left: 52px;
+}
+
+.msg-group.mine .msg-foot {
+  margin: 0 6px 0 0;
+}
+
+.msg-who {
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.msg-after {
+  margin-top: 4px;
+}
+
+.msg-foot {
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.msg-group .bubble {
+  min-width: 0;
+  border-radius: 20px;
+}
+
+.msg-group:not(.mine) .bubble.person {
+  border-color: transparent;
+  background: var(--paper-deep);
+}
+
+.msg-group.mine .bubble {
+  border-color: var(--me-bubble);
+  background: var(--me-bubble);
+  color: var(--me-bubble-text);
+}
+
+/* つなげる側の角だけ小さくする */
+.msg-group:not(.mine) .bubble.join-top {
+  border-top-left-radius: 6px;
+}
+
+.msg-group:not(.mine) .bubble.join-bottom {
+  border-bottom-left-radius: 6px;
+}
+
+.msg-group.mine .bubble.join-top {
+  border-top-right-radius: 6px;
+}
+
+.msg-group.mine .bubble.join-bottom {
+  border-bottom-right-radius: 6px;
+}
+
+.msg-group .bubble.question {
+  margin-top: 0;
+}
+
+.msg-line .bubble-photo {
+  flex: 0 1 240px;
+  width: 240px;
+  border-radius: 16px;
+}
+
+.msg-flash .bubble,
+.msg-flash .bubble-photo {
+  outline: 3px solid var(--sun);
+  outline-offset: 2px;
+}
+
+.guess-answers button {
+  border-color: var(--frame);
+  border-radius: 999px;
+  color: var(--accent);
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.thinking-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  animation: thinking-dot 1.1s infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thinking-dot {
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dots i {
+    animation: none;
+  }
+}
+
+/* ---- トークの一覧のペイン ---- */
+
+.pane-list,
+.pane-room,
+.pane-info,
+.room-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.talk-view > .pane-list,
+.talk-view > .pane-info,
+.room-body {
+  flex: 1;
+}
+
+.pane-list {
+  background: var(--card);
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 6px;
+}
+
+.list-head h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+input.search-box {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background: var(--paper);
+  font-size: 16px;
+}
+
+.list-search {
+  padding: 0 14px 8px;
+}
+
+.pane-list .room-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.room-list-empty {
+  padding: 8px 10px;
+}
+
+.list-note {
+  margin: 0;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ---- この部屋のこと（PC版は右のペイン、スマホ版は部屋に重ねる画面） ---- */
+
+.pane-info {
+  background: var(--card);
+}
+
+.info-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 60px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.info-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.info-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.info-tabs button {
+  flex: 1 1 0;
+  padding: 0 4px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.info-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--sun);
+  color: var(--ink);
+}
+
+.info-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.info-body p {
+  margin: 0;
+}
+
+.info-section h3 {
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.info-twin,
+.info-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.info-profile strong {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+/* 右のペインの写真は、下のツインの説明と話を探す欄が最初の画面に入る大きさにする。明るい面は .profile-photo のまま */
+.info-profile .profile-photo {
+  width: min(100%, 200px);
+  margin: 0 auto;
+}
+
+/* グループの部屋のアイコン。2人の顔を斜めに少し重ねる。輪は面の色にして、本人の二重の輪も重ねない */
+.group-faces {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+}
+
+.group-faces .avatar {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.group-faces .avatar:first-child {
+  top: 0;
+  right: 0;
+}
+
+.group-faces .avatar:last-child {
+  bottom: 0;
+  left: 0;
+}
+
+.group-faces.large {
+  width: 72px;
+  height: 72px;
+}
+
+.group-faces.large .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+}
+
+/* 確かめの部品はホームのカードと同じもの。ペインの中では外枠を外す */
+.pane-info .review-list {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pane-info .review-list p {
+  margin-bottom: 8px;
+}
+
+.twin-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--paper-deep);
+}
+
+.twin-state-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.photo-grid button {
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.photo-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.result-button {
+  display: block;
+  width: 100%;
+  border-color: var(--line-soft);
+  background: var(--paper);
+  font-weight: 400;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.result-meta {
+  display: block;
+  color: var(--ink-soft);
+}
+
+.result-button mark {
+  background: var(--sun-soft);
+  color: inherit;
+  font-weight: 700;
+}
+
+/* ---- PC版とスマホ版の切り替え ---- */
+
+.site-header .tags {
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.device-switch {
+  flex: none;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.device-switch button {
+  min-width: 44px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.device-switch button[aria-pressed="true"] {
+  background: var(--rail);
+  color: #ffffff;
+}
+
+.plate-brand {
+  display: none;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+/* スマホ版を広い画面で開くと、幅390pxで中央に置く。PC 1台で両方を確かめられるようにするため */
+@media (min-width: 480px) {
+  body[data-device="phone"] {
+    background-color: var(--paper-deep);
+  }
+
+  body[data-device="phone"] .app {
+    max-width: 390px;
+    margin: 0 auto;
+    background: var(--paper);
+    box-shadow: 0 0 24px rgba(39, 80, 127, 0.22);
+  }
+}
+
+/* 幅が基準の大きな画面の指定を、スマホ版の幅の中では使わない */
+@media (min-width: 900px) {
+  body[data-device="phone"] .estimate-grounds.two {
+    display: block;
+  }
+
+  body[data-device="phone"] .meeting-stage {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  body[data-device="phone"] .meeting-twin {
+    flex-direction: row;
+    width: auto;
+    text-align: left;
+  }
+
+  body[data-device="phone"] .meeting-panel .twin-figure.large {
+    width: 96px;
+    height: 96px;
+  }
+
+  body[data-device="phone"] .meeting-panel .meeting-quote {
+    font-size: 24px;
+  }
+}
+
+/* PC版：見出しを1本の藍の帯にして、タブを帯の中へ入れる。入口は今の形のまま */
+body[data-device="pc"]:not([data-screen="login"]) .app {
+  display: grid;
+  grid-template: "plate tabs tools" auto "main main main" minmax(0, 1fr) / auto 1fr auto;
+  min-width: 900px;
+}
+
+body[data-device="pc"]:not([data-screen="login"]) .app::before {
+  content: "";
+  grid-area: 1 / 1 / 2 / 4;
+  background: var(--rail);
+}
+
+body[data-device="pc"]:not([data-screen="login"]) .site-header {
+  display: contents;
+}
+
+body[data-device="pc"] .plate {
+  grid-area: plate;
+  padding-right: 30px;
+  background: var(--rail-current);
+}
+
+/* タブがある間は今いる所がタブで分かるので、札にはアプリの名前を出す。会議のようにタブがない画面は画面の名前を出す */
+body[data-device="pc"][data-tabs="on"] .plate-brand {
+  display: block;
+}
+
+body[data-device="pc"][data-tabs="on"] .plate-text {
+  display: none;
+}
+
+body[data-device="pc"] .tabs {
+  grid-area: tabs;
+  height: auto;
+  padding-left: 8px;
+}
+
+body[data-device="pc"] .tabs button {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+body[data-device="pc"] .tabs button[aria-current="page"]::before {
+  top: auto;
+  bottom: 0;
+}
+
+body[data-device="pc"] .tabs button .unread-count {
+  position: static;
+}
+
+body[data-device="pc"] .site-header .tags {
+  grid-area: tools;
+  padding: 6px 12px;
+}
+
+body[data-device="pc"] .device-switch {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+}
+
+body[data-device="pc"] .device-switch button {
+  padding: 0 12px;
+  color: #ffffff;
+}
+
+body[data-device="pc"] .device-switch button:hover {
+  background: var(--rail-current);
+}
+
+body[data-device="pc"] .device-switch button[aria-pressed="true"] {
+  background: #fff9ea;
+  color: #22304a;
+}
+
+body[data-device="pc"] .device-switch :focus-visible {
+  outline-color: var(--sun);
+}
+
+body[data-device="pc"] #view {
+  grid-area: main;
+}
+
+body[data-device="pc"] .panel {
+  max-width: 56rem;
+}
+
+body[data-device="pc"] .messages-inner,
+body[data-device="pc"] .composer-inner {
+  max-width: 48rem;
+}
+
+/* PC版のトーク：一覧、部屋、この部屋のこと。右は閉じられる */
+.view.talk-panes {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(320px, 1fr) minmax(300px, 360px);
+}
+
+.view.talk-panes[data-info="closed"] {
+  grid-template-columns: minmax(280px, 340px) minmax(320px, 1fr);
+}
+
+.view.talk-panes[data-info="closed"] > .pane-info {
+  display: none;
+}
+
+.talk-panes > .pane-list {
+  border-right: 1px solid var(--line-soft);
+}
+
+.talk-panes > .pane-info {
+  border-left: 1px solid var(--line-soft);
 }
