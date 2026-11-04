@@ -11,7 +11,7 @@ import { renderEcomap } from "./ecomap_ui.js";
 import { openGenogram } from "./genogram_ui.js";
 import { openOwnForm, openPersonForm, personRow } from "./people_ui.js";
 import { demoSection, handoverSection, reviewSection } from "./review.js";
-import { add, avatar, el, openSheet, profilePhoto, twinFigure } from "./ui.js";
+import { avatar, el, openSheet, profilePhotoButton, twinFigure } from "./ui.js";
 
 const ROLE_CHOICES = [
   ["家族", "家族"],
@@ -170,15 +170,14 @@ export function renderHome(container, ctx) {
 
   async function drawSelfHome() {
     panel.replaceChildren();
-    add(
-      panel,
+    panel.append(
       el(
         "div",
-        { class: "row" },
+        { class: "row home-head" },
         avatar(ctx.me, "large"),
-        el("h1", { text: `${ctx.me.called_name}の画面` })
+        el("h1", { text: `${ctx.me.called_name}の画面` }),
+        profilePhotoButton(ctx.me)
       ),
-      profilePhoto(ctx.me),
       el(
         "button",
         {
@@ -269,8 +268,7 @@ export function renderHome(container, ctx) {
 
   function drawOtherHome() {
     panel.replaceChildren(
-      el("div", { class: "row" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` })),
-      profilePhoto(ctx.me) ?? "",
+      el("div", { class: "row home-head" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` }), profilePhotoButton(ctx.me)),
       el("p", { class: "hint", text: otherRoleWords(ctx.me) }),
       el("p", { text: otherGuide(ctx.me) }),
       ctx.me.can_use_supporter_screen

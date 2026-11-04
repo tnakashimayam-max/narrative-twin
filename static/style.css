@@ -33,8 +33,9 @@ body[data-look="modern"] {
   --rail-current: #1f4269;
   --sun: #f0b73a;
   --sun-soft: #fdefc8;
-  /* プロフィール写真を置く面。ダークでも変えない（.profile-photo） */
+  /* プロフィール写真を置く面とその上の言葉。ダークでも変えない（.profile-photo、.profile-thumb） */
   --photo-mat: #fff6dc;
+  --photo-mat-ink: #22304a;
   --frame: #27507f;
   --me-bubble: #27507f;
   --me-bubble-text: #ffffff;
@@ -593,6 +594,51 @@ body[data-screen="login"] .site-header {
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 14px;
+}
+
+/* 自分の画面の名前の行。写真を右に置き、名前が長いときは折り返して行を増やさない */
+.home-head {
+  flex-wrap: nowrap;
+}
+
+.home-head h1 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 自分の画面の小さな写真。押すと大きく開く。面と言葉の色は暗い表示でも変えない */
+.profile-thumb {
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  width: 96px;
+  padding: 5px 5px 3px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--photo-mat);
+  color: var(--photo-mat-ink);
+}
+
+.profile-thumb:hover {
+  background: var(--photo-mat);
+}
+
+.profile-thumb[hidden] {
+  display: none;
+}
+
+.profile-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+@media (min-width: 720px) {
+  .profile-thumb {
+    width: 132px;
+  }
 }
 
 /* ---- ツインの姿：花の子。考えている間だけ、周りの光がゆっくり動く ---- */

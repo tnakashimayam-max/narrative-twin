@@ -245,6 +245,38 @@ export function profilePhoto(person) {
   return frame;
 }
 
+/* 自分の画面に出す小さなプロフィール写真。押すと、人の窓と同じ大きさで開く。写真がない人には何も出さない。
+   自分の画面では、幅390でも「ツイン（AI）からの確かめ」を最初の画面に入れるため、大きな写真は開いたときだけ出す。 */
+export function profilePhotoButton(person) {
+  if (!person?.profile_photo_id) {
+    return null;
+  }
+  const name = person.called_name || person.name;
+  const image = el("img", { alt: "" });
+  const button = el(
+    "button",
+    {
+      type: "button",
+      class: "profile-thumb",
+      hidden: true,
+      "aria-label": `${name}のプロフィール写真を大きく見る`,
+      onclick: () =>
+        openSheet((inner, close) =>
+          add(inner, profilePhoto(person), el("button", { type: "button", class: "wide", text: "閉じる", onclick: close }))
+        ),
+    },
+    image,
+    el("span", { text: "大きく見る" })
+  );
+  photoUrl(person.profile_photo_id).then((url) => {
+    if (url) {
+      image.src = url;
+      button.hidden = false;
+    }
+  });
+  return button;
+}
+
 /* 写真の <img> を作る。見てよい写真だけが読める。 */
 export function photoImage(photoId, className = "bubble-photo", alt = "送られた写真") {
   const image = el("img", { class: className, alt });
