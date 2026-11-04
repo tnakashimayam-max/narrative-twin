@@ -324,3 +324,11 @@ Claude Code に頼んだこと：
 - 作ったもの：`app/twin_model.py`（判断の決まり）、`app/twin.py` の `choose_turn`、`app/config.py` の役割 `ツインの深い会話`、`tests/test_twin_model.py`。
 - 確かめ方：全テスト 1,402 件。`scripts/compare_twin_voice.py` は `choose_turn` をそのまま呼ぶ形に直し、60件を4回流した（判断と文を直す前に2回、直した後に2回）。費用は合わせて約 $0.96。
 - 試しで見つけて直したこと：「決めて」が「順番を決めて」にも反応した。プロンプトの例の文を Sonnet 5.5 がくり返した。
+
+### 区切り：プロフィール写真の枠とデモの顔（11/4）
+
+- 頼んだこと：デモの7人の顔を入れる。丸いアイコンとは別に、人ごとのプロフィール写真の枠を作る。
+- 関わった担当：指揮役（実装）。
+- 作ったもの：`users.profile_photo_id`（`MIGRATIONS` の2番）、`fiction/faces.py`、`demo.ensure_demo_faces`、`photos.attach_demo_face`、`people.check_photo_slots`、人の入力欄の2つの枠、人の窓と自分の画面の大きな写真、`tests/test_profile_photo.py`。
+- 確かめ方：AI の API は呼んでいない。`data/narrative_twin.db` は控え（`.before_v2`）が取られたうえで版が1から2に変わり、言明の数が変わらないことを確かめた。入口、人の窓、自分の画面を幅1280と幅390で見た。写真の入れ替え、田中さんの招待、写真のフォルダがない状態は、一時的なデータベースのサーバーで確かめた。
+- 作る途中で気づいたこと：顔を入れる処理はコミットを含むので、人の登録の処理の中で呼ぶと、招く処理の「人と託す設定を一緒に入れる」が崩れる。処理が終わったあとで呼ぶ形にした。

@@ -601,8 +601,11 @@ class User(_Base):
     residence: Residence | None = None
     is_deceased: bool = False
     memo: str | None = None
+    # 丸く出すアイコン。架空用の起動では、入口の札にも出る。
     photo_id: int | None = None
     removed_at: datetime | None = None
+    # 大きく出すプロフィール写真。アイコンとは別の行で、ログインの前には読めない。
+    profile_photo_id: int | None = None
 
     @property
     def display_name(self) -> str:

@@ -254,14 +254,16 @@ function showSelfRegistration() {
     el("option", { value: "女性", text: "女性" }),
     el("option", { value: "不明", text: "答えない" })
   );
-  const photo = el("input", { type: "file", accept: "image/*" });
+  const icon = el("input", { type: "file", accept: "image/*" });
+  const profile = el("input", { type: "file", accept: "image/*" });
   const message = el("p", { class: "error", role: "alert", hidden: true });
   form.append(
     el("label", { class: "field" }, "お名前", name),
     el("label", { class: "field" }, "呼ばれ方（ツインがこう呼びます。例：一郎さん）", called),
     el("label", { class: "field" }, "生まれた年（なくてもかまいません）", year),
     el("label", { class: "field" }, "性別（なくてもかまいません）", gender),
-    el("label", { class: "field" }, "プロフィール写真（なくてもかまいません）", photo),
+    el("label", { class: "field" }, "アイコン（丸く表示します。AI には送りません。なくてもかまいません）", icon),
+    el("label", { class: "field" }, "プロフィール写真（AI には送りません。なくてもかまいません）", profile),
     message,
     el("button", { type: "submit", class: "primary wide", text: "はじめる" })
   );
@@ -279,10 +281,13 @@ function showSelfRegistration() {
         },
       });
       rememberUser(created.id);
-      if (photo.files[0]) {
-        const shrunk = await shrinkPhoto(photo.files[0]);
-        const uploaded = await uploadPhoto(shrunk, "プロフィール");
-        await api(`/people/${created.id}`, { method: "PUT", json: { photo_id: uploaded.id } });
+      // 枠ごとに送る。同じ画像を選んでも、写真の行は分かれる
+      for (const [field, input] of [["photo_id", icon], ["profile_photo_id", profile]]) {
+        if (input.files[0]) {
+          const shrunk = await shrinkPhoto(input.files[0]);
+          const uploaded = await uploadPhoto(shrunk, "プロフィール");
+          await api(`/people/${created.id}`, { method: "PUT", json: { [field]: uploaded.id } });
+        }
       }
       await logIn(created.id);
     } catch (error) {

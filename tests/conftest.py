@@ -49,6 +49,12 @@ def keep_real_logs_out(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def keep_real_faces_out(monkeypatch, tmp_path):
+    """デモの顔の置き場を、ないフォルダへ向ける。手元の写真の有無でテストの結果が変わらないようにするため。"""
+    monkeypatch.setattr(config, "DEMO_FACES_DIR", tmp_path / "顔の写真はない")
+
+
+@pytest.fixture(autouse=True)
 def professionals_open_in_tests(monkeypatch):
     """既存のテストは招かれた田中さんを使うので、日付の切り替えを開けておく。切り替えのテストだけ閉じる。"""
     monkeypatch.setattr(config, "PROFESSIONAL_FROM", date(2000, 1, 1))

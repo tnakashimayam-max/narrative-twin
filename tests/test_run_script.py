@@ -697,3 +697,40 @@ def test_今は話したくないと答えると_その記録を休ませる(wor
     flow(world, [say(words), close(), {"at": f"{AT}31", "kind": "確かめ", "by": "誠一さん", "match": "庭が好き", "reply": "今は話したくない"}])
 
     assert as_self(client, "/api/statements")["items"][0]["confirm_status"] == "お休み"
+
+
+def test_流し込みの別のデータベースにもデモの顔が入る(tmp_path, monkeypatch):
+    from PIL import Image
+
+    from fiction import faces
+
+    source = tmp_path / "faces"
+    source.mkdir()
+    for name in faces.FACE_FILES.values():
+        Image.new("RGB", (64, 64), (200, 180, 150)).save(source / name, format="JPEG")
+    monkeypatch.setattr(config, "DEMO_FACES_DIR", source)
+    folder = tmp_path / "流し込み"
+
+    _, db_path = run_script.open_client(folder)
+    run_script.open_client(folder)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        filled = conn.execute("SELECT name FROM users WHERE photo_id IS NOT NULL AND profile_photo_id IS NOT NULL ORDER BY id").fetchall()
+        count = conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0]
+    finally:
+        conn.close()
+    assert [row["name"] for row in filled] == ["誠一さん", "美穂さん", "正雄さん", "節子さん"]
+    assert count == 8
+    assert (folder / "photos").is_dir()
+
+
+def test_写真のフォルダがなくても流し込みの別のデータベースを開ける(tmp_path):
+    client, db_path = run_script.open_client(tmp_path / "流し込み")
+
+    assert client.get("/api/users").status_code == 200
+    conn = ledger.db.connect(db_path)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM photos").fetchone()[0] == 0
+    finally:
+        conn.close()

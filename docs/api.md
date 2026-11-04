@@ -29,9 +29,9 @@
 | `GET /api/me` | ログイン中の人 | `Person` に `can_invite_professional`（専門職を招けるか）を足したもの |
 | `POST /api/self` | 本人の登録。本人がまだいないときだけ。ログイン不要 | 201、`Person` |
 
-`LoginName`：`id`、`name`、`called_name`、`role`、`photo_id`（入口の札に出す顔写真。架空用の起動だけ。自分用の起動ではいつも `null`）
+`LoginName`：`id`、`name`、`called_name`、`role`、`photo_id`（入口の札に出すアイコン。架空用の起動だけ。自分用の起動ではいつも `null`）。`profile_photo_id` は返しません
 
-`Person`（本人以外に返す形）：`id`、`name`、`called_name`（呼ばれ方）、`role`、`photo_id`
+`Person`（本人以外に返す形）：`id`、`name`、`called_name`（呼ばれ方）、`role`、`photo_id`（丸く出すアイコン）、`profile_photo_id`（大きく出すプロフィール写真）。写真がなければ `null`。はずした人はどちらも `null`
 
 `PersonDetail`（本人だけに返す形）：`Person` に、`relation`（続柄）、`residence`（同居／近く／遠く）、`birth_year`、`gender`（男性／女性／不明）、`is_deceased`、`memo` を足したもの
 
@@ -42,8 +42,8 @@
 | 道 | 内容 | 応答 |
 |---|---|---|
 | `GET /api/people` | はずしていない人の一覧（本人を含む） | `{"items": [PersonDetail, ...]}` |
-| `POST /api/people` | 人を登録する。`name`、`called_name`、`role`、`relation`、`residence`、`birth_year`、`gender`、`is_deceased`、`memo`、`photo_id` | 201、`PersonDetail` |
-| `PUT /api/people/{番号}` | 本人はすべての項目を直せる。本人以外は自分の `name`、`called_name`、`photo_id` だけ。`photo_id` に指定できるのは、操作する人が送ったプロフィールの写真だけ | `PersonDetail`（本人以外は `Person`） |
+| `POST /api/people` | 人を登録する。`name`、`called_name`、`role`、`relation`、`residence`、`birth_year`、`gender`、`is_deceased`、`memo`、`photo_id`、`profile_photo_id` | 201、`PersonDetail` |
+| `PUT /api/people/{番号}` | 本人はすべての項目を直せる。本人以外は自分の `name`、`called_name`、`photo_id`、`profile_photo_id` だけ。2つの枠に指定できるのは、操作する人が送ったプロフィールの写真だけ（それ以外は 404）。同じ写真の行を両方の枠に指すと 400 | `PersonDetail`（本人以外は `Person`） |
 | `GET /api/people/{番号}/role-preview?role=家族` | 立場を変えると見えるようになるものを言葉で返す | `{"sees": [文], "stops": [文], "same": [文]}` |
 | `POST /api/people/{番号}/remove` | はずす。消さない。過去の発言は残る。本人ははずせない | 204 |
 
@@ -61,11 +61,11 @@
 | 道 | 内容 | 応答 |
 |---|---|---|
 | `POST /api/photos?kind=会話` | 本文に写真そのものを送る。`kind` は 会話／部屋／便り／プロフィール。会話と便りは本人だけ | 201、`{"id": 番号}` |
-| `GET /api/photos/{番号}` | 写真の中身（JPEG）。種類、持ち主、説明は返さない。ログインなしで読めるのは「入口の顔」だけ。それ以外をログインなしで読むと 401 | 写真 |
+| `GET /api/photos/{番号}` | 写真の中身（JPEG）。種類、持ち主、説明は返さない。ログインなしで読めるのは「入口の顔」だけ。それ以外（プロフィール写真の枠を含む）をログインなしで読むと 401 | 写真 |
 
 - 画面で長い辺を1568pxほどに縮めてから送ります。サーバーでも開き直し、1568px以下の JPEG にして、撮影の情報を落とします。10MB までです。
-- 見てよい人は、持ち主、その写真を指す部屋の人、その写真を指す便りの共有範囲の人、そのプロフィール写真の人がはずされていないときのログイン中の人です。それ以外は 404 です。
-- 「入口の顔」は、架空用の起動で、種類がプロフィールで、入口に名前が出る人の写真です。はずした人や亡くなった方の写真、自分用の起動の写真は入りません。
+- 見てよい人は、持ち主、その写真を指す部屋の人、その写真を指す便りの共有範囲の人、そのアイコンかプロフィール写真の人がはずされていないときのログイン中の人です。それ以外は 404 です。
+- 「入口の顔」は、架空用の起動で、種類がプロフィールで、入口に名前が出る人のアイコンです。プロフィール写真の枠、はずした人や亡くなった方の写真、自分用の起動の写真は入りません。
 - AI に送るのは、ツインとの部屋に本人が送った「会話」の写真だけです。
 
 ## トーク

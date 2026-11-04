@@ -17,7 +17,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import clock, db
+from app import clock, db, photos
 from app.auth import NOT_FOUND, get_conn, person_detail, require_self
 from app.people import PersonDraft, add_person
 from app.schemas import (
@@ -349,4 +349,6 @@ def decide_candidate(
             "UPDATE person_candidates SET status = ?, decided_at = ? WHERE id = ?",
             (status.value, moment, candidate_id),
         )
+    if person:
+        person = photos.attach_demo_face(conn, request.app.state.deployment, person)
     return {"person": person_detail(person) if person else None}

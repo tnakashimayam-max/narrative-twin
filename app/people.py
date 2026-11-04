@@ -5,7 +5,7 @@
 守る原則：10（託す人と見せる範囲は本人が決める）。
 
 登録、立場の変更、はずすことができるのは本人だけで、サーバーで確かめる。各人は自分の名前、
-呼ばれ方、写真を直せる。消さずに「はずす」にするのは、過去の発言が記録として残るため。
+呼ばれ方、アイコン、プロフィール写真を直せる。消さずに「はずす」にするのは、過去の発言が記録として残るため。
 はずした人はログインできず、部屋の人でもなくなる。
 立場を変えると見える範囲が変わるので、変える前に言葉で確かめられるようにしている。
 
@@ -35,6 +35,7 @@ from app.schemas import Gender, PhotoKind, Residence, Role, ShareScope, User
 router = APIRouter(prefix="/api/people")
 
 NAME_NOT_USABLE = "その名前は使えません。別の名前にしてください。"
+SAME_PHOTO_ROW = "アイコンとプロフィール写真には、それぞれ送り直した写真を指定してください。"
 
 _CHOOSABLE_ROLES = {Role.FAMILY, Role.CONNECTED, Role.PROFESSIONAL}
 
@@ -54,6 +55,7 @@ class PersonDraft(BaseModel):
     is_deceased: bool = False
     memo: str | None = Field(default=None, max_length=2000)
     photo_id: int | None = Field(default=None, ge=1, le=db.MAX_ID)
+    profile_photo_id: int | None = Field(default=None, ge=1, le=db.MAX_ID)
 
 
 class PersonChange(BaseModel):
@@ -71,25 +73,47 @@ class PersonChange(BaseModel):
     is_deceased: bool | None = None
     memo: str | None = Field(default=None, max_length=2000)
     photo_id: int | None = Field(default=None, ge=1, le=db.MAX_ID)
+    profile_photo_id: int | None = Field(default=None, ge=1, le=db.MAX_ID)
 
 
 # 本人以外が自分について直せる項目
-_OWN_FIELDS = {"name", "called_name", "photo_id"}
+_OWN_FIELDS = {"name", "called_name", "photo_id", "profile_photo_id"}
 
 
 def check_profile_photo(conn: sqlite3.Connection, operator: User, photo_id: int | None) -> None:
-    """プロフィールに指定できる写真を確かめる。
+    """アイコンとプロフィール写真の枠に指定できる写真を確かめる。
 
-    指定できるのは、操作する人が送ったプロフィールの種類の写真だけ。プロフィール写真はログイン中の
+    指定できるのは、操作する人が送ったプロフィールの種類の写真だけ。どちらの枠もログイン中の
     全員に見えるので、番号を指すだけで、便りや部屋の写真を全員に見せられてしまうのを防ぐ。
     本人は家族の写真も登録できるので、持ち主は「対象の人」ではなく「操作する人」で確かめる。
-    関連するテスト：tests/test_photos.py
+    関連するテスト：tests/test_photos.py、tests/test_profile_photo.py
     """
     if photo_id is None:
         return
     photo = photos.get_photo(conn, photo_id)
     if photo is None or photo.kind is not PhotoKind.PROFILE or photo.owner_user_id != operator.id:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
+
+
+def _used_in_slot(conn: sqlite3.Connection, column: str, photo_id: int) -> bool:
+    return conn.execute(f"SELECT 1 FROM users WHERE {column} = ? LIMIT 1", (photo_id,)).fetchone() is not None
+
+
+def check_photo_slots(conn: sqlite3.Connection, operator: User, icon: int | None, profile: int | None) -> None:
+    """2つの枠に指定する写真を確かめる。入れられる写真の決まりは同じで、行は枠ごとに分ける。
+
+    同じ行をアイコンとプロフィール写真の両方に指すと、ログインの前に読めるのはアイコンだけ、という決まりが
+    崩れて、プロフィール写真もログインの前に読めてしまう。同じ画像を使うときは、枠ごとに送ってもらう。
+    関連するテスト：tests/test_profile_photo.py
+    """
+    check_profile_photo(conn, operator, icon)
+    check_profile_photo(conn, operator, profile)
+    if (
+        (icon is not None and icon == profile)
+        or (profile is not None and _used_in_slot(conn, "photo_id", profile))
+        or (icon is not None and _used_in_slot(conn, "profile_photo_id", icon))
+    ):
+        raise HTTPException(status_code=400, detail=SAME_PHOTO_ROW)
 
 
 def check_names(conn: sqlite3.Connection, person_id: int | None, *names: str | None) -> None:
@@ -183,16 +207,20 @@ def invite_professional(
             "INSERT INTO delegations (delegate_user_id, scope, decided_on) VALUES (?, ?, ?)",
             (person.id, ShareScope.DECISION_SUPPORT.value, clock.now(request.app).date().isoformat()),
         )
-    return person_view(person)
+    return person_view(photos.attach_demo_face(conn, request.app.state.deployment, person))
 
 
 @router.post("", status_code=201)
 def register_person(
-    draft: PersonDraft, viewer: User = Depends(require_self), conn: sqlite3.Connection = Depends(get_conn)
+    draft: PersonDraft,
+    request: Request,
+    viewer: User = Depends(require_self),
+    conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """人を登録する。本人だけができる。"""
-    check_profile_photo(conn, viewer, draft.photo_id)
-    return person_detail(add_person(conn, draft))
+    check_photo_slots(conn, viewer, draft.photo_id, draft.profile_photo_id)
+    person = add_person(conn, draft)
+    return person_detail(photos.attach_demo_face(conn, request.app.state.deployment, person))
 
 
 @router.put("/{person_id}")
@@ -214,8 +242,7 @@ def change_person(
         raise HTTPException(status_code=400, detail="この立場には変えられません。")
     if target.role is Role.SELF and fields.get("is_deceased"):
         raise HTTPException(status_code=400, detail="本人を亡くなった方にはできません。")
-    if "photo_id" in fields:
-        check_profile_photo(conn, viewer, fields["photo_id"])
+    check_photo_slots(conn, viewer, fields.get("photo_id"), fields.get("profile_photo_id"))
     check_names(conn, person_id, fields.get("name"), fields.get("called_name"))
     if "name" in fields:
         fields["name"] = (fields["name"] or "").strip()

@@ -58,7 +58,10 @@ BASE_SCHEMA_VERSION = 1
 # 表の変更の手順。(その手順を適用したあとの番号, SQL の文の並び)。追加だけにする。
 # 新しい表は SCHEMA に足せば、起動のときに作られるのでここには書かない。
 # 既にある表に列を足すときは、SCHEMA の定義とここの両方に書く。
-MIGRATIONS: list[tuple[int, list[str]]] = []
+MIGRATIONS: list[tuple[int, list[str]]] = [
+    # 丸いアイコン（photo_id）とは別に、人ごとのプロフィール写真の枠を足す。ログインの前に読めるのはアイコンだけ。
+    (2, ["ALTER TABLE users ADD COLUMN profile_photo_id INTEGER"]),
+]
 
 
 class OldDatabaseError(RuntimeError):
@@ -98,7 +101,8 @@ CREATE TABLE IF NOT EXISTS users (
     is_deceased INTEGER NOT NULL DEFAULT 0 CHECK (is_deceased IN (0, 1)),
     memo TEXT,
     photo_id INTEGER,
-    removed_at TEXT
+    removed_at TEXT,
+    profile_photo_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS delegations (

@@ -229,6 +229,22 @@ export function avatar(person, size = "") {
   return node;
 }
 
+/* 大きく出すプロフィール写真。丸いアイコンとは別の枠で、写真がない人には何も出さない。
+   顔を黒い面や濃い四角い枠で囲むと遺影に見えるので、暗い表示でも明るい面に角丸で置く（style.css の .profile-photo）。 */
+export function profilePhoto(person) {
+  if (!person?.profile_photo_id) {
+    return null;
+  }
+  const frame = el("figure", { class: "profile-photo", hidden: true });
+  photoUrl(person.profile_photo_id).then((url) => {
+    if (url) {
+      frame.append(el("img", { src: url, alt: `${person.called_name || person.name}のプロフィール写真` }));
+      frame.hidden = false;
+    }
+  });
+  return frame;
+}
+
 /* 写真の <img> を作る。見てよい写真だけが読める。 */
 export function photoImage(photoId, className = "bubble-photo", alt = "送られた写真") {
   const image = el("img", { class: className, alt });

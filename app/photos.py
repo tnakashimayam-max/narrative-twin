@@ -68,9 +68,11 @@ def can_see_photo(conn: sqlite3.Connection, viewer: User, photo: Photo) -> bool:
     if photo.owner_user_id == viewer.id:
         return True
     # 全員に見せるのはプロフィールの種類の写真だけ。番号を指しただけでは見えるようにしない。
+    # アイコンとプロフィール写真の枠は、ログインのあとは同じ範囲で見える。
     if photo.kind is PhotoKind.PROFILE:
         profile = conn.execute(
-            "SELECT 1 FROM users WHERE photo_id = ? AND removed_at IS NULL LIMIT 1", (photo.id,)
+            "SELECT 1 FROM users WHERE (photo_id = ? OR profile_photo_id = ?) AND removed_at IS NULL LIMIT 1",
+            (photo.id, photo.id),
         ).fetchone()
         if profile:
             return True
@@ -121,11 +123,27 @@ async def upload_photo(
     return {"id": photo.id}
 
 
+def attach_demo_face(conn: sqlite3.Connection, deployment, person: User) -> User:
+    """架空用の起動で、顔が決まっている人を登録したら、空いた枠に顔の写真を入れて、入れたあとの人を返す。
+
+    田中さん、健太くん、井ノ口先生は起動のときにはいないので、登録のときに入れる。
+    コミットを含むので、人の登録の処理（ledger.atomic）が終わったあとで呼ぶ。自分用の起動では何もしない。
+    関連するテスト：tests/test_profile_photo.py
+    """
+    if deployment.mine:
+        return person
+    from fiction import faces
+
+    faces.fill_person(conn, deployment, person)
+    return db.get_user(conn, person.id)
+
+
 def is_entrance_face(conn: sqlite3.Connection, app, photo: Photo | None) -> bool:
-    """入口の札に出す顔かを返す。架空用の起動の、入口に出る人のプロフィールの写真だけ。
+    """入口の札に出す顔かを返す。架空用の起動の、入口に出る人のアイコンだけ。
 
     自分用の起動では、本物の家族の顔をログインの前に出さない。会話や便りの写真の見える範囲は変えない。
-    関連するテスト：tests/test_photos.py の test_入口の顔
+    プロフィール写真の枠（profile_photo_id）は、ここで見ない。札に出さない大きな写真を、ログインの前に読ませないため。
+    関連するテスト：tests/test_photos.py の test_入口の顔、tests/test_profile_photo.py
     """
     if app.state.deployment.mine or photo is None or photo.kind is not PhotoKind.PROFILE:
         return False

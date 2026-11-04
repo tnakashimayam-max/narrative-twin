@@ -32,7 +32,7 @@ from typing import Literal, get_args
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from app import ai, config, jobs
+from app import ai, config, demo, jobs
 from app.main import create_app
 from app.twin import _BODY_WORDS, _DISTRESS_WORDS, _LIFE_WORDS
 from fiction.load import LogComment, LogConversation
@@ -921,10 +921,15 @@ def safe_folder(folder: Path) -> Path:
 
 
 def open_client(folder: Path) -> tuple[TestClient, Path]:
-    """別のデータベースでアプリを開く。前の物語は読み込まない（demo.ensure_prologue を呼ばない）。"""
+    """別のデータベースでアプリを開く。前の物語は読み込まない（demo.ensure_prologue を呼ばない）。
+
+    デモの顔は入れる。写真のフォルダがなければ何も入れない。
+    """
     deployment = replace(config.deployment(data_dir=folder), log_path=folder / "log.jsonl")
     folder.mkdir(parents=True, exist_ok=True)
-    return TestClient(create_app(deployment=deployment)), deployment.db_path
+    app = create_app(deployment=deployment)
+    demo.ensure_demo_faces(deployment)
+    return TestClient(app), deployment.db_path
 
 
 def catch_up_for_resume(client: TestClient, lines: list[Line], progress: Progress) -> None:

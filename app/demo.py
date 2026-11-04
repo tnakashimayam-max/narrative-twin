@@ -157,6 +157,20 @@ def restore_day(app) -> bool:
     return True
 
 
+def ensure_demo_faces(deployment) -> list[str]:
+    """架空用の起動で、顔が決まっている人の空いた枠に写真を入れ、入れた人の名前を返す。
+
+    最初の控えに顔が入るよう、ensure_prologue より前に呼ぶ。create_app からは呼ばない。テストが本物の写真を
+    読まないようにするため。写真のフォルダがなければ何も入れず、画面は頭文字の丸のまま動く。
+    関連するテスト：tests/test_profile_photo.py
+    """
+    if deployment.mine:
+        return []
+    from fiction import faces
+
+    return faces.fill_everyone(deployment)
+
+
 def ensure_prologue(deployment) -> bool:
     """架空用の起動のときに、2026年11月3日より前の架空ログを入れる。入れたら True を返す。
 

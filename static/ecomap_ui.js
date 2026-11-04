@@ -7,7 +7,7 @@
 */
 
 import { api, photoUrl } from "./api.js";
-import { add, avatar, el, openSheet, svg, twinDrawing, twoStepButton } from "./ui.js";
+import { add, avatar, el, openSheet, profilePhoto, svg, twinDrawing, twoStepButton } from "./ui.js";
 import { openPersonForm } from "./people_ui.js";
 
 // 幅360pxの画面で図が約0.82倍になるので、20 の文字が16px以上になる
@@ -391,6 +391,7 @@ function openPersonSheet(ctx, item, onDone) {
     const message = el("p", { class: "error", role: "alert", hidden: true });
     add(
       inner,
+      profilePhoto(person),
       el("div", { class: "row" }, avatar(person, "large"), el("div", {}, el("h2", { text: person.called_name || person.name }), el("div", { class: "hint", text: details }))),
       person.memo ? el("p", { text: person.memo }) : null,
       el(

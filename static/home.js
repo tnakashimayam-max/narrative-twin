@@ -11,7 +11,7 @@ import { renderEcomap } from "./ecomap_ui.js";
 import { openGenogram } from "./genogram_ui.js";
 import { openOwnForm, openPersonForm, personRow } from "./people_ui.js";
 import { demoSection, handoverSection, reviewSection } from "./review.js";
-import { avatar, el, openSheet, twinFigure } from "./ui.js";
+import { add, avatar, el, openSheet, profilePhoto, twinFigure } from "./ui.js";
 
 const ROLE_CHOICES = [
   ["家族", "家族"],
@@ -162,15 +162,23 @@ export function renderHome(container, ctx) {
     }
   }
 
+  /* 本人が自分のアイコンや写真を入れ替えたあとに、新しい番号で描き直す。 */
+  async function redrawSelfHome() {
+    ctx.me = await ctx.refreshMe();
+    await drawSelfHome();
+  }
+
   async function drawSelfHome() {
     panel.replaceChildren();
-    panel.append(
+    add(
+      panel,
       el(
         "div",
         { class: "row" },
         avatar(ctx.me, "large"),
         el("h1", { text: `${ctx.me.called_name}の画面` })
       ),
+      profilePhoto(ctx.me),
       el(
         "button",
         {
@@ -232,7 +240,7 @@ export function renderHome(container, ctx) {
     panel.append(handoverSection(ctx, drawSelfHome));
     const mapSection = el("section", { class: "card map-card" });
     panel.append(mapSection);
-    renderEcomap(mapSection, ctx, drawSelfHome);
+    renderEcomap(mapSection, ctx, redrawSelfHome);
     panel.append(
       el("button", { type: "button", class: "wide", text: "家系図を見る", onclick: () => openGenogram(ctx) })
     );
@@ -240,7 +248,7 @@ export function renderHome(container, ctx) {
     panel.append(peopleSection);
     try {
       const { items } = await api("/people");
-      peopleSection.append(...items.map((person) => personRow(person, ctx, drawSelfHome)));
+      peopleSection.append(...items.map((person) => personRow(person, ctx, redrawSelfHome)));
     } catch (error) {
       peopleSection.append(el("p", { class: "error", text: error.message }));
     }
@@ -262,6 +270,7 @@ export function renderHome(container, ctx) {
   function drawOtherHome() {
     panel.replaceChildren(
       el("div", { class: "row" }, avatar(ctx.me, "large"), el("h1", { text: `${ctx.me.called_name}の画面` })),
+      profilePhoto(ctx.me) ?? "",
       el("p", { class: "hint", text: otherRoleWords(ctx.me) }),
       el("p", { text: otherGuide(ctx.me) }),
       ctx.me.can_use_supporter_screen

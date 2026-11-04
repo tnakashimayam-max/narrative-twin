@@ -113,6 +113,7 @@ def person_view(user: User) -> dict:
         "called_name": user.display_name,
         "role": user.role.value,
         "photo_id": None if user.removed_at else user.photo_id,
+        "profile_photo_id": None if user.removed_at else user.profile_photo_id,
     }
 
 
@@ -142,9 +143,10 @@ def mode(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict
 
 @router.get("/users")
 def list_users(request: Request, conn: sqlite3.Connection = Depends(get_conn)) -> dict[str, list[dict]]:
-    """入口に出す名前の一覧。架空用の起動では、札に出す顔写真の番号も返す。
+    """入口に出す名前の一覧。架空用の起動では、札に出すアイコンの番号も返す。
 
-    自分用の起動では返さない。本物の家族の顔を、ログインの前に出さないため。決めた経緯：docs/decisions.md
+    自分用の起動では返さない。本物の家族の顔を、ログインの前に出さないため。
+    プロフィール写真の番号は、どちらの起動でも返さない。決めた経緯：docs/decisions.md
     """
     show_faces = not request.app.state.deployment.mine
     return {

@@ -604,3 +604,33 @@ def test_保存した結果は言明を鍵で指す(fresh, claude):
     element = next(item for item in model_store.active_elements(conn) if item.body == "誠一さんは施設のことも考えている。")
 
     assert ledger.head_of(conn, element.evidence_statement_ids[0]).body == "施設のことも考えていい。"
+
+
+def test_起動の順は顔が先で_最初の控えに顔が入っている(tmp_path, story, monkeypatch):
+    # 本物の起動の入口を通す。サーバーの待ち受けと、止まった処理の流し直しだけを止める
+    from PIL import Image
+
+    from app import __main__ as entry
+    from fiction import faces
+
+    folder = tmp_path / "faces"
+    folder.mkdir()
+    for name in faces.FACE_FILES.values():
+        Image.new("RGB", (64, 64), (200, 180, 150)).save(folder / name, format="JPEG")
+    monkeypatch.setattr(config, "DEMO_FACES_DIR", folder)
+    deployment = config.deployment(data_dir=tmp_path / "d")
+    monkeypatch.setattr(entry, "choose_deployment", lambda: deployment)
+    monkeypatch.setattr(entry.uvicorn, "run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(entry.jobs, "catch_up", lambda app: None)
+
+    entry.main()
+
+    saved = snapshot.list_snapshots(deployment)
+    assert [item.name.endswith(snapshot.FIRST_START) for item in saved] == [True]
+    connection = db.connect(saved[0].db_path)
+    rows = connection.execute("SELECT name, photo_id, profile_photo_id FROM users WHERE name = '誠一さん'").fetchall()
+    files = connection.execute("SELECT file FROM photos").fetchall()
+    connection.close()
+    assert rows[0]["photo_id"] and rows[0]["profile_photo_id"]
+    assert len(files) == 8
+    assert all((saved[0].photos_dir / row["file"]).is_file() for row in files)

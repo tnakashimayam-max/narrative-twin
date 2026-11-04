@@ -21,6 +21,9 @@ ENV_PATH = ROOT / ".env"
 DATA_DIR = ROOT / "data"
 DB_PATH = DATA_DIR / "narrative_twin.db"
 PHOTOS_DIR = DATA_DIR / "photos"
+# デモの顔の写真の置き場（fiction/prepare_photos.py の出力）。Git に入らず、架空用の起動だけが読む。
+# 起動の保存先には含めない。流し込みの別のデータベースでも、同じ顔を使うため（fiction/faces.py）。
+DEMO_FACES_DIR = DATA_DIR / "demo_photos" / "profile"
 # 開発のログの置き場。data/ の外に置くのは、自分用の記録を data/mine/ の中だけに保つため（app/devlog.py）。
 LOG_DIR = ROOT / "logs"
 STATIC_DIR = ROOT / "static"

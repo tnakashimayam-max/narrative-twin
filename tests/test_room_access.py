@@ -236,7 +236,7 @@ def test_部屋の相手の一覧は生まれた年とメモを返さない(logi
 
     assert users["美穂さん"].id not in [item["id"] for item in items]
     kazuko = next(item for item in items if item["name"] == "和子さん")
-    assert set(kazuko) == {"id", "name", "called_name", "role", "photo_id"}
+    assert set(kazuko) == {"id", "name", "called_name", "role", "photo_id", "profile_photo_id"}
 
 
 # ---- ツイン ----

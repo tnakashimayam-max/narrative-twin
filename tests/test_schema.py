@@ -251,16 +251,16 @@ def test_表の変更は適用の前にファイルを控え_データを失わ�
     with connection:
         connection.execute("UPDATE users SET memo = '残す記録' WHERE id = 1")
     connection.close()
-    monkeypatch.setattr(db, "MIGRATIONS", [(2, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
+    monkeypatch.setattr(db, "MIGRATIONS", [(3, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
 
     db.init_db(path)
 
     connection = db.connect(path)
     assert connection.execute("SELECT memo FROM users WHERE id = 1").fetchone()[0] == "残す記録"
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
     assert [row["name"] for row in connection.execute("PRAGMA table_info(users)")][-1] == "future_note"
     connection.close()
-    backup = tmp_path / "keep.db.before_v2"
+    backup = tmp_path / "keep.db.before_v3"
     assert backup.exists()
     old = db.connect(backup)
     assert old.execute("SELECT memo FROM users WHERE id = 1").fetchone()[0] == "残す記録"
@@ -271,13 +271,13 @@ def test_表の変更は適用の前にファイルを控え_データを失わ�
 def test_適用した表の変更はくり返さない(tmp_path, monkeypatch):
     path = tmp_path / "keep.db"
     db.init_db(path)
-    monkeypatch.setattr(db, "MIGRATIONS", [(2, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
+    monkeypatch.setattr(db, "MIGRATIONS", [(3, ["ALTER TABLE users ADD COLUMN future_note TEXT"])])
 
     db.init_db(path)
     db.init_db(path)
 
     connection = db.connect(path)
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
     connection.close()
 
 
