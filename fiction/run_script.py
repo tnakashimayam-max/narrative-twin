@@ -11,13 +11,13 @@
 データベースを読むだけで行う。GET /api/statements は全部の行を読むので、台帳が増えると1回で数秒かかるため。
 
 保存先は --folder の下だけで、data/narrative_twin.db と data/story/ には触れない。
-流す時刻は at のとおりにする（POST /api/dev/date）。同じ時刻の行は1秒ずつずらし、順番が時刻に残るようにする。
+流す時刻は at のとおりにする（POST /api/dev/date と同じ計算を、HTTP を通さずに行う）。同じ時刻の行は1秒ずつずらし、順番が時刻に残るようにする。
 
 裏の処理を待たずに進める（--workers、既定は2）。
 - 本線で待つもの：ツインの返事、「今日はここまで」、会話の要約、グループのツイン。次の発言と次の日の会話が読むため。
 - 裏に回すもの：会話を閉じたあとの言明への分割と人の候補、コメントのあとのスレッドの問いと言明への分割。
 - 全部終わるまで待つ行：_WAIT_FOR_ALL。記録を探す行と、裏の処理が読むものを変える行。
-- 同じ便りの処理は順に動かす。ツインの問いが次のコメントの後ろに入らないようにするため。
+- 問いが出るかもしれないコメントのあとだけ、同じ便りの処理を待つ。ツインの問いが次のコメントの後ろに入らないようにするため。
 - 待ちには上限がある。ツインの記憶の遅れを数日分以内にするため。
 - 同時の数は2本から始めて、問題がなければ少しずつ --workers まで上げる。429 か 529 で半分にする。
   急に増やすと API が断ることがあるため。材料の数字を --folder の jobs_stats.json に残す。本文は書かない。
@@ -25,10 +25,15 @@
   止めても発言は残り、同じ命令の続きで全部入る。
 
 推測の行：出どころは「AIの推測」だが、この行は台本の文で AI の出力ではない。AI を呼ばない。
+訂正の行の guess：相手を AI の推測だけから選び、match の話でなければ止まる。流し直しは fiction/correction_scene.py。
 
 止まっても、落ちても、同じ命令で続きから流せる。発言、コメント、閉じるは送り直しても増えないので、
 進み具合の全部の保存はまとめて行い、ほかの種類の行は1行ごとに保存する。送り始めた行の番号だけは毎行残す。
 全部を毎行書くと、10年分で進み具合のファイルが数MBになり、それだけで遅くなるため。
+
+年の変わり目と整理の行の直後に、--folder の checkpoints の下へデータベースと進み具合の控えを取る。問題が見つかったら
+--restore-checkpoint でその年の前へ戻し、同じ命令で流し直す。戻す前の分は消さず、replaced-時刻 へ移す。
+100行ごとの速さ、累計の費用、データベースとメモリの大きさを --folder の speed.jsonl に残す。本文は書かない。
 
 関連するテスト：tests/test_run_script.py、tests/test_run_script_jobs.py
 決まりの説明：docs/script-format.md
@@ -41,6 +46,7 @@ import hashlib
 import json
 import math
 import re
+import shutil
 import sqlite3
 import sys
 import threading
@@ -127,6 +133,22 @@ _SAFE_TO_RESEND = {"発言", "コメント", "閉じる"}
 # 託すは今ある言葉に範囲を当てるので、まだ分けていない言葉だけ範囲が変わらず、--workers で結果が変わるため。
 # 人と招くは、裏の処理が読む人の一覧を変えるため
 _WAIT_FOR_ALL = {"確かめ", "訂正", "本人だけにする", "推測", "整理", "段階", "託す", "人", "招く"}
+
+# ---- 速さの記録と控え ----
+# データが増えると遅くなるかを見るため、この行数ごとに速さと費用を書く。本文は入れない
+SPEED_EVERY_LINES = 100
+SPEED_FILE = "speed.jsonl"
+# 年の変わり目に、データベースと進み具合の控えを取る。問題が見つかったら、その年の前から流し直すため
+CHECKPOINT_FOLDER = "checkpoints"
+CHECKPOINT_INFO = "checkpoint.json"
+# 訂正の場面を書き残すファイル。読む人が、推測と訂正の文がかみ合うかを確かめるため
+SCENE_FILE = "correction_scene.json"
+# 訂正の相手の推測が決まった話でないときの終了の番号。ほかの止まり方と分けて、流し直しの道具が見分ける
+GUESS_EXIT = 3
+# 同じ字を含んでも別の話になる語。「庭」の話を探すときに、家庭の話を数えないため
+_OTHER_WORDS = ("家庭", "校庭")
+# 控えに写す進み具合のファイル。写真は増えるだけで、戻しても番号が重ならないので写さない
+_PROGRESS_FILES = ("progress.json", "progress.sending")
 
 # ---- 流す時刻 ----
 # 同じ時刻の行を離す幅。応答の処理の揺れより十分に長くして、順番が時刻に残るようにする
@@ -268,6 +290,8 @@ class Line(BaseModel):
     members: list[str] | None = None
     present: bool | None = None
     stage: LifeStage | None = None
+    # 訂正の行：true なら、相手は AI の推測だけから選ぶ。match の話の推測がなければ止まる
+    guess: bool | None = None
     # false なら、この行ではツインが問わない（fiction/answer_plan.py）
     ask: bool | None = None
     # 受け答えの行：渡す事実、字数の上限、受け答えのあとにツインが返すか
@@ -322,6 +346,21 @@ class StopRun(RuntimeError):
 
 
 # ---- 点検（API も AI も呼ばない） ----
+
+
+class GuessNotAbout(StopRun):
+    """訂正の相手の推測が、決まった話ではない。流し直すか、台本の文にする（fiction/correction_scene.py）。"""
+
+
+METHOD_AI = "AI の推測"
+METHOD_SCRIPT = "台本の文"
+
+
+def speaks_of(body: str, word: str) -> bool:
+    """本文がその話をしているかを返す。別の語の中の同じ字は数えない。"""
+    for other in _OTHER_WORDS:
+        body = body.replace(other, "")
+    return word in body
 
 
 def read_script(path: Path) -> tuple[list[Line], list[Finding]]:
@@ -476,7 +515,7 @@ def check_lines(lines: list[Line], fixed: list[FixedWord] | None = None) -> list
         elif line.kind in ("確かめ", "訂正"):
             if line.by != SELF_NAME:
                 problem(number, f"{line.kind}は本人だけです")
-            if not any(line.match in text for text in spoken_by_self):
+            if not line.guess and not any(line.match in text for text in spoken_by_self):
                 findings.append(
                     Finding(number, "match が本人の文に見つかりません。AI の推測を指すのでなければ、流すときに止まります", problem=False)
                 )
@@ -688,6 +727,10 @@ class Progress:
     warnings: list[str] = field(default_factory=list)
     story: dict[str, dict] = field(default_factory=dict)
     extra: dict[str, list] = field(default_factory=dict)
+    # ツインを入れたことのある部屋。それ以外の部屋の発言は、読み直さなくても中身が分かる
+    twin_rooms: list[str] = field(default_factory=list)
+    # 合う記録が見つからずに飛ばした確かめの行の数。--keep-going のときだけ増える
+    skipped_confirms: int = 0
 
     @classmethod
     def load(cls, path: Path) -> Progress:
@@ -722,7 +765,7 @@ def _last_number(path: Path) -> int:
 
 
 # あとから足した項目。値がないときは印に入れない
-_NEW_FIELDS = ("stage", "ask", "hint", "limit", "twin_replies")
+_NEW_FIELDS = ("stage", "ask", "hint", "limit", "twin_replies", "guess")
 
 
 def line_digest(line: Line) -> str:
@@ -754,6 +797,7 @@ class JobStats:
     queue_max: int = 0
     queue_wait_seconds: float = 0.0
     barrier_wait_seconds: float = 0.0
+    letter_wait_seconds: float = 0.0
     rate_limited: int = 0
     other_transient: int = 0
     waited_seconds: float = 0.0
@@ -859,9 +903,11 @@ class JobRunner:
 
     def wait_for(self, key: str) -> None:
         """同じ名札の処理が終わるのを待つ。"""
+        started = self.timer.now()
         with self._cond:
             while self._keys[key] > 0 and not self._ended.is_set():
                 self._cond.wait(1.0)
+            self.stats.letter_wait_seconds += self.timer.now() - started
 
     def drain(self) -> None:
         """待ちと動いている処理が全部終わるのを待つ。"""
@@ -870,6 +916,17 @@ class JobRunner:
             while (self._queue or self._running) and not self._ended.is_set():
                 self._cond.wait(1.0)
             self.stats.barrier_wait_seconds += self.timer.now() - started
+
+    def speed_fields(self) -> dict:
+        """速さの記録に書く項目を返す。"""
+        with self._cond:
+            return {
+                "workers": self.current,
+                "waiting": len(self._queue) + self._running,
+                "letter_wait_seconds": round(self.stats.letter_wait_seconds, 1),
+                "barrier_wait_seconds": round(self.stats.barrier_wait_seconds, 1),
+                "rate_limited": self.stats.rate_limited,
+            }
 
     def check(self) -> None:
         """裏の処理が止めると決めていれば、本線を止める。"""
@@ -1061,8 +1118,9 @@ class Runner:
         self.progress = progress
         self.keep_going = keep_going
         self.job_runner = job_runner
-        self.logged_in: int | None = None
         self.ids: dict[str, int] = {}
+        # 問いが出るかもしれないコメントのあとで、まだ処理を待っていない便り
+        self.asking_letters: set[str] = set()
         # 今の行が、前回すでに送られているかもしれないとき True
         self.resending = False
         self.stamp: datetime | None = None
@@ -1138,18 +1196,18 @@ class Runner:
             raise StopRun(f"{name}はログインできません")
         return self.ids[name]
 
-    def _login(self, name: str) -> None:
-        """その人としてログインする。話す人が替わるときだけ呼ぶ。"""
-        user_id = self._user_id(name)
-        if self.logged_in != user_id:
-            self._ok(self.client.post("/api/login", json={"user_id": user_id}), f"{name}のログイン")
-            self.logged_in = user_id
-
     def _set_day(self, at: datetime) -> None:
-        """日付と時刻を動かす。発言の時刻が at のとおりになるよう、行ごとに送る。"""
-        result = self._ok(self.client.post("/api/dev/date", json={"at": at.isoformat()}), "日付の変更")
-        if result.get("today") != at.date().isoformat():
-            raise StopRun(f"日付を {at.date()} にできませんでした（{result.get('today')}）")
+        """日付と時刻を動かす。発言の時刻が at のとおりになるよう、行ごとに動かす。
+
+        全部の行で動かすので、HTTP を通さず /api/dev/date と同じ計算をする。架空用の起動かどうかは check_mode で
+        確かめてあり、自分用の起動には流さない。
+        """
+        app = self.client.app
+        target = at if at.tzinfo else at.astimezone()
+        app.state.day_offset = target - datetime.now().astimezone()
+        today = clock.now(app).date()
+        if today != at.date():
+            raise StopRun(f"日付を {at.date()} にできませんでした（{today}）")
 
     def _room_id(self, name: str, user: str) -> int:
         if name in self.progress.rooms:
@@ -1260,7 +1318,8 @@ class Runner:
         self._wait_for_jobs(line)
         self.stamp = at or line.at
         self._set_day(self.stamp)
-        self._login(line.by)
+        # 話し手の名前を確かめる。/api/login は確かめるだけで何も変えず、各要求は話し手の番号を付けて送るので呼ばない
+        self._user_id(line.by)
         self.client.app.state.twin_may_ask = line.ask is not False
         handler = getattr(self, f"_do_{_HANDLERS[line.kind]}")
         handler(number, line, script_key)
@@ -1271,10 +1330,23 @@ class Runner:
         self.job_runner.wait_for_api()
         if line.kind in _WAIT_FOR_ALL:
             self.job_runner.drain()
-        elif line.kind in ("コメント", "受け答え") and line.letter in self.progress.letters:
-            # ツインの問いが次のコメントの後ろに入らないよう、同じ便りの処理を待つ
+            self.asking_letters.clear()
+        elif line.letter in self.progress.letters and self._must_wait_for_letter(line):
             self.job_runner.wait_for(jobs.thread_key(self.progress.letters[line.letter]["id"]))
+            self.asking_letters.discard(line.letter)
         self.job_runner.check()
+
+    def _must_wait_for_letter(self, line: Line) -> bool:
+        """この行の前に、同じ便りの裏の処理を待つかを返す。
+
+        問わないコメントのあとは待たない。待ちの中身は言明への分割で、1回10秒ほどかかるため。
+        分割は便りごとの鍵で順に動き、印のあとを読むので、次のコメントを先に入れても欠けず、重ならない。
+        言明の日付と記録の時刻は発言の時刻から決まるので、まとめて分けられてもずれない。
+        - 問いが出るかもしれないコメントのあとは待つ。ツインの問いが次のコメントの後ろに入らないようにするため。
+        - 受け答えの前は待つ。足した文は分割の印を進めるので、前の分割が終わっていないと、人のコメントを飛ばすため。
+        関連するテスト：tests/test_run_script_jobs.py の test_問わないコメントのあとは_同じ便りの処理を待たない
+        """
+        return line.kind == "受け答え" or line.letter in self.asking_letters
 
     def _conversation(self, day: date, line: Line | None = None) -> dict:
         entry = self.progress.story.setdefault(
@@ -1295,9 +1367,12 @@ class Runner:
         if line.answer:
             # 答えを作る間に時計が進むので、次の行より後の時刻にならないよう合わせ直す
             self._set_day(self.stamp)
-        self._send(f"/api/rooms/{room_id}/messages", user=line.by, json_body=body, what=f"{number}行目の発言")
+        sent = self._send(f"/api/rooms/{room_id}/messages", user=line.by, json_body=body, what=f"{number}行目の発言")
         self.progress.answers.pop(str(number), None)
-        self._record_messages(line, room_id)
+        if line.room == TWIN_ROOM or line.room in self.progress.twin_rooms or self.resending:
+            self._record_messages(line, room_id)
+        else:
+            self._record_people_message(line, sent)
 
     def _record_messages(self, line: Line, room_id: int) -> None:
         for item in self._new_messages(line.room, room_id, line.by):
@@ -1311,6 +1386,13 @@ class Runner:
             else:
                 speaker = "ツイン" if item["is_twin"] else line.by
                 self._extra(line, {"kind": "部屋の発言", "room": line.room, "speaker": speaker, "text": item["text"]})
+
+    def _record_people_message(self, line: Line, sent: dict) -> None:
+        """人だけの部屋の発言を記録する。ツインも裏の処理も発言を足さないので、応答の中身だけで足りる。"""
+        message = sent["message"]
+        self.progress.room_seq[line.room] = message["seq"]
+        if message.get("text"):
+            self._extra(line, {"kind": "部屋の発言", "room": line.room, "speaker": line.by, "text": message["text"]})
 
     def _closed_conversation(self, room_id: int, day: date) -> int | None:
         """その日の会話がもう閉じてあれば番号を返す。送り直しで、次の日の会話を閉じないようにするため。"""
@@ -1359,6 +1441,8 @@ class Runner:
         letter = self.progress.letters[line.letter]
         body = {"text": line.text, "client_key": f"script-{script_key}-{number}"}
         self._send(f"/api/letters/{letter['id']}/comments", user=line.by, json_body=body, what=f"{number}行目のコメント")
+        if line.ask is not False:
+            self.asking_letters.add(line.letter)
         if line.by in _LOG_COMMENTERS:
             self._conversation(date.fromisoformat(letter["day"]))["comments"].append({"speaker": line.by, "text": line.text})
         else:
@@ -1588,6 +1672,7 @@ class Runner:
     def _do_confirm(self, number: int, line: Line, _key: str) -> None:
         target = self._target(number, line)
         if target is None:
+            self.progress.skipped_confirms += 1
             return
         rest = line.reply == "今は話したくない"
         status = target["confirm_status"]
@@ -1601,12 +1686,60 @@ class Runner:
     def _do_correct(self, number: int, line: Line, _key: str) -> None:
         # 止まった行で、もう直してあれば送らない
         if not (self.resending and self._find_statements(line.text)):
-            target = self._target(number, line)
+            target = self._guess_target(number, line) if line.guess else self._target(number, line)
             if target is None:
                 return
             self._send(f"/api/statements/{target['id']}/correct", user=line.by, json_body={"text": line.text}, what=f"{number}行目の訂正")
         self._conversation(line.day)["confirmation"] = "直した"
         self._extra(line, {"kind": "訂正", "match": line.match, "text": line.text})
+        if line.guess:
+            self._write_scene(number, line)
+
+    def _guess_target(self, number: int, line: Line) -> dict:
+        """訂正の相手の推測を選ぶ。match の話の推測がなければ、--keep-going でも止める。
+
+        AI の推測は流すたびに変わる。本文の言葉だけで探すと、訂正の文とかみ合わない推測に当たり、場面が成り立たないため
+        （実際に「本当は誰かに気にかけてほしい思いがあるかもしれません」に「庭が好きなのではなく」と訂正する形になった）。
+        本人の言葉に同じ語があっても、推測でなければ相手にしない。
+        関連するテスト：tests/test_correction_scene.py の test_推測が庭の話でなければ_訂正の前で止まる
+        """
+        with self._db() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, body, confirm_status, effective_date, created_at FROM statements
+                WHERE source = ? AND id NOT IN (SELECT replaces_id FROM statements WHERE replaces_id IS NOT NULL)
+                """,
+                (Source.AI_GUESS.value,),
+            ).fetchall()
+        guesses = sorted((dict(row) for row in rows), key=lambda item: (item["effective_date"], item["created_at"]), reverse=True)
+        found = [item for item in guesses if speaks_of(item["body"], line.match)]
+        if not found:
+            heard = "、".join(f"「{item['body']}」" for item in guesses) or "なし"
+            raise GuessNotAbout(f"{number}行目：「{line.match}」の話の AI の推測がありません。今の推測：{heard}")
+        return next((item for item in found if item["confirm_status"] == ConfirmStatus.UNCONFIRMED.value), found[0])
+
+    def _write_scene(self, number: int, line: Line) -> None:
+        """訂正の場面を書き残す。推測の本文と、AI の推測か台本の文かは、訂正の行が指す元の行から読む。"""
+        with self._db() as conn:
+            row = conn.execute(
+                """
+                SELECT guess.body, guess.effective_date FROM statements fixed JOIN statements guess ON guess.id = fixed.replaces_id
+                WHERE fixed.source = ? AND fixed.body = ? ORDER BY fixed.rowid LIMIT 1
+                """,
+                (Source.SELF_CORRECTION.value, line.text),
+            ).fetchone()
+        written = {
+            item["text"] for items in self.progress.extra.values() for item in items if item.get("kind") == "推測"
+        }
+        scene = {
+            "line": number,
+            "day": line.day.isoformat(),
+            "guess_day": row["effective_date"],
+            "guess": row["body"],
+            "correction": line.text,
+            "method": METHOD_SCRIPT if row["body"] in written else METHOD_AI,
+        }
+        (self.progress.path.parent / SCENE_FILE).write_text(json.dumps(scene, ensure_ascii=False, indent=1), encoding="utf-8")
 
     def _do_person(self, number: int, line: Line, _key: str) -> None:
         # 書いた項目だけを送る。null と書いた項目は空にする（亡くなった方の「同居」を消すときなど）
@@ -1642,6 +1775,8 @@ class Runner:
     def _do_twin(self, number: int, line: Line, _key: str) -> None:
         room_id = self._room_id(line.room, line.by)
         self._send(f"/api/rooms/{room_id}/twin", user=line.by, json_body={"present": line.present}, what=f"{number}行目のツイン")
+        if line.room not in self.progress.twin_rooms:
+            self.progress.twin_rooms.append(line.room)
 
     def _do_consolidate(self, number: int, line: Line, _key: str) -> None:
         self._send("/api/model/consolidate", user=line.by, json_body=None, what=f"{number}行目の整理")
@@ -1836,6 +1971,230 @@ def write_story(progress: Progress, out_dir: Path) -> list[Path]:
     return written
 
 
+def _memory_mb() -> float | None:
+    """このプロセスの使っているメモリを返す。読めない環境では None。道具を足さないため ctypes で読む。"""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class Counters(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
+                (name, ctypes.c_size_t)
+                for name in (
+                    "PeakWorkingSetSize",
+                    "WorkingSetSize",
+                    "QuotaPeakPagedPoolUsage",
+                    "QuotaPagedPoolUsage",
+                    "QuotaPeakNonPagedPoolUsage",
+                    "QuotaNonPagedPoolUsage",
+                    "PagefileUsage",
+                    "PeakPagefileUsage",
+                )
+            ]
+
+        counters = Counters()
+        counters.cb = ctypes.sizeof(counters)
+        current_process = ctypes.WinDLL("kernel32").GetCurrentProcess
+        current_process.restype = wintypes.HANDLE
+        read = ctypes.WinDLL("psapi").GetProcessMemoryInfo
+        read.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+        if not read(current_process(), ctypes.byref(counters), counters.cb):
+            return None
+        return round(counters.WorkingSetSize / 1_000_000, 1)
+    except (OSError, AttributeError):
+        return None
+
+
+class SpeedLog:
+    """決まった行数ごとに速さと費用を書く。データが増えると遅くなるかを、流している間に見るため。本文は入れない。
+
+    書けなくても流すのは止めない。関連するテスト：tests/test_run_script_jobs.py の test_100行ごとに速さと費用を残す
+    """
+
+    def __init__(self, folder: Path, db_path: Path, progress: Progress, job_runner: JobRunner | None, every: int = SPEED_EVERY_LINES) -> None:
+        self.path = folder / SPEED_FILE
+        self.db_path = db_path
+        self.progress = progress
+        self.job_runner = job_runner
+        self.every = every
+        self.count = 0
+        self.started = time.monotonic()
+
+    def line_done(self, number: int, line: Line) -> None:
+        self.count += 1
+        if self.count < self.every:
+            return
+        now = time.monotonic()
+        files = (path for path in self.db_path.parent.glob(f"{self.db_path.name}*") if path.is_file())
+        row = {
+            "at": datetime.now().isoformat(timespec="seconds"),
+            "line": number,
+            "day": line.day.isoformat(),
+            "ms_per_line": round((now - self.started) / self.count * 1000),
+            "usd": round(spent_usd(self.db_path, self.progress), 3),
+            "db_mb": round(sum(path.stat().st_size for path in files) / 1_000_000, 1),
+            "memory_mb": _memory_mb(),
+            "skipped_confirms": self.progress.skipped_confirms,
+        }
+        if self.job_runner is not None:
+            row.update(self.job_runner.speed_fields())
+        try:
+            with self.path.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(row, ensure_ascii=False) + "\n")
+        except OSError:
+            pass
+        self.count = 0
+        self.started = now
+
+
+def checkpoint_due(previous: date | None, day: date, marks: tuple[date, ...] = ()) -> str | None:
+    """この行の前に取る控えの名前を返す。いらなければ None。
+
+    年の変わり目に取る。marks はそれ以外に取りたい日で、その日かそれより後の最初の行の前に取る。
+    """
+    if previous is None:
+        return None
+    for mark in marks:
+        if previous < mark <= day:
+            return f"before-{mark.isoformat()}"
+    return f"before-{day.year}" if day.year != previous.year else None
+
+
+def save_checkpoint(name: str, progress: Progress, db_path: Path, job_runner: JobRunner | None, day: date) -> Path | None:
+    """データベースと進み具合の控えを取る。
+
+    裏の処理を全部待ってから取る。待たないと、進み具合より記録が遅れた控えになり、戻したときに言明が欠けるため。
+    データベースは SQLite の backup で写す。動いているファイルをそのまま写すと、書きかけの分が欠けることがあるため。
+    途中で落ちても半端な控えが残らないよう、写し終えてから名前を付ける。前の控えは上書きしない。
+    関連するテスト：tests/test_run_script_jobs.py の test_年の変わり目に控えを取る
+    """
+    if job_runner is not None:
+        job_runner.drain()
+        job_runner.check()
+    progress.save()
+    base = progress.path.parent / CHECKPOINT_FOLDER
+    lines = len(progress.digests)
+    target = base / name
+    number = 1
+    while target.exists():
+        if json.loads((target / CHECKPOINT_INFO).read_text(encoding="utf-8"))["lines"] == lines:
+            return None
+        number += 1
+        target = base / f"{name}-{number}"
+    partial = base / f"{target.name}.partial"
+    partial.mkdir(parents=True, exist_ok=True)
+    source = sqlite3.connect(db_path)
+    copy = sqlite3.connect(partial / db_path.name)
+    try:
+        source.backup(copy)
+    finally:
+        copy.close()
+        source.close()
+    for file_name in _PROGRESS_FILES:
+        if (progress.path.parent / file_name).exists():
+            shutil.copy2(progress.path.parent / file_name, partial / file_name)
+    info = {"name": target.name, "lines": lines, "before_day": day.isoformat(), "taken_at": datetime.now().isoformat(timespec="seconds")}
+    (partial / CHECKPOINT_INFO).write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
+    partial.replace(target)
+    return target
+
+
+def _read_checkpoints(base: Path) -> dict[str, dict]:
+    if not base.exists():
+        return {}
+    found = {}
+    for item in sorted(base.iterdir()):
+        if (item / CHECKPOINT_INFO).exists() and not item.name.endswith(".partial"):
+            found[item.name] = json.loads((item / CHECKPOINT_INFO).read_text(encoding="utf-8"))
+    return found
+
+
+def restore_checkpoint(folder: Path, name: str) -> dict:
+    """控えへ戻す。今のデータベースと進み具合は消さず、replaced-時刻 のフォルダへ移す。
+
+    戻す控えより後の控えも一緒に移す。流し直した結果と混ざらないようにするため。
+    動いているデータベースは移せないので、流している途中ならここで止まり、何も変わらない。
+    関連するテスト：tests/test_run_script_jobs.py の test_控えへ戻すと_その年の前から流し直せて_戻す前の分は残る
+    """
+    db_path = config.deployment(data_dir=folder).db_path
+    base = folder / CHECKPOINT_FOLDER
+    known = _read_checkpoints(base)
+    if name not in known:
+        raise StopRun(f"控え {name} がありません。あるのは：{'、'.join(known) or 'なし'}")
+    info = known[name]
+    aside = folder / f"replaced-{datetime.now():%Y%m%d-%H%M%S}"
+    extra = 1
+    while aside.exists():
+        extra += 1
+        aside = folder / f"replaced-{datetime.now():%Y%m%d-%H%M%S}-{extra}"
+    aside.mkdir()
+    try:
+        db_path.replace(aside / db_path.name)
+    except OSError as error:
+        aside.rmdir()
+        raise StopRun("データベースを移せませんでした。流している途中なら、止めてから戻してください。") from error
+    for file_name in (f"{db_path.name}-wal", f"{db_path.name}-shm", *_PROGRESS_FILES):
+        if (folder / file_name).exists():
+            (folder / file_name).replace(aside / file_name)
+    for other, other_info in known.items():
+        if other_info["lines"] > info["lines"]:
+            (aside / CHECKPOINT_FOLDER).mkdir(exist_ok=True)
+            (base / other).replace(aside / CHECKPOINT_FOLDER / other)
+    shutil.copy2(base / name / db_path.name, db_path)
+    for file_name in _PROGRESS_FILES:
+        if (base / name / file_name).exists():
+            shutil.copy2(base / name / file_name, folder / file_name)
+    return {**info, "replaced": aside.name}
+
+
+def read_scene(folder: Path) -> dict | None:
+    """書き残した訂正の場面を読む。まだなければ None。"""
+    path = folder / SCENE_FILE
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def _keep_awake() -> None:
+    """流す間、パソコンがスリープに入らないようにする。全件は一晩かかるため。プロセスが終われば元に戻る。"""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        # ES_CONTINUOUS | ES_SYSTEM_REQUIRED。画面の消灯は止めない
+        ctypes.WinDLL("kernel32").SetThreadExecutionState(0x80000000 | 0x00000001)
+    except (OSError, AttributeError):
+        pass
+
+
+@contextmanager
+def shared_api_client() -> Iterator[None]:
+    """流す間だけ、AI の接続を1つ使い回す。
+
+    ふだんの起動は呼ぶたびに作る。全件では本線だけで約1万回呼ぶので、接続を作り直す分（測って1回約0.1秒）を省く。
+    SDK の接続は、同時に別のスレッドから使える。流し終えたら元に戻す。
+    関連するテスト：tests/test_run_script_jobs.py の test_流す間だけ_AIの接続を1つ使い回す
+    """
+    original = ai._make_client
+    guard = threading.Lock()
+    shared: list = []
+
+    def make():
+        with guard:
+            if not shared:
+                shared.append(original())
+            return shared[0]
+
+    ai._make_client = make
+    try:
+        yield
+    finally:
+        ai._make_client = original
+        for client in shared:
+            client.close()
+
+
 def run_lines(
     client,
     lines: list[Line],
@@ -1848,6 +2207,8 @@ def run_lines(
     keep_going: bool = False,
     workers: int = 0,
     timer: _Timer | None = None,
+    checkpoint_days: tuple[date, ...] = (),
+    speed_every: int = SPEED_EVERY_LINES,
 ) -> int:
     """残りの行を流す。流した行の数を返す。workers が 0 なら、裏の処理も順に待つ。"""
     runner = Runner(client, progress, keep_going=keep_going)
@@ -1860,6 +2221,8 @@ def run_lines(
     count = 0
     with running_jobs(client.app, workers, progress.path.parent, timer) as job_runner:
         runner.job_runner = job_runner
+        speed = SpeedLog(progress.path.parent, db_path, progress, job_runner, speed_every)
+        previous_day = lines[done - 1].day if done else None
         try:
             for number, line in enumerate(lines[done:], start=done + 1):
                 if until and line.day > until:
@@ -1870,6 +2233,10 @@ def run_lines(
                     job_runner.check()
                 if (count % BUDGET_EVERY_LINES == 0 or line.kind == "整理") and spent_usd(db_path, progress) > budget_usd:
                     raise StopRun(f"費用の枠 ${budget_usd} を超えそうなので、{number}行目の前で止めました。")
+                checkpoint = checkpoint_due(previous_day, line.day, checkpoint_days)
+                if checkpoint:
+                    save_checkpoint(checkpoint, progress, db_path, job_runner, line.day)
+                previous_day = line.day
                 runner.resending = number <= progress.sent_upto
                 progress.note_sending(number)
                 # 発言の印は行の中身から作る。止まって送り直しても同じ印になり、発言は増えない
@@ -1879,6 +2246,10 @@ def run_lines(
                 count += 1
                 if line.kind not in _SAFE_TO_RESEND or count % SAVE_EVERY_LINES == 0:
                     progress.save()
+                if line.kind == "整理":
+                    # 固めた直後の状態を、あとから写して試せるように残す
+                    save_checkpoint(f"consolidated-{line.day.isoformat()}", progress, db_path, job_runner, line.day)
+                speed.line_done(number, line)
             # 止めるときも、流し終わるときも、裏の処理が終わってから戻る
             if job_runner is not None:
                 job_runner.drain()
@@ -1913,11 +2284,25 @@ def open_client(folder: Path) -> tuple[TestClient, Path]:
     return TestClient(app), deployment.db_path
 
 
-def _restart_lost_threads(app) -> None:
+def _silent_letters(lines: list[Line], progress: Progress | None) -> set[int]:
+    """最後に送ったコメントが問わない行である便りの番号を返す。"""
+    if progress is None:
+        return set()
+    last_ask: dict[str, bool | None] = {}
+    for line in lines[: max(len(progress.digests), progress.sent_upto)]:
+        if line.kind == "コメント":
+            last_ask[line.letter] = line.ask
+    known = progress.letters
+    return {known[ref]["id"] for ref, ask in last_ask.items() if ask is False and ref in known}
+
+
+def _restart_lost_threads(app, lines: list[Line] = (), progress: Progress | None = None) -> None:
     """待ちの中で失われたスレッドの処理を流し直す。
 
-    同じ便りの処理は順に動くので、失われるのは便りごとに最後のコメントの分だけ。その処理の前に落ちていれば、
-    最後のコメントは人のコメントのままで、印もそこまで進んでいない。コメントの時刻で流すので、問いの日付はずれない。
+    問うコメントのあとは次の行が処理を待つので、問いが失われるのは便りごとに最後のコメントの分だけ。その処理の前に
+    落ちていれば、最後のコメントは人のコメントのままで、印もそこまで進んでいない。分割は印のあとを全部読むので、
+    問わないコメントが何件失われていても、便りごとに1回流せば足りる。
+    コメントの時刻で流すので、問いの日付はずれない。最後のコメントが問わない行なら、流し直しでも問わない。
     関連するテスト：tests/test_run_script_jobs.py の test_待ちの中の処理を失って流し直しても_重ならず欠けない
     """
     conn = db.connect(app.state.db_path)
@@ -1932,9 +2317,12 @@ def _restart_lost_threads(app) -> None:
                 lost.append((letter_id, row["author_user_id"], datetime.fromisoformat(row["commented_at"])))
     finally:
         conn.close()
+    silent = _silent_letters(lines, progress)
     for letter_id, author, commented_at in lost:
+        app.state.twin_may_ask = letter_id not in silent
         with clock.frozen(commented_at):
             jobs.after_comment(app, letter_id, author)
+    app.state.twin_may_ask = True
 
 
 def catch_up_for_resume(
@@ -1956,7 +2344,7 @@ def catch_up_for_resume(
     if response.status_code >= 400:
         raise StopRun(f"日付の変更が失敗しました（{response.status_code}）")
     with running_jobs(client.app, workers, progress.path.parent, timer) as job_runner:
-        _restart_lost_threads(client.app)
+        _restart_lost_threads(client.app, lines, progress)
         if job_runner is not None:
             job_runner.drain()
         jobs.catch_up(client.app)
@@ -2005,7 +2393,22 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_WORKERS,
         help="裏の処理の同時の数の上限。2本から始めて少しずつ上げます。0 は裏の処理も順に待ちます",
     )
+    parser.add_argument(
+        "--checkpoint-days",
+        default="",
+        help="年の変わり目のほかに控えを取る日。カンマで分けます（例：2026-11-03,2036-05-06）",
+    )
+    parser.add_argument("--restore-checkpoint", help="この控えへ戻して止まります。今の分は replaced-時刻 へ移します")
     args = parser.parse_args(argv)
+
+    if args.restore_checkpoint:
+        try:
+            info = restore_checkpoint(safe_folder(args.folder), args.restore_checkpoint)
+        except StopRun as error:
+            print(f"止めました：{error}")
+            return 2
+        print(f"{info['name']} へ戻しました（{info['lines']}行まで、{info['before_day']} の前）。今の分は {info['replaced']} へ移しました。同じ命令で続きから流せます。")
+        return 0
 
     lines, findings = read_script(args.script)
     # 読めない行があると行番号がずれるので、先に読める形に直してもらう
@@ -2022,18 +2425,25 @@ def main(argv: list[str] | None = None) -> int:
         folder = safe_folder(args.folder)
         client, db_path = open_client(folder)
         progress = Progress.load(folder / "progress.json")
-        catch_up_for_resume(client, lines, progress, workers=args.workers)
-        count = run_lines(
-            client,
-            lines,
-            progress,
-            db_path=db_path,
-            budget_usd=args.budget,
-            until=args.until,
-            stop_after=args.stop_after,
-            keep_going=args.keep_going,
-            workers=args.workers,
-        )
+        marks = tuple(date.fromisoformat(raw) for raw in args.checkpoint_days.split(",") if raw)
+        _keep_awake()
+        with shared_api_client():
+            catch_up_for_resume(client, lines, progress, workers=args.workers)
+            count = run_lines(
+                client,
+                lines,
+                progress,
+                db_path=db_path,
+                budget_usd=args.budget,
+                until=args.until,
+                stop_after=args.stop_after,
+                keep_going=args.keep_going,
+                workers=args.workers,
+                checkpoint_days=marks,
+            )
+    except GuessNotAbout as error:
+        print(f"止めました：{error}")
+        return GUESS_EXIT
     except StopRun as error:
         print(f"止めました：{error}")
         return 2
@@ -2045,6 +2455,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"注意：{warning}")
     for note in _job_notes(db_path):
         print(f"注意：{note}")
+    confirms = sum(1 for line in lines[: len(progress.digests)] if line.kind == "確かめ")
+    if confirms:
+        print(f"確かめの行：{confirms}行。見つからずに飛ばした行：{progress.skipped_confirms}行。")
+    scene = read_scene(folder)
+    if scene:
+        print(f"訂正の場面（{scene['method']}）：推測「{scene['guess']}」→ 訂正「{scene['correction']}」")
     return 0
 
 

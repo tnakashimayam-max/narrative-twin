@@ -16,7 +16,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from app import ai, config, ledger, memory, twin
+from app import ai, config, db, ledger, memory, prompts, twin
 from app.schemas import CareKind, Source, Theme, TwinClosing, TwinTurn
 from tests.fake_claude import RoleClaude
 
@@ -983,6 +983,50 @@ def test_今日の一言は話に出たことと季節と今の時刻に合う�
 
 def test_今日の一言で本人が話した今日の天気に触れるのはよい():
     assert twin.tip_problem("今日は雨なので、縁側でゆっくりできますね。", now=NIGHT, heard="誠一さん：今日は雨たい。") is None
+
+
+@pytest.mark.parametrize("tip", ["和子さんと温かいお味噌汁で、夕飯を楽しんでください。", "和子と一緒に庭を見るのもよいですね。"])
+def test_今日の一言に亡くなった方の名前を入れない(tip):
+    assert twin.tip_problem(tip, now=NIGHT, heard="誠一さん：庭を見た。", gone=("和子",)) is not None
+
+
+@pytest.mark.parametrize(
+    "tip",
+    [
+        "つらさが強い時はよりそいホットライン（0120-279-338、24時間）で声を聞いてもらえます。",
+        "いのちの電話に話してみるのもよいですね。",
+        "地域の相談窓口を調べておくと安心です。",
+        "困ったら 0120-000-000 へどうぞ。",
+    ],
+)
+def test_今日の一言に相談先を書かない(tip):
+    assert twin.tip_problem(tip, now=NIGHT, heard="誠一さん：庭を見た。") is not None
+
+
+def test_今日の一言は亡くなった方でなければ止めない():
+    assert twin.tip_problem("金木犀の香りが楽しめる季節ですね。", now=NIGHT, heard="誠一さん：庭を見た。", gone=("和子",)) is None
+
+
+def test_今日の一言が亡くなった方を勧めたら_書き直し_だめなら出さない(me, use_claude):
+    conn = db.connect(me.app.state.db_path)
+    with conn:
+        conn.execute("UPDATE users SET is_deceased = 1 WHERE name = '和子さん'")
+    conn.close()
+    bad = {"reply": "ありがとうございました。", "tip": "和子さんと温かいお味噌汁で、夕飯を楽しんでください。"}
+    fake = use_claude(ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"), 今日はここまで=[bad, bad])
+    room = me.get("/api/rooms").json()["items"][0]
+    me.post(f"/api/rooms/{room['id']}/messages", json={"text": "庭を見ました。", "client_key": "a"})
+
+    body = me.post(f"/api/rooms/{room['id']}/close").json()
+
+    assert [item["text"] for item in body["replies"]] == ["ありがとうございました。"]
+    assert fake.bodies("今日はここまで")[1]["model"] == "claude-sonnet-5-5"
+    # 亡くなったことと人の一覧は AI に送らない
+    assert "和子" not in fake.bodies("今日はここまで")[1]["messages"][0]["content"]
+
+
+def test_ツインの決まりに_本人の方言をまねないとある():
+    assert "方言や言い回しをまねません" in prompts.twin_system("誠一さん")
 
 
 def _set_time(me, at):

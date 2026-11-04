@@ -331,16 +331,25 @@ _TODAY_WEATHER = re.compile(r"(?:今日|明日|今夜|今晩|午後|夕方)(?:�
 # 時刻を過ぎた話。(この時より後なら, 語)。明日の話は止めない
 _TIME_PASSED = ((12, ("午前中", "午前のうち", "朝のうち", "今朝のうち")), (17, ("昼のうち", "昼間のうち", "日中", "お昼", "昼前", "午後のうち")))
 TIP_SENTENCE = re.compile(r"[^。！!\n]+")
+# 今日の一言に書かない相談先。案内はプログラムが返事に添える文だけにする。番号を AI に書かせないため
+_TIP_REFERRALS = re.compile(r"ホットライン|いのちの電話|相談窓口|相談先|\d{2,4}-\d{2,4}-\d{3,4}")
 
 
-def tip_problem(tip: str, *, now: datetime, heard: str) -> str | None:
+def tip_problem(tip: str, *, now: datetime, heard: str, gone: tuple[str, ...] = ()) -> str | None:
     """今日の一言の問題を返す。なければ None。
 
     実際に、夜の10時に「今日は暑くなるそうなので、午前中のうちに洗濯物を…」と書いた。本人の「暑うなるごたる」を
     予報のように言い直し、もう過ぎた時間の案を出したもの。プロンプトで禁じても守られるとは限らないので、ここで止める。
     heard は今日の話。本人が話した天気に触れるのはよい。
+    gone は亡くなった方の呼び名。実際に、亡くなった方との夕飯を勧める一言を書いた。一言を作るときは今日の話だけを
+    渡し、人の一覧を AI に送らないので、亡くなったことを AI は知らない。名前が入った一言をここで止める。
+    相談先も止める。プログラムが返事に添えた案内を、AI がすぐ下の一言にくり返した回があった（実測）。
     関連するテスト：tests/test_twin.py の test_今日の一言
     """
+    if _TIP_REFERRALS.search(tip):
+        return "一言に相談先を書かないでください。暮らしの案か、季節のことにしてください。"
+    if any(name in tip for name in gone):
+        return "一言に人の名前を書かないでください。暮らしの案か、季節のことにしてください。"
     if "予報" in tip:
         return "天気予報を知らないので、予報の話を書かないでください。"
     for sentence in TIP_SENTENCE.findall(tip):
@@ -355,6 +364,12 @@ def tip_problem(tip: str, *, now: datetime, heard: str) -> str | None:
             if now.hour >= hour and any(word in sentence for word in words):
                 return f"今は{now.hour}時です。この時刻に合う案にしてください。"
     return None
+
+
+def _gone_names(conn: sqlite3.Connection) -> tuple[str, ...]:
+    """亡くなった方の呼び名を返す。「和子さん」も「和子」も止めるよう、さんを除く。"""
+    names = (user.display_name.removesuffix("さん") for user in db.list_users(conn) if user.is_deceased)
+    return tuple(name for name in names if name)
 
 
 def drop_referrals(reply: str) -> str:
@@ -703,9 +718,10 @@ def close_in_twin_room(
     heard = "\n".join(lines)
     text = f"## 今日の日付\n{memory.date_label(now.date())}\n\n## 今の時刻\n{now.hour}時{now.minute}分\n\n## 今日の話\n{heard}"
     system = prompts.twin_closing_system(self_user.display_name)
+    gone = _gone_names(conn)
 
     def tip_is_bad(tip: str) -> str | None:
-        return "体や健康の助言を書かないでください。" if advises_on_health(tip) else tip_problem(tip, now=now, heard=heard)
+        return "体や健康の助言を書かないでください。" if advises_on_health(tip) else tip_problem(tip, now=now, heard=heard, gone=gone)
 
     def ask(*, deep: bool, feedback: str | None = None):
         role = config.TWIN_DEEP_ROLE if deep else "ツインの会話"

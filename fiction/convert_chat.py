@@ -33,6 +33,7 @@ from app import config
 DEFAULT_CHAT = Path(r"C:\dev\nt-story\チャット_全件.jsonl")
 DEFAULT_PHOTOS = config.DATA_DIR / "demo_photos"
 DEFAULT_CORRECTION_MATCH = "庭"
+DEFAULT_FIXED = DEFAULT_CHAT.with_name("決まった言葉.jsonl")
 
 SELF_RAW = "誠一"
 SELF_NAME = "誠一さん"
@@ -404,7 +405,8 @@ class _Builder:
         self.lines.append(line)
 
     def _correct(self, row: dict) -> None:
-        self.lines.append({"at": row["at"], "kind": "訂正", "by": SELF_NAME, "match": self.correction_match, "text": row["text"]})
+        # 相手は AI の推測だけから選ぶ。庭の話の推測がなければ流す道具が止まる（fiction/correction_scene.py）
+        self.lines.append({"at": row["at"], "kind": "訂正", "by": SELF_NAME, "match": self.correction_match, "guess": True, "text": row["text"]})
         if _day(row["at"]) == HANDOVER_DAY and not self.handed_over:
             self.handed_over = True
             self.lines.append(
@@ -549,6 +551,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--missing", type=Path, help="足りない写真の番号を書き出すファイル")
     parser.add_argument("--answers", action="store_true", help="ツインが問う日と、本人の短い受け答えの行を入れます（fiction/answer_plan.py）")
     parser.add_argument("--days", help="この日だけを流す形にします（読み比べの資料用。カンマで区切る）")
+    parser.add_argument("--confirm", action="store_true", help="本人の確かめの行を入れます（fiction/confirm_plan.py）")
+    parser.add_argument("--fixed", type=Path, default=DEFAULT_FIXED, help="--confirm で読む、決まった言葉のファイル")
     args = parser.parse_args(argv)
 
     if not args.chat.exists():
@@ -581,6 +585,13 @@ def main(argv: list[str] | None = None) -> int:
         result.lines = answer_plan.apply_answers(
             result.lines, every_row, future_log=answer_plan.read_future_log(), forbidden=forbidden_in
         )
+    if args.confirm:
+        from fiction import confirm_plan
+
+        fixed = [json.loads(raw) for raw in args.fixed.read_text(encoding="utf-8").splitlines() if raw.strip()]
+        result.lines, left = confirm_plan.add_confirmations(result.lines, every_row, fixed)
+        added = sum(1 for line in result.lines if line["kind"] == "確かめ")
+        print(f"確かめの行：{added}行。置けなかった文：{len(left)}")
     write_script(result.lines, args.out)
     if args.missing:
         write_missing(result, args.missing)

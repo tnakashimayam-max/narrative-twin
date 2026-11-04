@@ -1384,3 +1384,365 @@ def test_時刻を止める文脈は_受け手の処理の中だけに効く(wor
 
     assert seen == [moment]
     assert clock.now(client.app).date() != moment.date()
+
+
+# ---- 待ちを減らす直し ----
+
+
+def asks_not(row: dict) -> dict:
+    return {**row, "ask": False}
+
+
+def ops_of(progress: Progress) -> list[str]:
+    log = progress.path.parent / "log.jsonl"
+    return [json.loads(raw).get("op", "") for raw in log.read_text(encoding="utf-8").splitlines()]
+
+
+def test_問わないコメントのあとは_同じ便りの処理を待たない(world, claude):
+    _, db_path, _ = world
+    first, second = "2026-04-12", "2026-04-13"
+    # 次の日の AI が呼ばれるまで分割を止めておく。コメントの前で待つと、止めたまま先へ進めず、待ちが解けない
+    claude.hold = {"言明への分割"}
+    claude.release_word = "次の日の話"
+    rows = [
+        letter(first, "庭"),
+        asks_not(comment(first, "庭", "一つ目のコメントです。", 40)),
+        asks_not(comment(first, "庭", "二つ目のコメントです。", 41)),
+        asks_not(comment(first, "庭", "三つ目のコメントです。", 42)),
+        say(second, 10, "次の日の話です。"),
+        close(second),
+    ]
+
+    flow(world, rows, workers=2)
+
+    assert_all_split(db_path)
+    assert query(db_path, "SELECT 1 FROM comments WHERE is_twin_question = 1") == []
+    words = {row["body"]: row for row in query(db_path, "SELECT * FROM statements")}
+    assert words["三つ目のコメントです。"]["effective_date"] == first
+    thread = [row["body"] for row in query(db_path, "SELECT body FROM comments ORDER BY rowid")]
+    assert thread == ["一つ目のコメントです。", "二つ目のコメントです。", "三つ目のコメントです。"]
+
+
+def test_問わないコメントがまとめて分けられても_言明は欠けず重ならない(world, claude):
+    _, db_path, _ = world
+    first, second = "2026-04-12", "2026-04-13"
+    # 1本にして、前の会話の分割で止めておく。解けたとき、最初のコメントの処理が残りのコメントも一緒に読む
+    claude.hold = {"言明への分割"}
+    claude.release_word = "次の日の話"
+    rows = [
+        say(first, 10, "庭の話です。"),
+        close(first),
+        letter(first, "庭"),
+        asks_not(comment(first, "庭", "一つ目のコメントです。", 40)),
+        asks_not(comment(first, "庭", "二つ目のコメントです。", 41)),
+        say(second, 10, "次の日の話です。"),
+        close(second),
+    ]
+
+    flow(world, rows, workers=1)
+
+    assert_all_split(db_path)
+
+
+def test_別の日のコメントをまとめて分けても_記録の日は話した日のまま(world, claude):
+    _, db_path, _ = world
+    first, second = "2026-04-12", "2026-04-13"
+    # 1本にして、前の会話の分割の間にコメントの処理を待たせる。前の日の時刻で止めた処理が、次の日のコメントも一緒に読む
+    claude.delay["言明への分割"] = 0.3
+    rows = [
+        say(first, 10, "庭の話です。"),
+        close(first),
+        letter(first, "庭"),
+        asks_not(comment(first, "庭", "前の日のコメントです。", 40)),
+        asks_not(comment(second, "庭", "次の日のコメントです。", 40)),
+    ]
+
+    flow(world, rows, workers=1)
+
+    assert_all_split(db_path)
+    words = {row["body"]: row for row in query(db_path, "SELECT * FROM statements")}
+    assert words["次の日のコメントです。"]["effective_date"] == second
+    assert words["次の日のコメントです。"]["created_at"].startswith(second)
+
+
+def test_受け答えの前は_同じ便りの分割の終わりを待ち_人のコメントを飛ばさない(world, claude):
+    _, db_path, _ = world
+    day = "2026-04-12"
+    claude.answers["スレッドの問い"] = {"question": "庭の話を、もう少し聞かせていただけますか？"}
+    claude.answers["架空の受け答え"] = {"text": "また今度たい。"}
+    claude.answers["架空の受け答えの確かめ"] = {"new_people": [], "new_events": [], "new_numbers": [], "not_chikugo": None}
+    # 1本にして、別の便りの分割の間に、問わないコメントの処理を待たせる。受け答えが待たないと、
+    # 分割の印が問わないコメントの後ろへ進み、そのコメントが言明にならない
+    claude.delay["言明への分割"] = 0.3
+    rows = [
+        letter(day, "庭", 31),
+        letter(day, "花", 32),
+        comment(day, "庭", "問うコメントです。", 40),
+        asks_not(comment(day, "花", "別の便りのコメントです。", 41)),
+        asks_not(comment(day, "庭", "問わないコメントです。", 42)),
+        {"at": f"{day}T08:43", "kind": "受け答え", "by": "誠一さん", "letter": "庭", "hint": "庭の話", "limit": 25},
+    ]
+
+    flow(world, rows, workers=1)
+
+    bodies = [row["body"] for row in query(db_path, "SELECT body FROM statements")]
+    assert "問わないコメントです。" in bodies
+    assert "問うコメントです。" in bodies
+    # 足した文は言明にならない
+    assert "また今度たい。" not in bodies
+
+
+def test_問わないコメントの処理を失って流し直しても_問いは出ない(world, claude, monkeypatch):
+    client, db_path, progress = world
+    claude.answers["スレッドの問い"] = {"question": "つつじの話を、もう少し聞かせていただけますか？"}
+    first, second = "2026-04-12", "2026-04-20"
+    rows = [
+        say(first, 10, "つつじの話です。"),
+        close(first),
+        letter(first, "つつじ"),
+        asks_not(comment(first, "つつじ", "また帰ります。")),
+        say(second, 10, "次の日の話です。"),
+        close(second),
+    ]
+
+    crash_at(world, rows, 5, after=True, monkeypatch=monkeypatch)
+    resume((client, db_path, Progress.load(progress.path)), rows, workers=2)
+
+    assert query(db_path, "SELECT 1 FROM comments WHERE is_twin_question = 1") == []
+    assert_all_split(db_path)
+
+
+def test_日付の変更とログインはHTTPを通らず_発言の時刻は行のとおり(world, claude):
+    _, db_path, progress = world
+    day = "2026-04-12"
+    rows = [say(day, 10, "庭の話です。"), close(day)]
+
+    flow(world, rows, workers=2)
+
+    ops = ops_of(progress)
+    assert "POST /api/dev/date" not in ops
+    assert "POST /api/login" not in ops
+    assert people_utterances(db_path)[0]["spoken_at"].startswith(f"{day}T08:10")
+
+
+def test_知らない名前の行は止まる(world, claude):
+    with pytest.raises(StopRun, match="ログインできません"):
+        flow(world, [{**say("2026-04-12", 10, "庭の話です。"), "by": "知らない人さん"}], workers=2)
+
+
+def test_人だけの部屋の発言は読み直さなくても_同じ記録が残る(world, claude):
+    _, _, progress = world
+    at = "2026-04-12T08:"
+    rows = [
+        {"at": f"{at}00", "kind": "部屋", "by": "誠一さん", "room": "将棋", "room_kind": "グループ", "members": ["正雄さん"]},
+        {"at": f"{at}01", "kind": "発言", "room": "将棋", "by": "正雄さん", "text": "今度の日曜はどげんね。"},
+        {"at": f"{at}02", "kind": "発言", "room": "将棋", "by": "誠一さん", "text": "行くたい。"},
+    ]
+
+    flow(world, rows, workers=2)
+
+    assert "GET /api/rooms/{room_id}/messages" not in ops_of(progress)
+    said = [(item["speaker"], item["text"]) for item in progress.extra["2026"] if item["kind"] == "部屋の発言"]
+    assert said == [("正雄さん", "今度の日曜はどげんね。"), ("誠一さん", "行くたい。")]
+    assert progress.room_seq["将棋"] >= 2
+
+
+def test_ツインを入れた部屋の発言は読み直して_ツインの言葉も記録する(world, claude):
+    _, _, progress = world
+    at = "2026-04-12T08:"
+    claude.answers["グループのツイン"] = {"reply": "そうでしたか。", "question": None}
+    rows = [
+        {"at": f"{at}00", "kind": "部屋", "by": "誠一さん", "room": "将棋", "room_kind": "グループ", "members": ["正雄さん"]},
+        {"at": f"{at}01", "kind": "ツインを入れる", "by": "誠一さん", "room": "将棋", "present": True},
+        {"at": f"{at}02", "kind": "発言", "room": "将棋", "by": "正雄さん", "text": "今度の日曜はどげんね。"},
+    ]
+
+    flow(world, rows, workers=0)
+
+    assert "将棋" in progress.twin_rooms
+    assert "GET /api/rooms/{room_id}/messages" in ops_of(progress)
+
+
+def test_100行ごとに速さと費用を残す(world, claude):
+    assert run_script.SPEED_EVERY_LINES == 100
+    _, _, progress = world
+
+    flow(world, many_days(2), workers=2, speed_every=4)
+
+    raw = (progress.path.parent / run_script.SPEED_FILE).read_text(encoding="utf-8")
+    written = [json.loads(item) for item in raw.splitlines()]
+    assert [row["line"] for row in written] == [4, 8]
+    for name in ("at", "day", "ms_per_line", "usd", "db_mb", "memory_mb", "workers", "waiting", "letter_wait_seconds"):
+        assert name in written[0]
+    # 本文は入れない
+    assert "庭の話" not in raw
+    assert "縁側" not in raw
+
+
+def test_同じ便りを待った秒数を数える():
+    timer = FakeTimer()
+    runner = JobRunner(2, timer=timer)
+    try:
+        runner.wait_for("便り:1")
+        assert runner.stats.letter_wait_seconds == 0
+        assert "letter_wait_seconds" in runner.speed_fields()
+    finally:
+        runner.close()
+
+
+def test_年の変わり目に控えを取る(world, claude):
+    _, db_path, progress = world
+    claude.delay["言明への分割"] = 0.1
+    rows = [
+        say("2026-12-31", 10, "年の終わりの話です。"),
+        close("2026-12-31"),
+        say("2027-01-01", 10, "年の始めの話です。"),
+        close("2027-01-01"),
+    ]
+
+    flow(world, rows, workers=2)
+
+    saved = progress.path.parent / run_script.CHECKPOINT_FOLDER / "before-2027"
+    info = json.loads((saved / run_script.CHECKPOINT_INFO).read_text(encoding="utf-8"))
+    assert info["lines"] == 2
+    assert info["before_day"] == "2027-01-01"
+    # 裏の処理を待ってから取るので、前の年の言葉は言明になっていて、次の年の言葉はまだない
+    assert [row["body"] for row in query(saved / db_path.name, "SELECT body FROM statements")] == ["年の終わりの話です。"]
+    assert len(json.loads((saved / "progress.json").read_text(encoding="utf-8"))["digests"]) == 2
+
+
+def test_指定した日にも控えを取り_同じ節目を通っても上書きしない(world, claude):
+    _, db_path, progress = world
+    mark = datetime(2026, 11, 3).date()
+    rows = [say("2026-11-02", 10, "前の日の話です。"), close("2026-11-02"), say("2026-11-05", 10, "後の日の話です。"), close("2026-11-05")]
+
+    flow(world, rows, workers=2, checkpoint_days=(mark,))
+
+    saved = progress.path.parent / run_script.CHECKPOINT_FOLDER / "before-2026-11-03"
+    assert (saved / db_path.name).exists()
+    info = (saved / run_script.CHECKPOINT_INFO).read_text(encoding="utf-8")
+    assert run_script.save_checkpoint("before-2026-11-03", Progress.load(progress.path), db_path, None, mark) is not None
+    assert (saved / run_script.CHECKPOINT_INFO).read_text(encoding="utf-8") == info
+    assert (progress.path.parent / run_script.CHECKPOINT_FOLDER / "before-2026-11-03-2").exists()
+
+
+@pytest.mark.parametrize(
+    ("previous", "day", "name"),
+    [
+        (None, "2027-01-01", None),
+        ("2026-12-31", "2026-12-31", None),
+        ("2026-12-31", "2027-01-01", "before-2027"),
+        ("2026-12-30", "2028-02-01", "before-2028"),
+    ],
+)
+def test_控えを取る行は年が変わる最初の行(previous, day, name):
+    parse = lambda raw: datetime.fromisoformat(raw).date() if raw else None  # noqa: E731
+    assert run_script.checkpoint_due(parse(previous), parse(day)) == name
+
+
+def _write_script(path: Path, rows: list[dict]) -> None:
+    path.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows), encoding="utf-8")
+
+
+def test_控えへ戻すと_その年の前から流し直せて_戻す前の分は残る(tmp_path, claude, capsys):
+    folder = tmp_path / "流し込み"
+    script = tmp_path / "script.jsonl"
+    keep = [say("2026-12-31", 10, "残す年の話です。"), close("2026-12-31")]
+    middle = [say("2027-01-01", 10, "直す前の年の話です。"), close("2027-01-01")]
+    last = [say("2028-01-01", 10, "次の年の話です。"), close("2028-01-01")]
+    _write_script(script, keep + middle + last)
+    assert run_script.main([str(script), "--folder", str(folder), "--budget", "50"]) == 0
+    checkpoints = folder / run_script.CHECKPOINT_FOLDER
+    assert (checkpoints / "before-2027").exists()
+    assert (checkpoints / "before-2028").exists()
+
+    assert run_script.main([str(script), "--folder", str(folder), "--restore-checkpoint", "before-2027"]) == 0
+    assert "before-2027 へ戻しました" in capsys.readouterr().out
+
+    # 戻す前の分は消さず、後の控えと一緒に脇へ移す
+    aside = next(folder.glob("replaced-*"))
+    moved = [row["body"] for row in query(aside / "narrative_twin.db", "SELECT body FROM statements")]
+    assert "直す前の年の話です。" in moved
+    assert (aside / run_script.CHECKPOINT_FOLDER / "before-2028").exists()
+    assert not (checkpoints / "before-2028").exists()
+    db_path = folder / "narrative_twin.db"
+    assert [row["body"] for row in query(db_path, "SELECT body FROM statements")] == ["残す年の話です。"]
+
+    # 台本を直して、同じ命令で流し直せる
+    fixed = [say("2027-01-01", 10, "直したあとの年の話です。"), close("2027-01-01")]
+    _write_script(script, keep + fixed + last)
+    assert run_script.main([str(script), "--folder", str(folder), "--budget", "50"]) == 0
+    bodies = [row["body"] for row in query(db_path, "SELECT body FROM statements ORDER BY rowid")]
+    assert bodies == ["残す年の話です。", "直したあとの年の話です。", "次の年の話です。"]
+    assert (checkpoints / "before-2028").exists()
+    assert_all_split(db_path)
+
+
+def test_ない控えへは戻さず_今の分はそのまま(tmp_path, claude, capsys):
+    folder = tmp_path / "流し込み"
+    script = tmp_path / "script.jsonl"
+    _write_script(script, [say("2026-12-31", 10, "年の終わりの話です。"), close("2026-12-31")])
+    assert run_script.main([str(script), "--folder", str(folder)]) == 0
+    capsys.readouterr()
+
+    assert run_script.main([str(script), "--folder", str(folder), "--restore-checkpoint", "before-2030"]) == 2
+
+    assert "before-2030 がありません" in capsys.readouterr().out
+    assert (folder / "narrative_twin.db").exists()
+    assert list(folder.glob("replaced-*")) == []
+
+
+def test_整理の直後に節目の控えを取る(world, claude, monkeypatch):
+    _, db_path, progress = world
+    monkeypatch.setattr(run_script.Runner, "_do_consolidate", lambda self, number, line, key: None)
+    day = "2036-05-05"
+    rows = [say(day, 10, "節目の前の話です。"), close(day), {"at": f"{day}T23:59", "kind": "整理", "by": "誠一さん"}, say("2036-05-06", 10, "節目の後の話です。"), close("2036-05-06")]
+
+    flow(world, rows, workers=2)
+
+    saved = progress.path.parent / run_script.CHECKPOINT_FOLDER / "consolidated-2036-05-05"
+    assert json.loads((saved / run_script.CHECKPOINT_INFO).read_text(encoding="utf-8"))["lines"] == 3
+    assert [row["body"] for row in query(saved / db_path.name, "SELECT body FROM statements")] == ["節目の前の話です。"]
+
+
+def test_確かめの文が見つからなければ_飛ばして数え_速さの記録にも書く(world, claude):
+    _, _, progress = world
+    day = "2030-01-04"
+    rows = [
+        say(day, 10, "庭の話です。"),
+        close(day),
+        {"at": f"{day}T08:40", "kind": "確かめ", "by": "誠一さん", "match": "庭の話です。"},
+        {"at": f"{day}T08:41", "kind": "確かめ", "by": "誠一さん", "match": "ない言葉です。"},
+    ]
+
+    flow(world, rows, workers=2, keep_going=True, speed_every=4)
+
+    assert progress.skipped_confirms == 1
+    row = json.loads((progress.path.parent / run_script.SPEED_FILE).read_text(encoding="utf-8").splitlines()[-1])
+    assert row["skipped_confirms"] == 1
+
+
+def test_確かめの文が見つからないとき_keep_goingがなければ止まる(world, claude):
+    day = "2030-01-04"
+    rows = [say(day, 10, "庭の話です。"), close(day), {"at": f"{day}T08:41", "kind": "確かめ", "by": "誠一さん", "match": "ない言葉です。"}]
+
+    with pytest.raises(StopRun, match="見つかりません"):
+        flow(world, rows, workers=2)
+
+
+def test_流す間だけ_AIの接続を1つ使い回す(monkeypatch):
+    made = []
+
+    class Client:
+        def close(self) -> None:
+            made.append("閉じた")
+
+    def make() -> Client:
+        made.append("作った")
+        return Client()
+
+    monkeypatch.setattr(ai, "_make_client", make)
+    with run_script.shared_api_client():
+        assert ai._make_client() is ai._make_client()
+    assert ai._make_client is make
+    assert made == ["作った", "閉じた"]

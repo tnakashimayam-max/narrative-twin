@@ -428,6 +428,7 @@ def test_訂正の直後に美穂さんへの託す行が入る(tmp_path):
         "kind": "訂正",
         "by": "誠一さん",
         "match": "庭",
+        "guess": True,
         "text": "妻と過ごした場所だから大切",
     }
     assert result.lines[position + 1] == {
@@ -437,6 +438,16 @@ def test_訂正の直後に美穂さんへの託す行が入る(tmp_path):
         "delegates": ["美穂さん"],
         "themes": ["家族", "仕事・役割", "住まい・土地", "好きなこと", "大切にしてきたこと", "人の手を借りること", "つらかったこと"],
     }
+
+
+def test_推測01を入れた版は_推測の日より前の行が同じで_控えから切り替えられる(tmp_path):
+    rows = [row("2026-10-24T09:00", "ツインへ", text="前の日の話。"), row("2026-10-25T09:00", "ツインへ", text="庭の世話があるけん。"), row("2026-11-03T21:05", "訂正")]
+    plain = run(rows, tmp_path)
+    guessed = run(rows, tmp_path, script_guess=True)
+    first_guess_day = next(index for index, line in enumerate(plain.lines) if line["at"].startswith("2026-10-25"))
+    assert guessed.lines[:first_guess_day] == plain.lines[:first_guess_day]
+    assert len(of_kind(guessed, "推測")) == 1
+    assert of_kind(plain, "推測") == []
 
 
 def test_訂正の言葉を指定できる(tmp_path):

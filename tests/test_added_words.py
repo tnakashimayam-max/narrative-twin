@@ -415,7 +415,7 @@ def close_line(at):
     return {"at": at, "kind": "閉じる", "room": "ツイン", "by": "誠一さん"}
 
 
-@pytest.mark.parametrize("text", ["事実にはなかけん、知らん。", "字数が足らん。", "話し方の例たい。", "ツインに聞け。"])
+@pytest.mark.parametrize("text", ["事実にはなかけん、知らん。", "字数が足らん。", "話し方の例たい。", "ツインに聞け。", "豆腐は書いとらんたい。"])
 def test_渡した決まりの言葉が足す文に漏れたら止める(text):
     assert "決まりの言葉" in added_words.added_problem(text, hint=FACT, limit=25, forbidden=forbidden_in)
 
