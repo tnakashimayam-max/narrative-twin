@@ -9,6 +9,9 @@ AI に渡す処理は utterances の表しか読まない。ツインとの部�
 人だけの部屋の発言と、ツインが入る前の発言は、本文を room_messages にだけ持つ。
 だから「人だけの部屋の発言が AI に渡らない」は、表の形で守られる。
 
+部屋の発言の seq は、部屋の中の本当の順番にする。範囲を限って読んでも変わらないので、未読と既読の計算は
+読んだ範囲に関係なく部屋の全部の行で行う。
+
 関連するテスト：tests/test_rooms.py
 """
 
@@ -33,6 +36,9 @@ from app.schemas import (
     User,
     UtteranceDraft,
 )
+
+# 1回に読む発言の上限。ツインとの部屋は1万行を超えるので、部屋を開くたびに全部を返すと画面が固まるため。
+MESSAGES_PER_PAGE = 300
 
 
 def get_room(conn: sqlite3.Connection, room_id: int) -> Room | None:
@@ -265,12 +271,30 @@ def _message_view(row: sqlite3.Row, viewer: User | None, seq: int) -> dict:
     }
 
 
-def messages_after(conn: sqlite3.Connection, room_id: int, after: int, viewer: User | None) -> list[dict]:
-    """部屋の中の順番が after より後の行を返す。部屋の行は追記だけなので、順番は変わらない。"""
+def messages_range(
+    conn: sqlite3.Connection, room_id: int, skip: int, count: int, viewer: User | None
+) -> list[dict]:
+    """部屋の中の順番で skip 行を飛ばし、そのあとの count 行を返す。count が -1 なら終わりまで返す。
+
+    部屋の行は追記だけなので、seq は飛ばした行の数から決められる。
+    飛ばす行は索引だけで数えてから本文を結合する。結合したまま OFFSET を付けると飛ばす行の本文まで引くことになり、
+    発言が増えるほど3秒ごとの読み込みが重くなるため。
+    関連するテスト：tests/test_rooms.py の test_発言が300件を超えても_after0では新しい300件で順番は本物
+    """
     rows = conn.execute(
-        _MESSAGE_QUERY + " WHERE m.room_id = ? ORDER BY m.rowid LIMIT -1 OFFSET ?", (room_id, after)
+        _MESSAGE_QUERY
+        + """
+        WHERE m.rowid IN (SELECT rowid FROM room_messages WHERE room_id = ? ORDER BY rowid LIMIT ? OFFSET ?)
+        ORDER BY m.rowid
+        """,
+        (room_id, count, skip),
     ).fetchall()
-    return [_message_view(row, viewer, after + index) for index, row in enumerate(rows, start=1)]
+    return [_message_view(row, viewer, skip + index) for index, row in enumerate(rows, start=1)]
+
+
+def messages_after(conn: sqlite3.Connection, room_id: int, after: int, viewer: User | None) -> list[dict]:
+    """部屋の中の順番が after より後の行を、すべて返す。"""
+    return messages_range(conn, room_id, after, -1, viewer)
 
 
 def conversation_messages(conn: sqlite3.Connection, conversation_id: int, viewer: User) -> list[dict]:

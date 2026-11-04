@@ -9,12 +9,14 @@
 
 from __future__ import annotations
 
+import threading
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app import __main__ as entry
-from app import config
+from app import clock, config
 from app.main import create_app
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -89,6 +91,65 @@ def test_日付を動かす道は架空用の起動だけにある(tmp_path):
 
     assert fictional.post("/api/dev/date", json={"date": "2030-05-01"}).json() == {"today": "2030-05-01"}
     assert mine.post("/api/dev/date", json={"date": "2030-05-01"}).status_code == 404
+
+
+def _now_of(client: TestClient) -> datetime:
+    return clock.now(client.app)
+
+
+def test_日付の道に時刻を渡すと_その時刻から進む(tmp_path):
+    fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
+
+    assert fictional.post("/api/dev/date", json={"at": "2030-05-01T08:10"}).json() == {"today": "2030-05-01"}
+
+    first = _now_of(fictional)
+    assert first.replace(tzinfo=None) >= datetime(2030, 5, 1, 8, 10)
+    assert first.replace(tzinfo=None) < datetime(2030, 5, 1, 8, 11)
+    assert _now_of(fictional) >= first
+
+
+def test_時刻を渡さなければ_日だけが動く(tmp_path):
+    fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
+
+    fictional.post("/api/dev/date", json={"date": "2030-05-01"})
+
+    assert _now_of(fictional).date().isoformat() == "2030-05-01"
+    assert fictional.post("/api/dev/date", json={"date": None}).json() == {"today": date.today().isoformat()}
+
+
+def test_自分用の起動では_時刻を渡しても道がない(tmp_path):
+    mine = TestClient(create_app(deployment=config.deployment(mine=True, data_dir=tmp_path)))
+
+    assert mine.post("/api/dev/date", json={"at": "2030-05-01T08:10"}).status_code == 404
+
+
+def test_時刻を止めると_その中の今だけが止まる(tmp_path):
+    fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
+    moment = datetime(2030, 5, 1, 8, 10).astimezone()
+
+    with clock.frozen(moment):
+        assert _now_of(fictional) == moment
+
+    assert _now_of(fictional).date() != moment.date()
+
+
+def test_時刻を止めても_ほかのスレッドの今は変わらない(tmp_path):
+    fictional = TestClient(create_app(deployment=config.deployment(data_dir=tmp_path)))
+    moment = datetime(2030, 5, 1, 8, 10).astimezone()
+    seen = []
+
+    with clock.frozen(moment):
+        thread = threading.Thread(target=lambda: seen.append(_now_of(fictional)))
+        thread.start()
+        thread.join()
+
+    assert seen[0].date() != moment.date()
+
+
+def test_裏の処理の受け手は_ふつうは入っていない(tmp_path):
+    app = create_app(deployment=config.deployment(data_dir=tmp_path))
+
+    assert app.state.job_runner is None
 
 
 def test_自分の記録の置き場はGitに入らない():

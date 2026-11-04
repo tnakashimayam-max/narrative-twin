@@ -27,6 +27,8 @@ ROLE = "言明への分割"
 def _run(label: str, model: str, stamp: str) -> dict:
     """1つのモデルで3つの会話を分け、結果を返す。"""
     config.MODEL_BY_ROLE[ROLE] = model
+    # 重い回は別の役割へ流れるので、比べの腕のモデルをそろえる
+    config.MODEL_BY_ROLE[config.SPLIT_DEEP_ROLE] = model
     db_path = TRIAL_DIR / f"compare_{stamp}_{model}.db"
     db.init_db(db_path)
     conn = db.connect(db_path)
@@ -71,7 +73,7 @@ def _run(label: str, model: str, stamp: str) -> dict:
             }
         )
     calls = conn.execute(
-        "SELECT model, input_tokens, output_tokens FROM ai_calls WHERE role = ?", (ROLE,)
+        "SELECT model, input_tokens, output_tokens FROM ai_calls WHERE role IN (?, ?)", (ROLE, config.SPLIT_DEEP_ROLE)
     ).fetchall()
     input_tokens = sum(row["input_tokens"] for row in calls)
     output_tokens = sum(row["output_tokens"] for row in calls)

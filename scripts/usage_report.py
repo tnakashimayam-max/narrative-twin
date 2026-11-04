@@ -51,6 +51,14 @@ def summarize(path: Path) -> list[dict]:
         cache_join = "LEFT JOIN ai_call_cache c ON c.ai_call_id = a.id" if "ai_call_cache" in tables else ""
         cache_read = "SUM(c.cache_read_tokens)" if cache_join else "0"
         cache_write = "SUM(c.cache_write_tokens)" if cache_join else "0"
+        # 費用は1回ごとに計算して足す。Haiku 5.5 はプロンプトが10万トークンを超える回だけ単価が上がるので、
+        # 合計のトークン数で計算すると、回数が増えたときに実際の約5倍になるため
+        per_call: dict[tuple, float] = {}
+        for call in connection.execute("SELECT role, model, is_batch, input_tokens, output_tokens FROM ai_calls"):
+            key = (call["role"], call["model"], call["is_batch"])
+            per_call[key] = per_call.get(key, 0.0) + config.cost_usd(
+                call["model"], call["input_tokens"], call["output_tokens"], batch=bool(call["is_batch"])
+            )
         rows = connection.execute(
             f"""
             SELECT a.role AS role, a.model AS model, a.is_batch AS is_batch, COUNT(*) AS calls,
@@ -69,7 +77,7 @@ def summarize(path: Path) -> list[dict]:
         item["cache_read_tokens"] = item["cache_read_tokens"] or 0
         item["cache_write_tokens"] = item["cache_write_tokens"] or 0
         item["cost_usd"] = round(
-            config.cost_usd(item["model"], item["input_tokens"], item["output_tokens"], batch=bool(item["is_batch"]))
+            per_call[(item["role"], item["model"], item["is_batch"])]
             + config.cache_cost_usd(item["model"], item["cache_read_tokens"], item["cache_write_tokens"]),
             4,
         )
@@ -108,6 +116,9 @@ def summarize_log(path: Path, since: str = "") -> list[dict]:
         item["calls"] += 1
         for name in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens"):
             item[name] += int(line.get(name) or 0)
+        item["per_call_usd"] = item.get("per_call_usd", 0.0) + config.cost_usd(
+            key[1], int(line.get("input_tokens") or 0), int(line.get("output_tokens") or 0)
+        )
         item["seconds"].append(int(line.get("ms") or 0) / 1000)
     summary = []
     for item in totals.values():
@@ -115,7 +126,7 @@ def summarize_log(path: Path, since: str = "") -> list[dict]:
         item["average_seconds"] = sum(seconds) / len(seconds) if seconds else None
         item["longest_seconds"] = max(seconds) if seconds else None
         item["cost_usd"] = round(
-            config.cost_usd(item["model"], item["input_tokens"], item["output_tokens"])
+            item.pop("per_call_usd")
             + config.cache_cost_usd(item["model"], item["cache_read_tokens"], item["cache_write_tokens"]),
             4,
         )

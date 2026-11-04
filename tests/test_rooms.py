@@ -1,6 +1,6 @@
 """人どうしのトークと、グループのツインのテスト。
 
-役割：部屋の見える範囲、人だけの部屋で AI を呼ばないこと、ツインに渡す範囲と書く場面を確かめる。
+役割：部屋の見える範囲、人だけの部屋で AI を呼ばないこと、ツインに渡す範囲と書く場面、発言を読む範囲を確かめる。
 4つの極：2. 分かち合う。
 守る原則：10（部屋の発言は部屋の人だけに見せる）、12（本人の代わりに答えない）、
           15（ツインは招かれた部屋だけを読む）。
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from app import ai, ledger
+from app import ai, ledger, room_store
 from app.prompts import CANNOT_ANSWER_FOR_SELF
 from app.schemas import Source
 from tests.fake_claude import RoleClaude
@@ -548,3 +548,216 @@ def test_写真の説明はグループのツインに渡らない(conn, me, log
     _say(login("美穂さん"), room, "@ツイン 今の話は何ですか")
 
     assert "説明の秘密の文です。" not in fake.sent_text()
+
+
+# ---- 発言を読む範囲 ----
+
+
+def _fill(conn, room, sender, count, start=1):
+    """発言をまとめて入れる。送る道を通すと1通ごとに処理が走るので、表へ直接入れる。"""
+    with ledger.atomic(conn):
+        for number in range(start, start + count):
+            room_store.insert_message(
+                conn, room_id=room["id"], sender_user_id=sender.id, text=f"発言{number}", sent_at="2030-01-01T10:00:00"
+            )
+
+
+def _view(client, room, **params):
+    response = client.get(f"/api/rooms/{room['id']}/messages", params=params)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _seqs(view):
+    return [item["seq"] for item in view["items"]]
+
+
+def test_発言が300件を超えても_after0では新しい300件で順番は本物(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+
+    for view in (_view(me, room), _view(me, room, after=0)):
+        assert _seqs(view) == list(range(51, 351))
+        assert view["items"][0]["text"] == "発言51"
+        assert view["items"][-1]["text"] == "発言350"
+        assert view["last_seq"] == 350
+        assert view["has_earlier"] is True
+
+
+def test_発言が300件までなら全部を返し_前はないと答える(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 300)
+
+    view = _view(me, room)
+
+    assert _seqs(view) == list(range(1, 301))
+    assert view["has_earlier"] is False
+
+
+def test_発言のない部屋は前もないと答える(me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+
+    view = _view(me, room)
+
+    assert view["items"] == []
+    assert view["last_seq"] == 0
+    assert view["has_earlier"] is False
+
+
+def test_ツインとの部屋も新しい300件で_未読の項目は持たない(conn, me, users):
+    twin_room = me.get("/api/rooms").json()["items"][0]
+    _fill(conn, twin_room, users["誠一さん"], 301)
+
+    view = _view(me, twin_room)
+
+    assert _seqs(view) == list(range(2, 302))
+    assert view["has_earlier"] is True
+    assert "first_unread_seq" not in view
+
+
+def test_beforeで前の分が読め_足すと重ならず欠けない(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+
+    newest = _view(me, room)
+    middle = _view(me, room, before=newest["items"][0]["seq"], limit=30)
+    oldest = _view(me, room, before=middle["items"][0]["seq"])
+
+    assert _seqs(middle) == list(range(21, 51))
+    assert middle["has_earlier"] is True
+    assert _seqs(oldest) == list(range(1, 21))
+    assert oldest["has_earlier"] is False
+    assert [item["text"] for item in middle["items"]][0] == "発言21"
+    assert _seqs(oldest) + _seqs(middle) + _seqs(newest) == list(range(1, 351))
+    assert middle["last_seq"] == oldest["last_seq"] == 350
+
+
+def test_beforeのlimitの上限は300(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+
+    assert _seqs(_view(me, room, before=351, limit=300)) == list(range(51, 351))
+    for limit in (0, 301):
+        assert me.get(f"/api/rooms/{room['id']}/messages", params={"before": 351, "limit": limit}).status_code == 422
+
+
+def test_limitはafterが0なら新しいほうから効き_afterが1以上なら効かない(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 20)
+
+    assert _seqs(_view(me, room, limit=3)) == [18, 19, 20]
+    assert _seqs(_view(me, room, after=17, limit=1)) == [18, 19, 20]
+
+
+def test_beforeは部屋の外の順番でも読める範囲だけを返す(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 5)
+
+    first = _view(me, room, before=1)
+    beyond = _view(me, room, before=9999)
+
+    assert first["items"] == []
+    assert first["has_earlier"] is False
+    assert _seqs(beyond) == [1, 2, 3, 4, 5]
+    assert me.get(f"/api/rooms/{room['id']}/messages", params={"before": 0}).status_code == 422
+
+
+def test_beforeとafterを両方送るとbeforeを使う(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 10)
+
+    assert _seqs(_view(me, room, before=4, after=2)) == [1, 2, 3]
+
+
+def test_部屋の人でなければ前の分も読めない(conn, me, login, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 10)
+
+    assert login("節子さん").get(f"/api/rooms/{room['id']}/messages", params={"before": 5}).status_code == 404
+
+
+def test_afterが1以上なら300件を超えても全部返す(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+
+    view = _view(me, room, after=10)
+
+    assert _seqs(view) == list(range(11, 351))
+    assert view["items"][0]["text"] == "発言11"
+    assert view["last_seq"] == 350
+    assert view["has_earlier"] is True
+
+
+def test_afterが最後の順番なら空で_last_seqは変わらない(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+
+    view = _view(me, room, after=350)
+
+    assert view["items"] == []
+    assert view["last_seq"] == 350
+
+
+def test_順番を進めて読み続けると300件を超えても発言を飛ばさない(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    sender = users["誠一さん"]
+    read = []
+    after = 0
+
+    # 読むたびに last_seq まで進める。架空ログを流す道具（fiction/run_script.py）と同じ読み方
+    for count in (200, 350, 1):
+        _fill(conn, room, sender, count, start=len(read) + 1)
+        view = _view(me, room, after=after)
+        read += _seqs(view)
+        after = view["last_seq"]
+
+    assert read == list(range(1, 552))
+
+
+def test_前の分の人の情報には_そのとき話した人が入る(conn, me, login, users):
+    room = _make_room(me, users, ["節子さん", "美穂さん"])
+    _say(login("節子さん"), room, "はじめまして。")
+    assert me.post(f"/api/rooms/{room['id']}/members/{users['節子さん'].id}/remove").status_code == 204
+    _fill(conn, room, users["誠一さん"], 350)
+
+    newest = _view(me, room)
+    earlier = _view(me, room, before=2)
+
+    assert "節子さん" not in {person["name"] for person in newest["people"]}
+    assert "節子さん" in {person["name"] for person in earlier["people"]}
+
+
+def test_ツインを入れたときの応答も新しい300件(conn, me, users):
+    room = _make_room(me, users, ["美穂さん"])
+    _fill(conn, room, users["誠一さん"], 350)
+
+    view = _twin_in(me, room).json()
+
+    assert _seqs(view) == list(range(52, 352))
+    assert view["last_seq"] == 351
+    assert view["has_earlier"] is True
+    assert view["items"][-1]["kind"] == "お知らせ"
+
+
+def test_未読の数と最初の未読は読む範囲で変わらない(conn, me, login, users):
+    room = _make_room(me, users, ["美穂さん"], kind="1対1")
+    _fill(conn, room, users["誠一さん"], 350)
+    miho = login("美穂さん")
+
+    # 開いて読むだけでは既読にならず、未読は返さなかった古い分まで数える
+    for view in (_view(miho, room), _view(miho, room, before=51, limit=50), _view(miho, room, after=349)):
+        assert view["first_unread_seq"] == 1
+        assert view["room"]["unread_count"] == 350
+    assert _view(me, room)["others_read_seqs"] == [0]
+
+    assert miho.post(f"/api/rooms/{room['id']}/read", json={"seq": 100}).status_code == 204
+    view = _view(miho, room)
+    assert view["first_unread_seq"] == 101
+    assert view["room"]["unread_count"] == 250
+    assert _view(me, room)["others_read_seqs"] == [100]
+
+    assert miho.post(f"/api/rooms/{room['id']}/read", json={"seq": 350}).status_code == 204
+    view = _view(miho, room)
+    assert view["first_unread_seq"] is None
+    assert view["room"]["unread_count"] == 0
+    assert _view(me, room)["others_read_seqs"] == [350]

@@ -65,7 +65,11 @@ _BODY_WORDS = (
     "胸が苦し",
     "息が苦し",
     "息苦し",
-    "息ができ",
+    # できない形だけを見る。「親も息ができる」のようなふつうの文に119番の案内を付けないため。
+    "息ができな",
+    "息ができん",
+    "息ができません",
+    "息ができず",
     "ろれつ",
     "意識が",
     "血を吐",
@@ -80,7 +84,23 @@ _DISTRESS_WORDS = ("もう耐えられない", "もう限界", "つらくてた�
 _HEALTH_TOPICS = ("薬", "痛", "湿布", "血圧", "血糖", "病院", "病気", "眠れな", "手術", "検査")
 # 「薬」を含むが、飲む薬の話ではない語
 _NOT_MEDICINE = ("農薬", "薬局", "薬味", "薬剤師")
-_HEALTH_ASKS = ("どうしたら", "どうすれば", "いいかな", "いいのかな", "いいですか", "いいでしょうか", "どっち", "どちら", "べきか")
+# 「どっち」「どちら」は選ぶことを聞く形だけを見る。「どっちも」「どっちか分からん」「どっちになるか」は
+# 話しているだけの文で、案内を付けると話を聞いていないように読めるため。
+_HEALTH_ASKS = (
+    "どうしたら",
+    "どうすれば",
+    "いいかな",
+    "いいのかな",
+    "いいですか",
+    "いいでしょうか",
+    "どっちが",
+    "どちらが",
+    "どっちを",
+    "どちらを",
+    "どっちの",
+    "どちらの",
+    "べきか",
+)
 
 # つなぎ先の文。AI の文ではなく、プログラムが必ず添える。番号は厚生労働省の案内で確かめた。
 _CARE_LINES = {
@@ -303,6 +323,40 @@ def advises_on_health(tip: str) -> bool:
     return any(word in tip for word in _HEALTH_ADVICE_WORDS)
 
 
+# 今日の一言の決まり。ツインは天気予報を知らないので、予報を伝える形にしない。
+# 天気の語と、聞いた話や見込みの言い方が同じ文にあるときだけ止める。「雨のあとの晴れた日は」のような話は止めない。
+_WEATHER_WORDS = ("暑", "寒", "涼し", "暖か", "雨", "晴れ", "曇", "雪", "台風", "気温", "冷え込", "天気")
+_HEARSAY = re.compile(r"(?:そう(?:なので|です|だ|で)|らしい|でしょう|見込み|なるので|なります)")
+_TODAY_WEATHER = re.compile(r"(?:今日|明日|今夜|今晩|午後|夕方)(?:は|も|から)[^。、]{0,6}(?:暑|寒|涼し|暖か|雨|晴れ|曇|雪)")
+# 時刻を過ぎた話。(この時より後なら, 語)。明日の話は止めない
+_TIME_PASSED = ((12, ("午前中", "午前のうち", "朝のうち", "今朝のうち")), (17, ("昼のうち", "昼間のうち", "日中", "お昼", "昼前", "午後のうち")))
+TIP_SENTENCE = re.compile(r"[^。！!\n]+")
+
+
+def tip_problem(tip: str, *, now: datetime, heard: str) -> str | None:
+    """今日の一言の問題を返す。なければ None。
+
+    実際に、夜の10時に「今日は暑くなるそうなので、午前中のうちに洗濯物を…」と書いた。本人の「暑うなるごたる」を
+    予報のように言い直し、もう過ぎた時間の案を出したもの。プロンプトで禁じても守られるとは限らないので、ここで止める。
+    heard は今日の話。本人が話した天気に触れるのはよい。
+    関連するテスト：tests/test_twin.py の test_今日の一言
+    """
+    if "予報" in tip:
+        return "天気予報を知らないので、予報の話を書かないでください。"
+    for sentence in TIP_SENTENCE.findall(tip):
+        weather = [word for word in _WEATHER_WORDS if word in sentence]
+        if weather and _HEARSAY.search(sentence):
+            return "予報を伝える形にしないでください。今日の話に出たことか、季節のことにしてください。"
+        if _TODAY_WEATHER.search(sentence) and not any(word in heard for word in weather):
+            return "話に出ていない今日の天気を書かないでください。"
+        if "明日" in sentence or "明朝" in sentence:
+            continue
+        for hour, words in _TIME_PASSED:
+            if now.hour >= hour and any(word in sentence for word in words):
+                return f"今は{now.hour}時です。この時刻に合う案にしてください。"
+    return None
+
+
 def drop_referrals(reply: str) -> str:
     """AI の文から相談先の案内を外す。案内はプログラムが添えるので、2回くり返さないため。"""
     sentences = re.findall(r"[^。！!\n]+[。！!]*", reply)
@@ -478,6 +532,7 @@ def respond_in_twin_room(
     now: datetime,
     photos_dir: Path,
     client=None,
+    ask: bool = True,
 ) -> None:
     """本人の発言に返事をする。AI が失敗したら例外のまま上げる。本人の発言は保存済み。"""
     started = time.monotonic()
@@ -538,6 +593,10 @@ def respond_in_twin_room(
     if care is not CareKind.NONE or says_goodbye(said):
         question = None
         dropped_because = "体や命の場面か、終えたそう"
+    elif not ask:
+        # 架空の記録を流す道具が、本人が話を続けない日に指定する（app/main.py の twin_may_ask）
+        question = None
+        dropped_because = "問わない日"
     elif question:
         resting = memory.resting_themes(conn)
         asked = memory.asked_questions(conn, room.id)
@@ -636,17 +695,23 @@ def close_in_twin_room(
         max_lines=memory.LIMITS["current_utterances"],
         max_chars=memory.LIMITS["current_chars"],
         with_photos=True,
+        with_added=True,
     )
     if not lines:
         return
     target = f"会話 {conversation.id}"
-    text = f"## 今日の日付\n{memory.date_label(now.date())}\n\n## 今日の話\n" + "\n".join(lines)
+    heard = "\n".join(lines)
+    text = f"## 今日の日付\n{memory.date_label(now.date())}\n\n## 今の時刻\n{now.hour}時{now.minute}分\n\n## 今日の話\n{heard}"
     system = prompts.twin_closing_system(self_user.display_name)
 
-    def ask(*, deep: bool):
+    def tip_is_bad(tip: str) -> str | None:
+        return "体や健康の助言を書かないでください。" if advises_on_health(tip) else tip_problem(tip, now=now, heard=heard)
+
+    def ask(*, deep: bool, feedback: str | None = None):
         role = config.TWIN_DEEP_ROLE if deep else "ツインの会話"
+        asking = f"{text}\n\n## 前の一言の直すところ\n{feedback}" if feedback else text
         try:
-            result = ai.twin_closing(system=system, text=text, client=client, deep=deep)
+            result = ai.twin_closing(system=system, text=asking, client=client, deep=deep)
         except _SPENT_ERRORS as error:
             _log_spent(conn, role, error, target)
             raise
@@ -654,15 +719,16 @@ def close_in_twin_room(
         return result
 
     closing = ask(deep=False).value
-    if advises_on_health(closing.tip):
+    problem = tip_is_bad(closing.tip)
+    if problem:
         # 答えをプログラムが判断し、モデルを Sonnet 5.5 へ選択して書き直す。それでも助言なら一言を出さない
         try:
-            closing = ask(deep=True).value
+            closing = ask(deep=True, feedback=problem).value
         except _ALL_AI_ERRORS:
             pass
     with ledger.atomic(conn):
         _say(conn, room, conversation.id, Place.DIARY_AND_TALK, closing.reply, now)
-        if not advises_on_health(closing.tip):
+        if not tip_is_bad(closing.tip):
             _say(conn, room, conversation.id, Place.DIARY_AND_TALK, closing.tip, now)
 
 
@@ -754,7 +820,7 @@ def _pending_in_room(conn: sqlite3.Connection, room_id: int) -> bool:
 
 
 def thread_turn(
-    conn: sqlite3.Connection, *, letter_id: int, author_user_id: int, now: datetime, client=None
+    conn: sqlite3.Connection, *, letter_id: int, author_user_id: int, now: datetime, client=None, ask: bool = True
 ) -> None:
     """コメントが付いたら、本人への問いを1つだけ書く。本人が答えるまで、次の問いは書かない。"""
     self_user = db.self_user(conn)
@@ -764,6 +830,8 @@ def thread_turn(
                 "UPDATE question_logs SET result = ? WHERE letter_id = ? AND result IS NULL AND asked_on IS NOT NULL",
                 (QuestionResult.ANSWERED.value, letter_id),
             )
+        return
+    if not ask:
         return
     pending = conn.execute(
         "SELECT 1 FROM question_logs WHERE letter_id = ? AND result IS NULL AND asked_on IS NOT NULL LIMIT 1",

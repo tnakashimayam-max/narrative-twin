@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterable, Iterator
+import time
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from datetime import date, datetime
 
@@ -72,6 +73,10 @@ class LedgerError(ValueError):
     """台帳の決まりに合わない追記をしようとしたとき。"""
 
 
+# 書き込みの鍵を待った秒数を受け取る関数。流す道具（fiction/run_script.py）が、同時の数を決める材料を集める間だけ入れる
+write_wait_watcher: Callable[[float], None] | None = None
+
+
 @contextmanager
 def atomic(conn: sqlite3.Connection) -> Iterator[None]:
     """中の追記を、すべて入るか、すべて入らないかの1つの処理にする。
@@ -79,12 +84,19 @@ def atomic(conn: sqlite3.Connection) -> Iterator[None]:
     言明、解釈、問いの候補を別々に確定すると、途中で失敗したときに一部だけが残り、
     「もう分けた」と判定されて、残りを作り直せなくなる。
     すでに処理の中なら外側に任せ、ここでは確定しない。関数を重ねて呼べるようにするため。
-    関連するテスト：tests/test_splitter.py
+
+    最初に書き込みの鍵を取る（BEGIN IMMEDIATE）。ふつうの BEGIN は、読んだあとで書こうとしたときに
+    ほかの書き込みが先に確定していると、待たずに失敗するため（WAL の SQLITE_BUSY_SNAPSHOT）。
+    鍵を持つ間はほかの人が書けないので、この中では AI を呼ばない。
+    関連するテスト：tests/test_splitter.py、tests/test_run_script_jobs.py
     """
     if conn.in_transaction:
         yield
         return
-    conn.execute("BEGIN")
+    started = time.monotonic()
+    conn.execute("BEGIN IMMEDIATE")
+    if write_wait_watcher is not None:
+        write_wait_watcher(time.monotonic() - started)
     try:
         yield
     except BaseException:

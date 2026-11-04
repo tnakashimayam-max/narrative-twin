@@ -12,3 +12,4 @@ logs/
 *.db-shm
 .playwright-mcp/
 *.db.before_*
+.claude/worktrees/

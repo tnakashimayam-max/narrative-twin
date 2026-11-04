@@ -7,7 +7,10 @@
 呼び出しのモデルとトークン数は ai_calls の表に残す。ふだんは会話を閉じたあとや、スレッドとグループの
 発言のあとに裏で動く（app/jobs.py）。
 
-関連するテスト：tests/test_intake.py、tests/test_twin.py
+発言の中身をプログラムが判断し、必要なときだけモデルを Sonnet 5.5 へ選択する（app/twin_model.py の
+reason_to_split_deep）。選ぶ理由と決まりの表は docs/tools.md の「重い言葉の分割でモデルを選ぶ」にある。
+
+関連するテスト：tests/test_intake.py、tests/test_twin.py、tests/test_twin_model.py
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 
-from app import ai, config, db, splitter
+from app import ai, config, db, splitter, twin, twin_model
 from app.auth import NOT_FOUND, get_conn, require_self
 from app.schemas import SplitTargetKind, User
 
@@ -32,6 +35,9 @@ _AI_ERRORS = (
     ai.AIUnavailableError,
 )
 _SPENT_ERRORS = (ai.AIResultError, ai.AIRefusedError)
+# 選んだモデルが答えられなかったと見て、Haiku 5.5 へ切り替える失敗。API キーがないときは
+# どのモデルでも呼べないので入れない。
+_DEEP_FAILED_ERRORS = (*_SPENT_ERRORS, ai.AIUnavailableError)
 
 
 def split_and_save(
@@ -49,6 +55,11 @@ def split_and_save(
     """発言を言明に分けて保存する。本文に問題があれば、理由を伝えて1回だけやり直す。
 
     1回だけにするのは、費用と待ち時間を読めるようにするため。残った問題の言明は捨てて数える。
+
+    発言の中身をプログラムが判断し、必要なときだけモデルを Sonnet 5.5 へ選択する。見るのは今回分ける本人の発言だけで、
+    earlier は文脈として渡すだけなので見ない。やり直しは答えたモデルと同じモデルで行う。
+    選んだモデルが答えられないときは Haiku 5.5 の答えを使う。何も残らないより良いため。
+    Haiku 5.5 も答えられなければ例外のまま上げる。印は進まないので、次の処理で流し直せる。
     """
     users = splitter.people_in(conn, [*(earlier or []), *utterances])
     self_user = db.self_user(conn)
@@ -56,14 +67,19 @@ def split_and_save(
     transcript = splitter.format_transcript(
         place, splitter.first_spoken_on(utterances), utterances, users, letter_body, earlier
     )
+    self_words = [item.text for item in utterances if self_user and item.speaker_user_id == self_user.id]
+    deep = twin_model.reason_to_split_deep(place, self_words, twin.detect_care) is not None
 
-    def _call(feedback: str | None = None):
+    def _ask(feedback: str | None, *, use_deep: bool):
+        role = config.SPLIT_DEEP_ROLE if use_deep else "言明への分割"
         try:
-            result = ai.split_utterances(transcript, model_summary, feedback, client=client, self_name=self_name)
+            result = ai.split_utterances(
+                transcript, model_summary, feedback, client=client, self_name=self_name, deep=use_deep
+            )
         except _SPENT_ERRORS as error:
             db.log_ai_call(
                 conn,
-                role="言明への分割",
+                role=role,
                 model=error.model,
                 input_tokens=error.input_tokens,
                 output_tokens=error.output_tokens,
@@ -72,7 +88,7 @@ def split_and_save(
             raise
         db.log_ai_call(
             conn,
-            role="言明への分割",
+            role=role,
             model=result.model,
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
@@ -80,6 +96,16 @@ def split_and_save(
             seconds=result.seconds,
         )
         return result
+
+    def _call(feedback: str | None = None):
+        nonlocal deep
+        if deep:
+            try:
+                return _ask(feedback, use_deep=True)
+            except _DEEP_FAILED_ERRORS:
+                # ここから先は Haiku 5.5 が答えるので、本文のやり直しも Haiku 5.5 で行う
+                deep = False
+        return _ask(feedback, use_deep=False)
 
     result = _call()
     problems = splitter.quote_problems(result.value, utterances)

@@ -1,10 +1,10 @@
-"""ツインの会話で、どのモデルに答えさせるかをプログラムが判断する。
+"""ツインの会話と言明への分割で、どのモデルに任せるかをプログラムが判断する。
 
 役割：発言の中身と Haiku 5.5 の答えを見て、必要なときだけモデルを Sonnet 5.5 へ選択する。
-4つの極：1. 書く・話す。
-守る原則：1（判断するのは本人）。本人の言葉の扱いと同意には関わらない。
+4つの極：1. 書く・話す（ツインの会話）、3. 読み解き、積み上げる（言明への分割）。
+守る原則：1（判断するのは本人）。本人の言葉の照合と同意の絞り込みはどのモデルでも同じで、ここでは変えない。
 
-なぜこう作ったか：
+ツインの会話について、なぜこう作ったか：
 - ふだんの話は Haiku 5.5 で足りる。本人を待たせず、1回の返事の費用が Sonnet 5.5 の約20分の1で済む。
 - 同じ20件を比べると、相談、体の話、人生に関わる話、気持ちの話で差が出た。Haiku 5.5 は暮らしの案を添えない回があり、
   施設の話に「急いで答えを出さなくてもいいと思います」と意見に近い文を書いた回もあった（docs/tools.md）。
@@ -17,16 +17,22 @@
 語の一覧は、Sonnet 5.5 へ回す場面を見つけるためのもの。語に当たらなくても Haiku 5.5 が答えるだけで、
 誤っても言葉の質と費用の差で済む。安全のつなぎ先はここではなく app/twin.py の detect_care と care_lines が決める。
 
-全体の表と実測：docs/tools.md の「ツインの会話でモデルを選ぶ」
+言明への分割について、なぜこう作ったか（reason_to_split_deep）：
+- 本人の言葉は作り直せない。比べで Haiku 5.5 は発言を1つ落とし、言い切りの文を作った。回数の多い短い話は Haiku 5.5 で足りる。
+- 同じ3単位の比べで Sonnet 5.5 は費用が約12倍（$0.0059 と $0.0683）、時間は短かった（39.0秒と23.2秒）。
+  全部を Sonnet 5.5 にせず、本人が長く話した回と、人生、体、気持ちの語がある回だけにする。
+
+全体の表と実測：docs/tools.md の「ツインの会話でモデルを選ぶ」「重い言葉の分割でモデルを選ぶ」
 関連するテスト：tests/test_twin_model.py
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable
 from enum import StrEnum
 
-from app.schemas import CareKind
+from app.schemas import CareKind, Place
 
 
 class DeepReason(StrEnum):
@@ -37,6 +43,7 @@ class DeepReason(StrEnum):
     BODY = "体の話"
     LIFE = "人生に関わる話"
     FEELING = "気持ちの話"
+    LONG = "本人が長く話した"
     BAD_ANSWER = "Haiku が決まりに合う答えを出せなかった"
     NOTHING_LEFT = "決まりを通すと文が残らなかった"
     THIN = "言い直しだけの返事"
@@ -89,6 +96,11 @@ _FEELING_WORDS = (
 _THIN_ENDS = ("のですね", "んですね")
 _SENTENCE = re.compile(r"[^。！!\n]+")
 
+# 言明への分割で Sonnet 5.5 を選ぶ発言の長さ（字数）。
+SPLIT_DEEP_CHARS = 80
+# 言明への分割で Sonnet 5.5 を選ぶ話の種類。相談は入れない。「？」だけで選ばないため。
+_SPLIT_DEEP_REASONS = frozenset({DeepReason.CARE, DeepReason.BODY, DeepReason.LIFE, DeepReason.FEELING})
+
 
 def reason_before_answer(said: str, keyword_care: CareKind) -> DeepReason | None:
     """発言の中身を見て、最初から Sonnet 5.5 に答えさせる理由を返す。なければ None。"""
@@ -117,4 +129,25 @@ def reason_after_answer(shown_reply: str) -> DeepReason | None:
         return DeepReason.NOTHING_LEFT
     if is_thin(shown_reply):
         return DeepReason.THIN
+    return None
+
+
+def reason_to_split_deep(
+    place: str, self_words: Iterable[str], care_of: Callable[[str], CareKind]
+) -> DeepReason | None:
+    """言明への分割で、発言の中身をプログラムが判断し、必要なときだけモデルを Sonnet 5.5 へ選択する。理由を返す。なければ None。
+
+    対象はツインとの部屋の会話だけ。スレッドのコメントとグループは Haiku 5.5 のままにする。
+    本人の発言のどれか1つが長いか重い語を含めば選ぶ。AI には判断させない。毎回の費用が増え、判断もぶれるため。
+    care_of は app/twin.py の detect_care。twin.py がこのファイルを読み込むので、ここからは読み込まず受け取る。
+    関連するテスト：tests/test_twin_model.py
+    """
+    if place != Place.DIARY_AND_TALK:
+        return None
+    for said in self_words:
+        if len(said) >= SPLIT_DEEP_CHARS:
+            return DeepReason.LONG
+        reason = reason_before_answer(said, care_of(said))
+        if reason in _SPLIT_DEEP_REASONS:
+            return reason
     return None

@@ -26,7 +26,7 @@
 
 1回の処理で呼ぶ回数：型のやり直しは1回まで。言明への分割では本文のやり直しも1回までなので、
 Claude の呼び出しは最悪4回になる。通信の失敗の繰り返し（config.MAX_API_RETRIES）を含めると、
-HTTP の要求は最悪12回になる。
+HTTP の要求は最悪12回になる。重い言葉の分割で Haiku 5.5 へ切り替えると、最悪6回と18回になる（app/intake.py）。
 
 接続確認は本物の API で実行した。代替に切り替わる場面は、SDK の説明と、通信を差し替えた
 テストでだけ確かめている。
@@ -440,10 +440,14 @@ def split_utterances(
     client: anthropic.Anthropic | None = None,
     *,
     self_name: str,
+    deep: bool = False,
 ) -> AIResult[SplitResult]:
-    """会話やスレッドの発言を言明に分ける。結果の確かめと保存は app/splitter.py が行う。"""
+    """会話やスレッドの発言を言明に分ける。結果の確かめと保存は app/splitter.py が行う。
+
+    deep はプログラムが選んだ、重い言葉の分割のモデル（app/twin_model.py）。プロンプトと確かめ方は同じで、モデルだけが変わる。
+    """
     return call_structured(
-        "言明への分割",
+        config.SPLIT_DEEP_ROLE if deep else "言明への分割",
         system=prompts.split_system(self_name),
         content=prompts.split_user_text(transcript, model_summary, feedback),
         schema=SplitResult,

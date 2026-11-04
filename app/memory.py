@@ -74,15 +74,18 @@ def conversation_lines(
     max_lines: int | None = None,
     max_chars: int | None = None,
     with_photos: bool = False,
+    with_added: bool = False,
 ) -> list[str]:
     """会話の発言を、話した順の文にする。新しいほうから上限まで。
 
     写真の説明は AI の読み取りなので、話した人の行にせず分ける。ツインとの部屋でだけ使う
     （with_photos）。説明を別の部屋へ持ち出さないため。
+    with_added は、架空の記録で足した本人の短い受け答え（発言の表に入らない行）も読む。ツインの次の返事が答えを
+    無視しないよう、ツインの文にだけ渡す。要約と分割には渡さないので、記録にならない（fiction/run_script.py）。
     """
     rows = conn.execute(
         """
-        SELECT m.sender_user_id, u.text AS body, p.description AS photo_description, m.photo_id
+        SELECT m.sender_user_id, u.text AS body, m.text AS added, p.description AS photo_description, m.photo_id
         FROM room_messages m
         LEFT JOIN utterances u ON u.id = m.utterance_id
         LEFT JOIN photos p ON p.id = m.photo_id AND p.kind = '会話'
@@ -97,8 +100,9 @@ def conversation_lines(
         speaker = _speaker_label(conn, row["sender_user_id"], names)
         if with_photos and row["photo_id"] and row["photo_description"]:
             lines.append(f"（{speaker}が送った写真。AI の読み取り）{row['photo_description']}")
-        if row["body"]:
-            lines.append(f"{speaker}：{speech(row['body'])}")
+        body = row["body"] or (row["added"] if with_added else None)
+        if body:
+            lines.append(f"{speaker}：{speech(body)}")
     return _newest_within(lines, max_lines, max_chars)
 
 
@@ -274,6 +278,7 @@ def build_twin_context(
                 max_lines=LIMITS["current_utterances"],
                 max_chars=LIMITS["current_chars"],
                 with_photos=True,
+                with_added=True,
             )
         ),
     }

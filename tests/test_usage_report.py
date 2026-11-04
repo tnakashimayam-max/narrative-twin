@@ -85,3 +85,20 @@ def test_自分用の記録の置き場は読まない(tmp_path):
 
     with pytest.raises(SystemExit):
         usage_report.summarize(folder / "narrative_twin.db")
+
+
+def test_費用は1回ごとに計算し_合計が10万トークンを超えても高い単価にしない(tmp_path):
+    # Haiku 5.5 はプロンプトが10万トークンを超える回だけ単価が上がる。合計で計算すると約5倍になっていた
+    from app import db
+
+    path = tmp_path / "many.db"
+    db.init_db(path)
+    connection = db.connect(path)
+    for _ in range(30):
+        db.log_ai_call(connection, role="言明への分割", model="claude-haiku-5-5", input_tokens=5000, output_tokens=1000)
+    connection.close()
+
+    item = usage_report.summarize(path)[0]
+
+    assert item["input_tokens"] == 150000
+    assert item["cost_usd"] == pytest.approx(30 * (5000 * 0.10 + 1000 * 0.50) / 1_000_000)

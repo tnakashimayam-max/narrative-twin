@@ -1,6 +1,6 @@
 """便りとタイムラインのテスト。
 
-役割：共有するまで見えないこと、相手の絞り込み、コメントが証言になること、スレッドのツインを確かめる。
+役割：共有するまで見えないこと、相手の絞り込み、ページの切り方、コメントが証言になること、スレッドのツインを確かめる。
 4つの極：2. 分かち合う。
 守る原則：3（出どころを分ける）、10（見える範囲はサーバーで絞る）、14（スレッドのツインは問いを1つ）。
 
@@ -9,10 +9,12 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, time, timedelta
+
 import pytest
 
-from app import ai, ledger
-from app.schemas import Source
+from app import ai, consent, ledger, timeline
+from app.schemas import CommentDraft, LetterDraft, ShareScope, Source
 from tests.fake_claude import RoleClaude
 
 
@@ -179,6 +181,169 @@ def test_タイムラインに数の項目を持たない(me, login):
     forbidden = {"likes", "like_count", "read_count", "seen_by", "comment_count", "recommended"}
     assert not forbidden & item.keys()
     assert letter["id"] == item["id"]
+
+
+# ---- ページの切り方 ----
+
+FIRST_DAY = date(2030, 1, 1)
+
+
+def _letters_by_day(conn, count, share_with=ShareScope.FAMILY, label="便り", start=FIRST_DAY):
+    """1日1通の便りを、古いほうから順に入れる。共有の画面は今日の日付でしか入れられないので、台帳へ直接入れる。"""
+    with ledger.atomic(conn):
+        return [
+            ledger.add_letter(
+                conn,
+                LetterDraft(
+                    body=f"{label}{index}",
+                    share_with=share_with,
+                    shared_at=datetime.combine(start + timedelta(days=index), time(12)),
+                ),
+            )
+            for index in range(count)
+        ]
+
+
+def _all_pages(client):
+    """画面と同じように、next_before をたどって最後のページまで読む。"""
+    pages = []
+    before = None
+    while True:
+        response = client.get("/api/timeline", params={"before": before} if before else {})
+        assert response.status_code == 200, response.text
+        pages.append(response.json())
+        before = pages[-1]["next_before"]
+        if before is None:
+            return pages
+
+
+def test_タイムラインは新しいほうから約30件で_続きを読むと重ならず欠けない(conn, me):
+    letters = _letters_by_day(conn, 70)
+
+    pages = _all_pages(me)
+
+    assert [len(page["items"]) for page in pages] == [30, 30, 10]
+    assert [item["id"] for page in pages for item in page["items"]] == [letter.id for letter in reversed(letters)]
+    assert pages[0]["next_before"] == pages[0]["items"][-1]["shared_at"][:10]
+    assert pages[-1]["next_before"] is None
+
+
+def test_便りがちょうど30件なら続きはない(conn, me):
+    _letters_by_day(conn, 30)
+
+    pages = _all_pages(me)
+
+    assert [len(page["items"]) for page in pages] == [30]
+
+
+def test_同じ日の便りはページの切れ目で分かれない(conn, me):
+    _letters_by_day(conn, 5, label="前の便り", start=date(2030, 2, 1))
+    same_day = date(2030, 3, 1)
+    with ledger.atomic(conn):
+        for hour in range(5):
+            ledger.add_letter(
+                conn,
+                LetterDraft(body=f"同じ日{hour}", share_with=ShareScope.FAMILY, shared_at=datetime.combine(same_day, time(hour))),
+            )
+    _letters_by_day(conn, 28, label="新しい便り", start=date(2030, 4, 1))
+
+    pages = _all_pages(me)
+
+    assert [len(page["items"]) for page in pages] == [33, 5]
+    assert pages[0]["next_before"] == "2030-03-01"
+    assert {item["body"] for item in pages[0]["items"]} >= {f"同じ日{hour}" for hour in range(5)}
+    assert not any(item["body"].startswith("同じ日") for item in pages[1]["items"])
+
+
+def test_見えない便りはページの切れ目を動かさない(conn, login):
+    _letters_by_day(conn, 40, ShareScope.CONNECTED, "みんなへ")
+    setsuko = login("節子さん")
+    before_hidden = _all_pages(setsuko)
+    assert [len(page["items"]) for page in before_hidden] == [30, 10]
+
+    # 同じ期間の間にはさみ、前後にも足す。節子さんへの応答は1文字も変わらない
+    _letters_by_day(conn, 300, ShareScope.FAMILY, "家族へ", start=FIRST_DAY - timedelta(days=100))
+
+    assert _all_pages(setsuko) == before_hidden
+
+
+def test_家族だけの便りが古いほうにあっても_節子さんには続きがあると出ない(conn, login):
+    _letters_by_day(conn, 100, ShareScope.FAMILY, "家族へ", start=FIRST_DAY - timedelta(days=200))
+    _letters_by_day(conn, 30, ShareScope.CONNECTED, "みんなへ")
+
+    setsuko_page = login("節子さん").get("/api/timeline").json()
+    miho_page = login("美穂さん").get("/api/timeline").json()
+
+    assert len(setsuko_page["items"]) == 30
+    assert {item["share_with"] for item in setsuko_page["items"]} == {"縁のある人まで"}
+    assert setsuko_page["next_before"] is None
+    assert miho_page["next_before"] == "2030-01-01"
+
+
+@pytest.mark.parametrize("name", ["誠一さん", "美穂さん", "節子さん", "田中さん"])
+def test_すべてのページを足すと_同意の絞り込みと同じ便りが同じ順に並ぶ(conn, login, users, name):
+    _letters_by_day(conn, 40, ShareScope.FAMILY, "家族へ")
+    _letters_by_day(conn, 40, ShareScope.CONNECTED, "みんなへ")
+
+    pages = _all_pages(login(name))
+
+    read = [item["id"] for page in pages for item in page["items"]]
+    assert read == [letter.id for letter in consent.visible_letters(conn, users[name])]
+
+
+def test_田中さんには便りもページの続きもない(conn, login):
+    _letters_by_day(conn, 40)
+
+    page = login("田中さん").get("/api/timeline").json()
+
+    assert page["items"] == []
+    assert page["next_before"] is None
+
+
+def test_タイムラインの応答に件数の項目を持たない(conn, me):
+    _letters_by_day(conn, 40)
+
+    assert me.get("/api/timeline").json().keys() == {"items", "people", "self_id", "next_before"}
+
+
+def test_スレッドと人の情報は返すページの分だけ作る(conn, me, users, monkeypatch):
+    letters = _letters_by_day(conn, 31)
+    ledger.add_comment(
+        conn,
+        CommentDraft(
+            letter_id=letters[0].id,
+            author_user_id=users["美穂さん"].id,
+            body="古い便りへのコメントです。",
+            commented_at=datetime(2030, 3, 1, 9),
+        ),
+    )
+    read_threads = []
+    real_thread = timeline._thread
+    monkeypatch.setattr(timeline, "_thread", lambda conn, letter_id: read_threads.append(letter_id) or real_thread(conn, letter_id))
+
+    first, second = _all_pages(me)
+
+    assert len(read_threads) == 31
+    assert {person["name"] for person in first["people"]} == {"誠一さん"}
+    assert {person["name"] for person in second["people"]} == {"誠一さん", "美穂さん"}
+    assert [item["text"] for item in second["items"][0]["thread"]] == ["古い便りへのコメントです。"]
+
+
+def test_前のページの便りにコメントすると_そのページで読める(conn, me, login, use_claude):
+    use_claude()
+    letters = _letters_by_day(conn, 31)
+    miho = login("美穂さん")
+
+    comment = _comment(miho, {"id": letters[0].id}, "懐かしいです。").json()
+
+    first, second = _all_pages(miho)
+    assert comment["seq"] == 1
+    assert all(item["thread"] == [] for item in first["items"])
+    assert [item["text"] for item in second["items"][0]["thread"]] == ["懐かしいです。"]
+
+
+def test_日付でないbeforeは受け付けない(me):
+    assert me.get("/api/timeline", params={"before": "きのう"}).status_code == 422
 
 
 # ---- コメント ----

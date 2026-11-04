@@ -12,7 +12,13 @@
 未処理は次に動いたときと、python -m app の起動のときに流し直す。処理済みの印（split_marks）を
 保存と同じ処理の中で進めるので、途中で止まっても同じ発言からやり直せる。
 
-関連するテスト：tests/test_twin.py、tests/test_rooms.py、tests/test_timeline.py、tests/test_ecomap.py
+app.state.job_runner は、ふつうは None で、その場で順に流す。サーバーはこの動きだけを使う。
+架空の10年分を流す道具（fiction/run_script.py）は、流している間だけ受け手を入れて、裏で流せる分を渡す。
+次の日の会話が読む要約は本線で待ち、言明への分割、人の候補、スレッドの問いを渡す。受け手があるときは、
+AI の一時の失敗を待ってやり直すかどうかも受け手が決める。
+
+関連するテスト：tests/test_twin.py、tests/test_rooms.py、tests/test_timeline.py、tests/test_ecomap.py、
+tests/test_run_script_jobs.py
 決めた経緯：docs/decisions.md
 """
 
@@ -22,8 +28,10 @@ import re
 import sqlite3
 import threading
 import time
+from contextlib import nullcontext
+from datetime import datetime
 
-from app import ai, clock, db, devlog, intake, memory, prompts, room_store, splitter, twin
+from app import ai, clock, db, devlog, intake, ledger, memory, prompts, room_store, splitter, twin
 from app.schemas import CandidateStatus, RoomKind, SplitTargetKind
 
 # 1回の処理で分け直す回数の上限。発言が届き続けても止まるようにする。
@@ -37,30 +45,50 @@ def _lock_for(app, key: str) -> threading.Lock:
         return app.state.job_locks.setdefault(key, threading.Lock())
 
 
+def thread_key(letter_id: int) -> str:
+    """スレッドの裏の処理の名札。次のコメントの前に、同じ便りの処理が終わるのを待つために使う。"""
+    return f"便り:{letter_id}"
+
+
 def _guarded(app, job: str, target: str, work) -> None:
-    """裏の処理を動かす。失敗しても、ほかの処理を止めず、記録に残す。"""
+    """裏の処理を動かす。失敗しても、ほかの処理を止めず、記録に残す。
+
+    受け手があるときは、受け手が「やり直す」と決めた失敗を待ってやり直す。やり直す分は失敗の表に入れない。
+    やり直しても印は同じ発言から始まるので、言明は重ならない。止める途中なら何もせずに戻る。
+    印が進まないので、続きから流すときに拾う。
+    """
+    runner = app.state.job_runner
     log = app.state.devlog
     started = time.monotonic()
     conn = db.connect(app.state.db_path)
+    tries = 0
     # 別のスレッドから呼ばれることがあるので、ログの行き先をここで決め直す
     with devlog.use(log):
         try:
-            work(conn)
-        except Exception as error:  # noqa: BLE001  裏の処理の失敗は、どんな種類でも記録して続ける
-            log.write(
-                job,
-                outcome=devlog.FAILED,
-                error=devlog.error_name(error),
-                ms=devlog.since(started),
-                target=target,
-                where=devlog.where(error),
-            )
-            try:
-                db.log_job_failure(conn, job, target, error)
-            except sqlite3.Error:
-                pass
-        else:
-            log.write(job, outcome=devlog.SUCCESS, ms=devlog.since(started), target=target)
+            while True:
+                if runner is not None and not runner.wait_for_api():
+                    return
+                try:
+                    work(conn)
+                except Exception as error:  # noqa: BLE001  裏の処理の失敗は、どんな種類でも記録して続ける
+                    log.write(
+                        job,
+                        outcome=devlog.FAILED,
+                        error=devlog.error_name(error),
+                        ms=devlog.since(started),
+                        target=target,
+                        where=devlog.where(error),
+                    )
+                    tries += 1
+                    if runner is not None and runner.retry_after_failure(job, target, error, tries):
+                        continue
+                    try:
+                        db.log_job_failure(conn, job, target, error)
+                    except sqlite3.Error:
+                        pass
+                else:
+                    log.write(job, outcome=devlog.SUCCESS, ms=devlog.since(started), target=target)
+                return
         finally:
             conn.close()
 
@@ -68,8 +96,12 @@ def _guarded(app, job: str, target: str, work) -> None:
 def split_new(app, conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int) -> splitter.SplitReport:
     """印より後の発言を言明に分ける。人の発言がなければ AI を呼ばない。"""
     total = splitter.SplitReport()
+    runner = app.state.job_runner
     with _lock_for(app, f"{kind.value}:{target_id}"):
         for _ in range(_MAX_ROUNDS):
+            # 長い会話は何回かに分けて AI を呼ぶので、全体で待っている間は次の回へ進まない
+            if runner is not None and not runner.wait_for_api():
+                break
             mark = splitter.read_mark(conn, kind, target_id)
             new, last_rowid = splitter.load_after_mark(conn, kind, target_id, mark)
             if not any(not utterance.speaker_is_twin for utterance in new):
@@ -143,10 +175,20 @@ def _stem(name: str) -> str:
     return re.sub(r"(さん|様|さま|ちゃん|くん|君)$", "", name.strip())
 
 
+def _known_names(conn: sqlite3.Connection) -> set[str]:
+    """登録した人と、これまでの候補の呼び方を返す。"""
+    people = db.list_users(conn)
+    known = {name for person in people for name in (person.name, person.display_name, person.relation) if name}
+    # 候補の続柄も入れる。「和子（妻）」が候補にいるのに「妻」を別の人として出さないため。
+    past = conn.execute("SELECT name, relation FROM person_candidates").fetchall()
+    return {_stem(value) for value in [*known, *(v for row in past for v in (row["name"], row["relation"]))] if value}
+
+
 def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str) -> None:
     """本人の発言から、話に出てきた人の候補を抜き出す。決めるのは本人なので、候補の表にだけ入れる。
 
     発言にその呼び方が本当に出てくるものだけを残す。AI が作った名前を候補にしないため。
+    保存の前に、書き込みの鍵を取ってから読み直す。AI を待つ間に、別の裏の処理が同じ人を入れていることがあるため。
     """
     self_user = db.self_user(conn)
     utterances = [
@@ -156,13 +198,7 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
     ]
     if not utterances:
         return
-    people = db.list_users(conn)
-    known = sorted({name for person in people for name in (person.name, person.display_name, person.relation) if name})
-    # 候補の続柄も入れる。「和子（妻）」が候補にいるのに「妻」を別の人として出さないため。
-    past = conn.execute("SELECT name, relation FROM person_candidates").fetchall()
-    known_names = {
-        _stem(value) for value in [*known, *(v for row in past for v in (row["name"], row["relation"]))] if value
-    }
+    known_names = _known_names(conn)
     numbered = "\n".join(
         f"[{index}] {splitter.speech(utterance.text)}" for index, utterance in enumerate(utterances, start=1)
     )
@@ -178,7 +214,8 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
         twin._log_spent(conn, "人の候補", error, target)
         raise
     twin._log_result(conn, "人の候補", result, target)
-    with conn:
+    with ledger.atomic(conn):
+        known_names = _known_names(conn)
         for person in result.value.people:
             name = person.name.strip()
             if not 1 <= person.utterance_number <= len(utterances):
@@ -210,24 +247,48 @@ def find_candidates(conn: sqlite3.Connection, conversation_id: int, moment: str)
 
 
 def after_close(app, conversation_id: int) -> None:
-    """会話を閉じたあとの処理。1つが失敗しても、ほかは流す。"""
+    """会話を閉じたあとの処理。1つが失敗しても、ほかは流す。
+
+    受け手があるときは、要約だけをここで待つ。次の日の会話が読むため。分割と人の候補は受け手に渡す。
+    人の候補を先に流すのは、途中で落ちても「印が進んでいない会話」を見れば両方まだだと分かるため。
+    候補の保存は同じ人を重ねないので、流し直しても増えない。
+    """
     target = f"会話 {conversation_id}"
-    moment = clock.now(app).isoformat()
-    _guarded(
-        app,
-        "言明への分割",
-        target,
-        lambda conn: split_new(app, conn, SplitTargetKind.CONVERSATION, conversation_id),
-    )
-    _guarded(app, "会話の要約", target, lambda conn: summarize(conn, conversation_id))
-    _guarded(app, "人の候補", target, lambda conn: find_candidates(conn, conversation_id, moment))
+    moment = clock.now(app)
+
+    def _split(conn: sqlite3.Connection) -> None:
+        split_new(app, conn, SplitTargetKind.CONVERSATION, conversation_id)
+
+    def _people(conn: sqlite3.Connection) -> None:
+        find_candidates(conn, conversation_id, moment.isoformat())
+
+    def _summary(conn: sqlite3.Connection) -> None:
+        summarize(conn, conversation_id)
+
+    runner = app.state.job_runner
+    if runner is None:
+        _guarded(app, "言明への分割", target, _split)
+        _guarded(app, "会話の要約", target, _summary)
+        _guarded(app, "人の候補", target, _people)
+        return
+    _guarded(app, "会話の要約", target, _summary)
+
+    def _behind() -> None:
+        _guarded(app, "人の候補", target, _people)
+        _guarded(app, "言明への分割", target, _split)
+
+    runner.submit(f"会話:{conversation_id}", moment, _behind)
 
 
 def after_group_message(app, room_id: int, conversation_id: int, message_id: int) -> None:
     """グループの発言のあとの処理。新しい分を言明に分け、必要ならツインが書く。"""
     target = f"部屋 {room_id}"
+    may_ask = app.state.twin_may_ask
 
     def _twin(conn: sqlite3.Connection) -> None:
+        # 問わない日は、グループのツインも書かない。答える人がいないため（fiction/answer_plan.py）
+        if not may_ask:
+            return
         room = room_store.get_room(conn, room_id)
         presence = room_store.active_presence(conn, room_id)
         # 待つ間にはずされていたら書かない
@@ -251,24 +312,84 @@ def after_group_message(app, room_id: int, conversation_id: int, message_id: int
 
 
 def after_comment(app, letter_id: int, author_user_id: int) -> None:
-    """コメントのあとの処理。ツインの問いを書き、新しい分を言明に分ける。"""
+    """コメントのあとの処理。ツインの問いを書き、新しい分を言明に分ける。
+
+    受け手があるときは、まとめて渡す。問いの日付は、渡したときの時刻で止めた clock.now で決まる。
+    """
     target = f"便り {letter_id}"
+    # 裏で動く前に読む。動くころには、流す道具が次の行へ進んでいるため
+    may_ask = app.state.twin_may_ask
 
     def _twin(conn: sqlite3.Connection) -> None:
         with _lock_for(app, f"スレッド:{letter_id}"):
-            twin.thread_turn(conn, letter_id=letter_id, author_user_id=author_user_id, now=clock.now(app))
+            twin.thread_turn(conn, letter_id=letter_id, author_user_id=author_user_id, now=clock.now(app), ask=may_ask)
 
-    _guarded(app, "スレッドの問い", target, _twin)
-    _guarded(
-        app,
-        "言明への分割",
-        target,
-        lambda conn: split_new(app, conn, SplitTargetKind.LETTER, letter_id),
-    )
+    def _flow() -> None:
+        _guarded(app, "スレッドの問い", target, _twin)
+        _guarded(
+            app,
+            "言明への分割",
+            target,
+            lambda conn: split_new(app, conn, SplitTargetKind.LETTER, letter_id),
+        )
+
+    runner = app.state.job_runner
+    if runner is None:
+        _flow()
+    else:
+        runner.submit(thread_key(letter_id), clock.now(app), _flow)
+
+
+def _marks(conn: sqlite3.Connection, kind: SplitTargetKind) -> dict[int, int]:
+    rows = conn.execute(
+        "SELECT target_id, last_utterance_rowid FROM split_marks WHERE target_kind = ?", (kind.value,)
+    ).fetchall()
+    return {row["target_id"]: row["last_utterance_rowid"] for row in rows}
+
+
+def _last_spoken(conn: sqlite3.Connection, column: str) -> dict[int, tuple[int, int]]:
+    """会話か便りごとに、いちばん新しい発言と、いちばん新しい人の発言の rowid を返す。
+
+    10年分では会話が数千になるので、1件ずつ読まず、発言の表を1回だけ読む。
+    """
+    rows = conn.execute(
+        f"""
+        SELECT {column} AS target, MAX(rowid) AS last_any,
+               MAX(CASE WHEN speaker_is_twin = 0 THEN rowid END) AS last_person
+        FROM utterances WHERE {column} IS NOT NULL GROUP BY {column}
+        """
+    ).fetchall()
+    return {row["target"]: (row["last_any"], row["last_person"] or 0) for row in rows}
+
+
+def unsplit_letters(conn: sqlite3.Connection) -> list[int]:
+    """まだ言明に分けていない人のコメントがある便りの番号を返す。"""
+    marks = _marks(conn, SplitTargetKind.LETTER)
+    spoken = _last_spoken(conn, "letter_id")
+    return [letter_id for letter_id, (_, person) in spoken.items() if person > marks.get(letter_id, 0)]
+
+
+def unsplit_conversations(conn: sqlite3.Connection) -> list[int]:
+    """部屋の閉じた会話のうち、まだ言明に分けていない人の発言がある会話の番号を返す。"""
+    marks = _marks(conn, SplitTargetKind.CONVERSATION)
+    spoken = _last_spoken(conn, "conversation_id")
+    rows = conn.execute("SELECT id FROM conversations WHERE room_id IS NOT NULL AND closed_at IS NOT NULL").fetchall()
+    return [row["id"] for row in rows if spoken.get(row["id"], (0, 0))[1] > marks.get(row["id"], 0)]
+
+
+def _at_close(app, closed_at: str | None):
+    """受け手があるときは、閉じた時刻で流し直す。あとから拾っても、候補の時刻がずれないようにするため。"""
+    if app.state.job_runner is None or not closed_at:
+        return nullcontext()
+    return clock.frozen(datetime.fromisoformat(closed_at))
 
 
 def catch_up(app) -> None:
-    """未処理を流し直す。python -m app の起動のときにだけ呼ぶ。テストが本物の API を呼ばないようにするため。"""
+    """未処理を流し直す。python -m app の起動のときと、記録を流す道具の続きのときにだけ呼ぶ。
+
+    テストが本物の API を呼ばないよう、アプリを作るときには呼ばない。
+    印を見て、未処理の分だけ AI を呼ぶ。10年分でも、全部の会話を AI に送り直さない。
+    """
     conn = db.connect(app.state.db_path)
     try:
         today = clock.now(app).date().isoformat()
@@ -282,30 +403,36 @@ def catch_up(app) -> None:
             for row in stale:
                 room_store.close_conversation(conn, row["id"], moment)
             closed = conn.execute(
-                "SELECT id, summary FROM conversations WHERE room_id = ? AND closed_at IS NOT NULL",
+                "SELECT id, summary, closed_at FROM conversations WHERE room_id = ? AND closed_at IS NOT NULL",
                 (twin_room.id,),
             ).fetchall()
+            marks = _marks(conn, SplitTargetKind.CONVERSATION)
+            spoken = _last_spoken(conn, "conversation_id")
             for row in closed:
-                mark = splitter.read_mark(conn, SplitTargetKind.CONVERSATION, row["id"])
-                new, _ = splitter.load_after_mark(conn, SplitTargetKind.CONVERSATION, row["id"], mark)
-                needs_split = any(not utterance.speaker_is_twin for utterance in new)
-                if needs_split or (new and not row["summary"]) or (mark == 0 and not row["summary"]):
-                    after_close(app, row["id"])
+                mark = marks.get(row["id"], 0)
+                last_any, last_person = spoken.get(row["id"], (0, 0))
+                needs_split = last_person > mark
+                has_new = last_any > mark
+                if needs_split or (has_new and not row["summary"]) or (mark == 0 and not row["summary"]):
+                    with _at_close(app, row["closed_at"]):
+                        after_close(app, row["id"])
         groups = conn.execute(
             """
             SELECT c.id FROM conversations c JOIN rooms r ON r.id = c.room_id WHERE r.kind = ?
             """,
             (RoomKind.GROUP.value,),
         ).fetchall()
+        marks = _marks(conn, SplitTargetKind.CONVERSATION)
+        spoken = _last_spoken(conn, "conversation_id")
         for row in groups:
-            split_quietly(app, row["id"])
-        letters = conn.execute("SELECT id FROM letters").fetchall()
-        for row in letters:
+            if spoken.get(row["id"], (0, 0))[1] > marks.get(row["id"], 0):
+                split_quietly(app, row["id"])
+        for letter_id in unsplit_letters(conn):
             _guarded(
                 app,
                 "言明への分割",
-                f"便り {row['id']}",
-                lambda c, letter_id=row["id"]: split_new(app, c, SplitTargetKind.LETTER, letter_id),
+                f"便り {letter_id}",
+                lambda c, letter_id=letter_id: split_new(app, c, SplitTargetKind.LETTER, letter_id),
             )
     finally:
         conn.close()

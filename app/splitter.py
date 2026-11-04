@@ -347,6 +347,11 @@ def _write_mark(conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int,
         )
 
 
+def skip_up_to(conn: sqlite3.Connection, kind: SplitTargetKind, target_id: int, rowid: int) -> None:
+    """この発言までを分割しない扱いにする。架空の記録で足した受け答えを、言明にしないため（fiction/run_script.py）。"""
+    _write_mark(conn, kind, target_id, rowid)
+
+
 _TARGET_COLUMN = {SplitTargetKind.CONVERSATION: "conversation_id", SplitTargetKind.LETTER: "letter_id"}
 
 

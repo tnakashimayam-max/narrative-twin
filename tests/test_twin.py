@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
@@ -418,6 +419,43 @@ def test_本人が終えたそうなら問わない(me, use_claude, text):
 )
 def test_語の一覧で問いを続けない場面を見分ける(text, kind):
     assert twin.detect_care(text) is kind
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "子どもが泣き止むと、親も息ができる。",
+        "時間が薬になることもあれば、傷を固めることもある。どっちになるか、まだ分からん。",
+        "ゴミの日と検査の日が並ぶと、どっちも同じに見える。",
+        "検査のあと、先生は笑うて、…今日はどっちか分からん。",
+    ],
+)
+def test_話しているだけの文には案内を付けない(text):
+    assert twin.detect_care(text) is CareKind.NONE
+
+
+@pytest.mark.parametrize(
+    ("text", "kind"),
+    [
+        ("息ができない", CareKind.BODY),
+        ("息ができん", CareKind.BODY),
+        ("息ができません", CareKind.BODY),
+        ("息ができず目が覚めた", CareKind.BODY),
+        ("この薬とあの薬、どっちを飲めばいいんだ", CareKind.HEALTH),
+        ("この薬とあの薬、どちらが効くのだろう", CareKind.HEALTH),
+        ("湿布はどっちの色を貼るんだ", CareKind.HEALTH),
+    ],
+)
+def test_息ができない形と_どれかを選ぶことを聞く形には案内を付ける(text, kind):
+    assert twin.detect_care(text) is kind
+
+
+def test_親も息ができるの文に119番の案内を付けない(me, use_claude):
+    use_claude(ツインの会話=_turn("親御さんもほっとしたのでしょうね。"))
+
+    body = _send(me, "子どもが泣き止むと、親も息ができる。").json()
+
+    assert [item["text"] for item in body["replies"]] == ["親御さんもほっとしたのでしょうね。"]
 
 
 def test_体や薬の相談には_相談先を必ず添えて問いを続けない(me, use_claude):
@@ -901,3 +939,97 @@ def test_失敗した言明への分割は次の処理で流し直せる(conn, m
     response = me.post(f"/api/conversations/{conversation_id}/statements")
 
     assert response.json()["statement_count"] == 1
+
+
+# ---- 今日の一言の決まり ----
+
+
+NIGHT = datetime(2026, 10, 2, 22, 15)
+MORNING = datetime(2026, 10, 2, 8, 0)
+
+
+@pytest.mark.parametrize(
+    "tip",
+    [
+        "今日は暑くなるそうなので、午前中のうちに洗濯物を干しておくとよいですね。",
+        "天気予報によると、明日は雨です。",
+        "明日は雨になるそうです。",
+        "今日は雨なので、庭仕事は休みにできますね。",
+    ],
+)
+def test_今日の一言は予報を伝える形にしない(tip):
+    assert twin.tip_problem(tip, now=MORNING, heard="誠一さん：庭を見た。") is not None
+
+
+@pytest.mark.parametrize("tip", ["午前中のうちに洗濯物を干すと気持ちよいですね。", "朝のうちに水やりをするとよいですね。", "お昼のうちに片づけるとよいですね。"])
+def test_今日の一言は夜に過ぎた時間の案を出さない(tip):
+    assert twin.tip_problem(tip, now=NIGHT, heard="誠一さん：庭を見た。") is not None
+
+
+@pytest.mark.parametrize(
+    ("tip", "now"),
+    [
+        ("朝のうちに水やりをするとよいですね。", MORNING),
+        ("明日の朝は、庭の様子を見るのも楽しみですね。", NIGHT),
+        ("今夜は、湯上がりにゆっくりするのもよいですね。", NIGHT),
+        ("秋は日が短くなるので、夕方の庭仕事は早めがよさそうです。", NIGHT),
+        ("雨のあとの晴れた日は、草が根ごと抜きやすいですよ。", NIGHT),
+        ("金木犀の香りが楽しめる季節ですね。", NIGHT),
+    ],
+)
+def test_今日の一言は話に出たことと季節と今の時刻に合う案なら通す(tip, now):
+    assert twin.tip_problem(tip, now=now, heard="誠一さん：庭を見た。") is None
+
+
+def test_今日の一言で本人が話した今日の天気に触れるのはよい():
+    assert twin.tip_problem("今日は雨なので、縁側でゆっくりできますね。", now=NIGHT, heard="誠一さん：今日は雨たい。") is None
+
+
+def _set_time(me, at):
+    me.post("/api/dev/date", json={"at": at})
+
+
+def test_今日の一言が予報なら_Sonnetで書き直し_直すところを伝える(me, use_claude):
+    good = "金木犀の香りが楽しめる季節ですね。"
+    fake = use_claude(
+        ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"),
+        今日はここまで=[
+            {"reply": "ありがとうございました。", "tip": "今日は暑くなるそうなので、午前中のうちに干しましょう。"},
+            {"reply": "今日もありがとうございました。", "tip": good},
+        ],
+    )
+    room = me.get("/api/rooms").json()["items"][0]
+    me.post(f"/api/rooms/{room['id']}/messages", json={"text": "庭を見ました。", "client_key": "a"})
+
+    body = me.post(f"/api/rooms/{room['id']}/close").json()
+
+    assert [item["text"] for item in body["replies"]] == ["今日もありがとうございました。", good]
+    bodies = fake.bodies("今日はここまで")
+    assert bodies[1]["model"] == "claude-sonnet-5-5"
+    assert "予報" in bodies[1]["messages"][0]["content"]
+
+
+def test_今日の一言を書き直しても夜に合わなければ出さない(me, use_claude):
+    _set_time(me, "2026-10-02T22:15")
+    use_claude(
+        ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"),
+        今日はここまで={"reply": "ありがとうございました。", "tip": "午前中のうちに洗濯物を干すとよいですね。"},
+    )
+    room = me.get("/api/rooms").json()["items"][0]
+    me.post(f"/api/rooms/{room['id']}/messages", json={"text": "庭を見ました。", "client_key": "a"})
+    _set_time(me, "2026-10-02T22:15")
+
+    body = me.post(f"/api/rooms/{room['id']}/close").json()
+
+    assert [item["text"] for item in body["replies"]] == ["ありがとうございました。"]
+
+
+def test_今日の一言を作るAIに今の時刻を渡す(me, use_claude):
+    fake = use_claude(ツインの会話=_turn("庭を見たのですね。とてもよい朝ですね。"))
+    room = me.get("/api/rooms").json()["items"][0]
+    me.post(f"/api/rooms/{room['id']}/messages", json={"text": "庭を見ました。", "client_key": "a"})
+    _set_time(me, "2026-10-02T22:15")
+
+    me.post(f"/api/rooms/{room['id']}/close")
+
+    assert "22時15分" in fake.bodies("今日はここまで")[0]["messages"][0]["content"]

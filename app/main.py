@@ -75,11 +75,16 @@ def create_app(
     app.state.room_locks_guard = threading.Lock()
     app.state.job_locks = {}
     app.state.job_locks_guard = threading.Lock()
+    # 裏の処理の受け手。ふつうは None で、応答のあとにその場で流す（app/jobs.py）。
+    # 架空の記録を流す道具（fiction/run_script.py）だけが、流している間に入れる。
+    app.state.job_runner = None
     # 専門職の問いを順に処理する鍵。2回押しで AI を2回呼ばないため。
     app.state.advocacy_lock = threading.Lock()
     # 固める処理と「10年後へ進む」を同時に動かさないための鍵と、動いている間の印。
     app.state.consolidate_lock = threading.Lock()
     app.state.advancing = False
+    # ツインが問いを出してよいか。ふだんは出してよい。架空の記録を流す道具だけが、問わない日に切り替える（fiction/run_script.py）。
+    app.state.twin_may_ask = True
     # /api/people/candidates を先につなぐ。/api/people/{番号} より後だと番号の道に吸われるため。
     app.include_router(auth.router)
     app.include_router(ecomap.router)

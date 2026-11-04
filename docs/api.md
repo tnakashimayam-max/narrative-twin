@@ -74,7 +74,7 @@
 |---|---|---|
 | `GET /api/rooms` | 見える部屋の一覧。本人にはいちばん上にツインとの部屋 | `{"items": [Room, ...]}` |
 | `POST /api/rooms` | 部屋を作る。`{"kind": "1対1" か "グループ", "member_ids": [番号], "name": "名前"}`。作った人は必ず入る | 201、`Room` |
-| `GET /api/rooms/{番号}/messages?after=数` | 部屋の発言。`after` より後だけを返す。部屋の人以外は 404 | `RoomView` |
+| `GET /api/rooms/{番号}/messages?after=数` | 部屋の発言。下の「発言の読み方」のとおりに返す。部屋の人以外は 404 | `RoomView` |
 | `POST /api/rooms/{番号}/messages` | 発言する。`{"text": 文, "photo_id": 番号, "client_key": 文}` | `{"message": Message, "replies": [Message, ...]}` |
 | `POST /api/rooms/{番号}/close` | ツインとの部屋で「今日はここまで」。本人だけ | `{"closed": 真偽, "replies": [Message, ...], "conversation_id": 番号}` |
 | `POST /api/rooms/{番号}/twin` | グループにツインを入れる、はずす。`{"present": 真偽}`。部屋にいる本人と、立場が家族の託された人だけ。本人がいない部屋は 400 | `RoomView` |
@@ -88,16 +88,29 @@
 - `client_key` は画面が作る文字列です。同じ `client_key` で送り直しても、発言は増えません。発言が保存されたあとに返事だけが失敗したときは、送り直すと返事だけを作り直します。
 - ツインとの部屋で AI が失敗すると 503 を返します。そのときも本人の発言は保存されています。
 
+発言の読み方（ツインとの部屋は1万行を超えるので、部屋を開くたびに全部を返しません）
+
+| 指定 | 返す発言 |
+|---|---|
+| `after` なし、または `after=0` | 新しいほうの300件まで。300件以下なら全部 |
+| `after=数`（1以上） | その順番より後を、件数を限らずすべて。画面の3秒ごとの読み込みで使う |
+| `before=順番&limit=件数` | その順番より前の、新しいほうから `limit` 件を古い順に。`limit` は1〜300で、省くと300。範囲の外は 422 |
+
+- `before` と `after` を両方送ると、`before` を使います。`limit` は `after` が1以上のときは使いません。`after=0` に付けると、新しいほうからその件数だけを返します。
+- `seq` は、範囲を限っても部屋の中の本当の順番のままです。前の分を読むときは、いま持っている最初の `seq` を `before` に渡します。
+- `POST /api/rooms/{番号}/twin` の `RoomView` は、`after=0` と同じ範囲を返します。
+- `last_seq`、`first_unread_seq`、`others_read_seqs`、`unread_count` は、返す範囲に関係なく部屋の全部の行から決めます。だから `first_unread_seq` が、返した最初の `seq` より前のことがあります。
+
 `Room`：`id`、`kind`、`name`、`members`（`Person` の配列）、`twin_present`、`last_text`（最後の発言の冒頭）、`last_at`、`can_manage_twin`（ツインを操作できるか）、`can_remove_members`（人をはずせるか）、`unread_count`（未読の数。ツインとの部屋にはない）
 
-`RoomView`：`room`（`Room`）、`items`（`Message` の配列）、`people`（`Person` の配列）、`last_seq`、`thinking`（ツインが考えているか）、`shareable_conversation_id`（共有できる直前の会話の番号。なければ `null`）、`first_unread_seq`（最初の未読の順番。なければ `null`）、`others_read_seqs`（部屋にいるほかの人の読んだ位置を小さい順に並べた配列。名前は返さない）。最後の2つはツインとの部屋にはない
+`RoomView`：`room`（`Room`）、`items`（`Message` の配列）、`people`（`Person` の配列）、`last_seq`、`has_earlier`（返した範囲より前に発言があるか）、`thinking`（ツインが考えているか）、`shareable_conversation_id`（共有できる直前の会話の番号。なければ `null`）、`first_unread_seq`（最初の未読の順番。なければ `null`）、`others_read_seqs`（部屋にいるほかの人の読んだ位置を小さい順に並べた配列。名前は返さない）。最後の2つはツインとの部屋にはない
 
 `Message`
 
 | 項目 | 内容 |
 |---|---|
 | `id` | 番号 |
-| `seq` | 部屋の中の順番。`after` に渡す |
+| `seq` | 部屋の中の順番。`after` と `before` に渡す |
 | `is_question` | ツインの問いか |
 | `kind` | 発言／お知らせ |
 | `sender_user_id` | 話した人。ツインのときは `null` |
@@ -123,9 +136,13 @@
 |---|---|---|
 | `POST /api/conversations/{番号}/letter-draft` | 便りの下書きを AI が作る。保存しない。本人だけ | `{"body": 文, "photo_ids": [番号]}` |
 | `POST /api/letters` | 「この内容で共有する」。`conversation_id`、`body`、`photo_id`、`share_with`（家族／縁のある人まで）。本人だけ | 201、`TimelineLetter` |
-| `GET /api/timeline` | 見える便りを新しい順に。スレッドつき | `{"items": [TimelineLetter, ...], "people": [Person, ...], "self_id": 本人の番号}` |
+| `GET /api/timeline?before=日付` | 見える便りを新しい順に、スレッドつきで約30件。`before` より前の日の分を返す。省くといちばん新しい分から | `{"items": [TimelineLetter, ...], "people": [Person, ...], "self_id": 本人の番号, "next_before": 日付か null}` |
 | `POST /api/letters/{番号}/comments` | コメントする。`{"text": 文, "client_key": 文}`。便りを見られない人は 404 | 201、`Message` |
 | `GET /api/letters` | 見える便りの一覧（スレッドなし） | `{"items": [Letter, ...]}` |
+
+- 続きは `next_before` をそのまま `before` に渡して読みます。続きがなければ `null` です。`before` の日そのものは含みません。
+- 同じ日の便りはページで分けないので、1回の件数は30件を超えることがあります。
+- 数えて切るのは見える便りだけです。ページの切れ目と `next_before` から、見えない便りの有無は分かりません。`people` は、本人と、返したページでコメントした人です。
 
 `TimelineLetter`：`Letter` の項目に、`thread`（`Message` の配列。吹き出しはトークと同じ形）を足したもの
 
@@ -202,7 +219,7 @@
 
 | 道 | 内容 | 応答 |
 |---|---|---|
-| `POST /api/dev/date` | `{"date": "2026-11-05"}` で、サーバーの今日をその日にする。`{"date": null}` で戻す | `{"today": 日付}` |
+| `POST /api/dev/date` | `{"date": "2026-11-05"}` で、サーバーの今日をその日にする。`{"at": "2026-11-05T09:30:00+09:00"}` で時刻まで動かし、その時刻から進む。両方あれば `at` を使う。`{"date": null}` で戻す | `{"today": 日付}` |
 
 日を変えた会話を確かめるための道です。自分用の起動では 404 を返します。
 

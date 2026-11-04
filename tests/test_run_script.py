@@ -37,7 +37,9 @@ def line(**fields) -> Line:
 
 
 def say(text, minute="10", **fields):
-    return {"at": f"{AT}{minute}", "kind": "発言", "room": "ツイン", "by": "誠一さん", "text": text, **fields}
+    row = {"at": f"{AT}{minute}", "kind": "発言", "room": "ツイン", "by": "誠一さん", "text": text, **fields}
+    # 写真だけの発言は text を書かない
+    return row if text is not None else {key: value for key, value in row.items() if key != "text"}
 
 
 def close(minute="30", day="2026-04-12"):
@@ -84,10 +86,18 @@ def test_亡くなった和子さんは話し手にできない():
     assert any("話し手にできません" in text for text in problems(rows))
 
 
-def test_健太くんは話し手にも登録もできない():
-    assert any("話し手にできません" in text for text in problems([say("はい。", by="健太くん")]))
-    person = {"at": f"{AT}00", "kind": "人", "by": "誠一さん", "name": "健太くん", "role": "家族"}
-    assert any("ログインできる人" in text for text in problems([person]))
+def test_健太くんは人の行で登録すれば話し手にできる():
+    person = {"at": f"{AT}00", "kind": "人", "by": "誠一さん", "name": "健太くん", "role": "家族", "relation": "孫"}
+    room = {"at": f"{AT}01", "kind": "部屋", "by": "誠一さん", "room": "孫と", "room_kind": "1対1", "members": ["健太くん"]}
+    spoken = {"at": f"{AT}02", "kind": "発言", "room": "孫と", "by": "健太くん", "text": "おじいちゃん、こんにちは。"}
+
+    assert problems([person, room, spoken]) == []
+
+
+def test_健太くんも登録する前は話し手にできない():
+    spoken = {"at": f"{AT}00", "kind": "コメント", "by": "健太くん", "letter": "便り", "text": "はい。"}
+
+    assert any("まだいない人" in text for text in problems([spoken]))
 
 
 def test_田中さんは2036年より前には話せない(monkeypatch):
@@ -184,6 +194,151 @@ def test_answerの中の病名も問題になる(field):
 
 def test_看病と病院は病名にしない():
     assert forbidden_in("毎日妻の看病で病院へ通いました。") == []
+
+
+def people_room(*spoken, twin=False):
+    """人の部屋を作り、その部屋の発言を並べる。"""
+    rows = [{"at": f"{AT}00", "kind": "部屋", "by": "誠一さん", "room": "家族", "room_kind": "グループ", "members": ["美穂さん"]}]
+    if twin:
+        rows.append({"at": f"{AT}01", "kind": "ツインを入れる", "by": "誠一さん", "room": "家族", "present": True})
+    rows += [{"at": f"{AT}10", "kind": "発言", "room": "家族", "by": "美穂さん", "text": text} for text in spoken]
+    return rows
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["お医者さんに認知症と言われました。", "アルツハイマーの話を聞きました。", "診断の話をしました。", "アルツハイマー型認知症だそうです。", "脳血管性認知症と聞きました。"],
+)
+def test_ツインのいない部屋の発言では_認知症とアルツハイマーと診断を通す(text):
+    assert problems(people_room(text)) == []
+
+
+@pytest.mark.parametrize("word", ["脳出血", "糖尿病", "後遺症", "泊まり", "ショートステイ"])
+def test_ツインのいない部屋でも_ほかの病名と泊まりの語は止める(word):
+    assert any(word in text for text in problems(people_room(f"{word}の話をしました。")))
+
+
+def test_ツインのいない部屋でも_認知症のほかの病名がつけば止める():
+    assert any("糖尿病" in text for text in problems(people_room("糖尿病と認知症の話をしました。")))
+
+
+def test_ツインのいる部屋では_認知症は止める():
+    assert any("認知症" in text for text in problems(people_room("認知症と言われました。", twin=True)))
+
+
+def test_ツインをはずしたあとの部屋では_認知症を通す():
+    rows = [
+        *people_room(twin=True),
+        {"at": f"{AT}05", "kind": "ツインを入れる", "by": "誠一さん", "room": "家族", "present": False},
+        {"at": f"{AT}10", "kind": "発言", "room": "家族", "by": "美穂さん", "text": "認知症と言われました。"},
+    ]
+
+    assert problems(rows) == []
+
+
+def test_ツインとの部屋では_認知症は止める():
+    assert any("認知症" in text for text in problems([say("認知症と言われました。"), close()]))
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        {"kind": "今の様子", "by": "美穂さん", "text": "認知症と言われました。"},
+        {"kind": "便り", "by": "誠一さん", "ref": "便り", "body": "認知症と言われました。", "share_with": "家族"},
+    ],
+)
+def test_発言でない行では_認知症は止める(row):
+    rows = [say("おはよう。"), close(), {"at": f"{AT}40", **row}]
+
+    assert any("認知症" in text for text in problems(rows))
+
+
+def test_写真だけの発言は書ける(tmp_path, monkeypatch):
+    (tmp_path / "庭.jpg").write_bytes(b"x")
+    monkeypatch.setattr(run_script, "PHOTO_DIR", tmp_path)
+
+    assert problems([say(None, photo="庭.jpg"), close()]) == []
+
+
+def test_textもanswerも写真もない発言は書けない():
+    with pytest.raises(ValueError, match="写真だけなら photo"):
+        line(kind="発言", room="ツイン")
+
+
+def test_便りは閉じる前に出せる():
+    letter = {"at": f"{AT}15", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"}
+
+    assert problems([say("おはよう。", "10"), letter, close()]) == []
+
+
+def test_ツインとの部屋の会話がない日には便りを出せない():
+    letter = {"at": f"{AT}15", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"}
+
+    assert any("会話がある日" in text for text in problems([letter]))
+
+
+def test_段階は決まった言葉だけ書ける():
+    with pytest.raises(ValueError):
+        line(kind="段階", stage="とても元気")
+    with pytest.raises(ValueError, match="stage"):
+        line(kind="段階")
+
+
+def test_段階の行は本人の行にする():
+    rows = [{"at": f"{AT}00", "kind": "段階", "by": "美穂さん", "stage": "要支援"}]
+
+    assert any("段階の行" in text for text in problems(rows))
+
+
+def test_本人だけにするは閉じるのあとに書く():
+    rows = [say("庭が好きなんです。"), {"at": f"{AT}11", "kind": "本人だけにする", "by": "誠一さん", "text": "庭が好きなんです。"}, close()]
+
+    assert any("閉じるのあと" in text for text in problems(rows))
+
+
+def test_本人だけにするは本人のコメントの文も指せる():
+    rows = [
+        say("おはよう。"),
+        close(),
+        {"at": f"{AT}31", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"},
+        {"at": f"{AT}32", "kind": "コメント", "by": "誠一さん", "letter": "庭", "text": "和子の話は今はしません。"},
+        {"at": f"{AT}33", "kind": "本人だけにする", "by": "誠一さん", "text": "和子の話は今はしません。"},
+    ]
+
+    assert problems(rows) == []
+
+
+def test_本人だけにするのtextは本人の発言にある文にする():
+    rows = [say("庭が好きなんです。"), close(), {"at": f"{AT}31", "kind": "本人だけにする", "by": "誠一さん", "text": "別の話です。"}]
+
+    assert any("本人の発言に見つかりません" in text for text in problems(rows))
+
+
+def test_推測の文は言い切らない形にする():
+    rows = [say("庭が好きなんです。"), close(), {"at": f"{AT}31", "kind": "推測", "by": "誠一さん", "match": "庭", "text": "庭が大切です。"}]
+
+    assert any("言い切らない" in text for text in problems(rows))
+
+
+def test_推測の文にも病名は書けない():
+    rows = [
+        say("庭が好きなんです。"),
+        close(),
+        {"at": f"{AT}31", "kind": "推測", "by": "誠一さん", "match": "庭", "text": "認知症かもしれません。"},
+    ]
+
+    assert any("認知症" in text for text in problems(rows))
+
+
+def test_推測と本人だけにするの文は_決まった言葉に数えない():
+    word = run_script.FixedWord(date=date(2026, 4, 12), text="庭が大切なのかもしれません。")
+    rows = [
+        say("おはよう。"),
+        close(),
+        {"at": f"{AT}31", "kind": "推測", "by": "誠一さん", "match": "おはよう", "text": word.text},
+    ]
+
+    assert any("決まった言葉" in text for text in problems(rows, [word]))
 
 
 def test_ツインが決まった文を返す言葉は_問題ではなく知らせる():
@@ -318,6 +473,359 @@ def test_日付を動かして流す(world):
     flow(world, [say("今朝は縁側でお茶を飲みました。"), close()])
 
     assert messages(client)[0]["sent_at"].startswith("2026-04-12")
+
+
+def test_流す時刻はatのとおりになる(world):
+    client, _, _ = world
+
+    flow(world, [say("今朝は縁側でお茶を飲みました。", "10"), close("30")])
+
+    assert messages(client)[0]["sent_at"].startswith("2026-04-12T08:10:00")
+    closed = as_self(client, "/api/archive")["days"][0]["conversations"][0]["items"]
+    assert closed[-1]["sent_at"].startswith("2026-04-12T08:30:00")
+
+
+def test_同じ時刻の行は1秒ずつずらして_順番を時刻に残す():
+    rows = [say("あ。", "10"), say("い。", "10"), say("う。", "10"), say("え。", "11"), close("11")]
+
+    stamps = run_script.spaced_times([Line.model_validate(row) for row in rows])
+
+    assert [stamp.strftime("%H:%M:%S") for stamp in stamps] == ["08:10:00", "08:10:01", "08:10:02", "08:11:00", "08:11:01"]
+
+
+def test_時刻をずらしても日付は変わらない():
+    rows = [{**say(f"{number}。"), "at": "2026-04-12T23:59:58"} for number in range(3)]
+
+    stamps = run_script.spaced_times([Line.model_validate(row) for row in rows])
+
+    assert all(stamp.date() == date(2026, 4, 12) for stamp in stamps)
+
+
+def test_同じ時刻の行も_発言の順と時刻の順が同じになる(world):
+    client, _, _ = world
+
+    flow(world, [say("あ。", "10"), say("い。", "10"), say("う。", "10"), close("10")])
+
+    spoken = [item for item in messages(client) if not item["is_twin"]]
+    assert [item["text"] for item in spoken] == ["あ。", "い。", "う。"]
+    assert [item["sent_at"] for item in spoken] == sorted(item["sent_at"] for item in spoken)
+
+
+def test_健太くんを登録すると_話し手として流せる(world):
+    client, _, _ = world
+    rows = [
+        {"at": f"{AT}00", "kind": "人", "by": "誠一さん", "name": "健太くん", "role": "家族", "relation": "孫"},
+        say("おはよう。", "10"),
+        close("20"),
+        {"at": f"{AT}21", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"},
+        {"at": f"{AT}30", "kind": "コメント", "by": "健太くん", "letter": "庭", "text": "また行くね。"},
+    ]
+
+    assert flow(world, rows) == len(rows)
+
+    assert "健太くん" in {item["name"] for item in client.get("/api/users").json()["items"]}
+
+
+def test_写真だけの発言を流せる(world, claude, tmp_path, monkeypatch):
+    client, _, _ = world
+    picture = tmp_path / "写真置き場"
+    picture.mkdir()
+    Image.new("RGB", (40, 30), "green").save(picture / "庭.jpg")
+    monkeypatch.setattr(run_script, "PHOTO_DIR", picture)
+    claude.answers["ツインの会話"] = {"reply": "庭の写真ですね。", "photo_description": "緑の写真です。"}
+
+    flow(world, [say(None, photo="庭.jpg"), close()])
+
+    first = messages(client)[0]
+    assert first["photo_id"] is not None
+    assert first["text"] is None
+
+
+def test_写真だけの発言を人の部屋にも流せる(world, tmp_path, monkeypatch):
+    client, _, _ = world
+    picture = tmp_path / "写真置き場"
+    picture.mkdir()
+    Image.new("RGB", (40, 30), "green").save(picture / "庭.jpg")
+    monkeypatch.setattr(run_script, "PHOTO_DIR", picture)
+    rows = [
+        {"at": f"{AT}00", "kind": "部屋", "by": "誠一さん", "room": "家族", "room_kind": "グループ", "members": ["美穂さん"]},
+        {"at": f"{AT}10", "kind": "発言", "room": "家族", "by": "美穂さん", "photo": "庭.jpg"},
+    ]
+
+    assert flow(world, rows) == 2
+
+
+def test_閉じる前の便りは会話を指さない(world):
+    client, db_path, _ = world
+    rows = [
+        say("庭が好きなんです。", "10"),
+        {"at": f"{AT}15", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"},
+        {"at": f"{AT}20", "kind": "コメント", "by": "美穂さん", "letter": "庭", "text": "また帰ります。"},
+        close("30"),
+    ]
+
+    flow(world, rows)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        assert conn.execute("SELECT conversation_id FROM letters").fetchone()[0] is None
+        assert conn.execute("SELECT closed_at FROM conversations WHERE room_id IS NOT NULL").fetchone()[0] is not None
+    finally:
+        conn.close()
+    assert [item["body"] for item in as_self(client, "/api/letters")["items"]] == ["庭の話です。"]
+
+
+def test_閉じたあとの便りは_その日の会話を指す(world):
+    _, db_path, _ = world
+    rows = [
+        say("庭が好きなんです。", "10"),
+        close("20"),
+        {"at": f"{AT}25", "kind": "便り", "by": "誠一さん", "ref": "庭", "body": "庭の話です。", "share_with": "家族"},
+    ]
+
+    flow(world, rows)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        assert conn.execute("SELECT conversation_id FROM letters").fetchone()[0] is not None
+    finally:
+        conn.close()
+
+
+def stage_line(stage="要支援", when=f"{AT}00"):
+    return {"at": when, "kind": "段階", "by": "誠一さん", "stage": stage}
+
+
+def test_段階の行で人生の段階を切り替える(world):
+    _, db_path, _ = world
+    next_day = {**say("次の日の話です。"), "at": "2026-04-13T08:10"}
+
+    flow(world, [stage_line(), say("庭が好きなんです。"), close(), next_day, close(day="2026-04-13")])
+
+    conn = ledger.db.connect(db_path)
+    try:
+        assert ledger.life_stage_on(conn, date(2026, 4, 12)).value == "要支援"
+        stages = [row["life_stage"] for row in conn.execute("SELECT life_stage FROM conversations WHERE room_id IS NOT NULL")]
+    finally:
+        conn.close()
+    assert stages == ["要支援", "要支援"]
+
+
+def test_段階の行は続きから流しても重ならない(world):
+    _, db_path, progress = world
+    rows = [stage_line()]
+    flow(world, rows)
+    progress.digests.clear()
+
+    flow(world, rows)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
+def test_段階の行だけの日は_これまでの記録の一覧に出ない(world):
+    client, _, _ = world
+    rows = [
+        stage_line(when="2026-04-10T09:00"),
+        say("庭が好きなんです。"),
+        close(),
+    ]
+
+    flow(world, rows)
+
+    assert [day["date"] for day in as_self(client, "/api/archive")["days"]] == ["2026-04-12"]
+
+
+def test_段階の行はAIを呼ばない(world, claude):
+    flow(world, [stage_line()])
+
+    assert claude.requests == []
+
+
+def words_and_guess():
+    """同じ日に、休ませる発言と休ませない発言を話す。"""
+    private = "和子の話は、今はしたくありません。"
+    other = "庭のつつじが咲きました。"
+    answer = {
+        "statements": [
+            statement(private, 1, theme="つらかったこと"),
+            {**statement("つらい日だったのかもしれません。", 1), "source": "AIの推測", "speaker": "ツイン（AI）"},
+            # 2番はツインの返事なので、本人の次の発言は3番になる
+            statement(other, 3),
+        ]
+    }
+    return private, other, answer
+
+
+def test_本人だけにするは_その発言の記録だけを休ませる(world, claude):
+    client, _, _ = world
+    private, other, answer = words_and_guess()
+    claude.answers["言明への分割"] = answer
+
+    flow(
+        world,
+        [
+            say(private, "10"),
+            say(other, "11"),
+            close("20"),
+            {"at": f"{AT}21", "kind": "本人だけにする", "by": "誠一さん", "text": private},
+        ],
+    )
+
+    items = {item["body"]: item for item in as_self(client, "/api/statements")["items"]}
+    assert items[private]["confirm_status"] == "お休み"
+    assert items[private]["share_scope"] == "本人だけ"
+    assert items["つらい日だったのかもしれません。"]["confirm_status"] == "お休み"
+    assert items[other]["confirm_status"] == "未確認"
+
+
+def test_本人だけにするは続きから流しても_行を重ねない(world, claude):
+    _, db_path, progress = world
+    private, _, answer = words_and_guess()
+    claude.answers["言明への分割"] = answer
+    rows = [
+        say(private, "10"),
+        close("20"),
+        {"at": f"{AT}21", "kind": "本人だけにする", "by": "誠一さん", "text": private},
+    ]
+    flow(world, rows)
+    progress.digests.pop()
+    progress.extra.clear()
+
+    flow(world, rows)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        resting = conn.execute("SELECT COUNT(*) FROM statements WHERE confirm_status = 'お休み'").fetchone()[0]
+    finally:
+        conn.close()
+    assert resting == 2
+
+
+def test_本人だけにする発言がまだ分かれていなければ止める(world, claude):
+    private, _, _ = words_and_guess()
+    claude.answers["言明への分割"] = 400
+    rows = [
+        say(private, "10"),
+        close("20"),
+        {"at": f"{AT}21", "kind": "本人だけにする", "by": "誠一さん", "text": private},
+    ]
+
+    with pytest.raises(StopRun, match="まだ言明に分かれていません"):
+        flow(world, rows)
+
+
+def test_本人だけにする文はmustの一部でも指せる(world, claude):
+    client, _, _ = world
+    must = "和子の話は今はしません。"
+    claude.answers["言明への分割"] = {"statements": [statement(must, 3)]}
+    claude.answers["不明"] = {"before": "そうですね。"}
+    rows = [
+        say("おはよう。", "10"),
+        {"at": f"{AT}11", "kind": "発言", "room": "ツイン", "by": "誠一さん", "answer": {"must": must}},
+        close("20"),
+        {"at": f"{AT}21", "kind": "本人だけにする", "by": "誠一さん", "text": must},
+    ]
+
+    flow(world, rows)
+
+    assert as_self(client, "/api/statements")["items"][0]["confirm_status"] == "お休み"
+
+
+def guess_line(minute="31", **fields):
+    return {
+        "at": f"{AT}{minute}",
+        "kind": "推測",
+        "by": "誠一さん",
+        "match": "庭が好き",
+        "text": "庭に思い出があるのかもしれません。",
+        **fields,
+    }
+
+
+def test_推測の行は_根拠の発言を指すAIの推測として入り_重ならない(world, claude):
+    client, db_path, progress = world
+    rows = [say("庭が好きなんです。"), close(), guess_line()]
+    flow(world, rows)
+    progress.digests.pop()
+
+    flow(world, rows)
+
+    conn = ledger.db.connect(db_path)
+    try:
+        guesses = conn.execute("SELECT * FROM statements WHERE source = 'AIの推測'").fetchall()
+        spoken = conn.execute("SELECT id, text FROM utterances WHERE speaker_is_twin = 0").fetchone()
+    finally:
+        conn.close()
+    assert len(guesses) == 1
+    assert json.loads(guesses[0]["source_utterance_ids"]) == [spoken["id"]]
+    assert spoken["text"] == "庭が好きなんです。"
+    assert guesses[0]["speaker_is_twin"] == 1
+    assert guesses[0]["confirm_status"] == "未確認"
+    assert guesses[0]["share_scope"] == "本人だけ"
+    assert guesses[0]["effective_date"] == "2026-04-12"
+    assert not any("庭に思い出があるのかもしれません" in text for text in [claude.sent_text()])
+
+
+def test_推測の行は本人が確かめられる(world):
+    client, _, _ = world
+    rows = [
+        say("庭が好きなんです。"),
+        close(),
+        guess_line(),
+        {"at": f"{AT}40", "kind": "確かめ", "by": "誠一さん", "match": "庭に思い出がある"},
+    ]
+
+    flow(world, rows)
+
+    item = next(row for row in as_self(client, "/api/statements")["items"] if row["source"] == "AIの推測")
+    assert item["confirm_status"] == "確認済み"
+
+
+def test_推測の根拠の発言が見つからなければ止まる(world):
+    with pytest.raises(StopRun, match="本人の発言が見つかりません"):
+        flow(world, [say("おはよう。"), close(), guess_line()])
+
+
+def test_推測の行はテーマを指定できる(world):
+    client, _, _ = world
+
+    flow(world, [say("庭が好きなんです。"), close(), guess_line(theme="住まい・土地")])
+
+    item = next(row for row in as_self(client, "/api/statements")["items"] if row["source"] == "AIの推測")
+    assert item["theme"] == "住まい・土地"
+
+
+def test_確かめたあとの記録にも_今は話したくないと答えられる(world, claude):
+    client, _, _ = world
+    words = "庭が好きなんです。"
+    claude.answers["言明への分割"] = {"statements": [statement(words, 1)]}
+    rows = [
+        say(words),
+        close(),
+        {"at": f"{AT}31", "kind": "確かめ", "by": "誠一さん", "match": "庭が好き"},
+        {"at": f"{AT}32", "kind": "確かめ", "by": "誠一さん", "match": "庭が好き", "reply": "今は話したくない"},
+    ]
+
+    flow(world, rows)
+
+    assert as_self(client, "/api/statements")["items"][0]["confirm_status"] == "お休み"
+
+
+def test_同じ文の今の様子は別の日でもそれぞれ入る(world):
+    client, _, _ = world
+    rows = [
+        {"at": "2026-04-12T17:00", "kind": "今の様子", "by": "美穂さん", "text": "元気でした。"},
+        {"at": "2026-04-13T17:00", "kind": "今の様子", "by": "美穂さん", "text": "元気でした。"},
+    ]
+
+    flow(world, rows)
+
+    days = sorted(item["effective_date"] for item in as_self(client, "/api/statements")["items"])
+    assert days == ["2026-04-12", "2026-04-13"]
 
 
 def test_textは一字も変えずに送る(world):

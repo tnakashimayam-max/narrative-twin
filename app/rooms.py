@@ -9,6 +9,7 @@
 部屋はだれでも作れる。本人がいない部屋にはツインが入れないので、本文は AI に渡らず、言明にもならない。
 グループにツインが入るたびに会話を1行作り、ツインが読むのはその会話の発言だけにする。
 1対1とグループには未読の数と既読を出す。通知は作らない。読んだ人の名前は返さない。
+部屋を開く最初の読み込みは新しいほうの300件までにする。前の分は before で読む。
 表の読み書きは app/room_store.py にある。
 
 関連するテスト：tests/test_rooms.py、tests/test_room_access.py
@@ -27,6 +28,7 @@ from app import ai, clock, config, consent, db, jobs, ledger, memory, photos, tw
 from app.auth import NOT_FOUND, can_log_in, current_user, get_conn, person_view, require_self
 from app.prompts import TWIN_LABEL
 from app.room_store import (
+    MESSAGES_PER_PAGE,
     active_presence,
     close_conversation,
     create_room,
@@ -42,6 +44,7 @@ from app.room_store import (
     members_of,
     message_view,
     messages_after,
+    messages_range,
     open_conversation,
     others_read_seqs,
     position_of,
@@ -224,8 +227,32 @@ def room_summary(conn: sqlite3.Connection, room: Room, viewer: User) -> dict:
     return summary
 
 
-def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: User, after: int) -> dict:
-    items = messages_after(conn, room.id, after, viewer)
+def _message_window(length: int, after: int, before: int | None, limit: int) -> tuple[int, int]:
+    """返す発言の範囲を、飛ばす行の数と返す行の数で決める。返す行の数の -1 は終わりまで。
+
+    before があればその順番より前を、after が1以上ならその順番より後を、どちらもなければ新しいほうを返す。
+    after が1以上のときだけ数を限らない。3秒ごとの読み込みと、順番を進めながら読む道具が、途中の発言を飛ばさないため。
+    関連するテスト：tests/test_rooms.py の test_afterが1以上なら300件を超えても全部返す
+    """
+    if before is None and after > 0:
+        return after, -1
+    end = length if before is None else min(before - 1, length)
+    skip = max(end - limit, 0)
+    return skip, end - skip
+
+
+def _room_view(
+    request: Request,
+    conn: sqlite3.Connection,
+    room: Room,
+    viewer: User,
+    after: int = 0,
+    before: int | None = None,
+    limit: int = MESSAGES_PER_PAGE,
+) -> dict:
+    length = room_length(conn, room.id)
+    skip, count = _message_window(length, after, before, limit)
+    items = messages_range(conn, room.id, skip, count, viewer)
     speakers = {item["sender_user_id"] for item in items if item["sender_user_id"]}
     people = {member.id: member for member in members_of(conn, room.id)}
     for user_id in speakers - people.keys():
@@ -234,7 +261,8 @@ def _room_view(request: Request, conn: sqlite3.Connection, room: Room, viewer: U
         "room": room_summary(conn, room, viewer),
         "items": items,
         "people": [person_view(person) for person in people.values()],
-        "last_seq": room_length(conn, room.id),
+        "last_seq": length,
+        "has_earlier": min(skip, length) > 0,
         "thinking": room.id in request.app.state.thinking_rooms,
         "shareable_conversation_id": _shareable_conversation_id(conn, room),
     }
@@ -302,12 +330,14 @@ def read_messages(
     request: Request,
     room_id: int = Path(ge=1, le=db.MAX_ID),
     after: int = Query(default=0, ge=0, le=db.MAX_ID),
+    before: int | None = Query(default=None, ge=1, le=db.MAX_ID),
+    limit: int = Query(default=MESSAGES_PER_PAGE, ge=1, le=MESSAGES_PER_PAGE),
     viewer: User = Depends(current_user),
     conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
     """部屋の発言を返す。部屋の人以外は 404。3秒ごとに読まれるので、閲覧の記録は残さない。"""
     room = room_for_member(conn, viewer, room_id)
-    return _room_view(request, conn, room, viewer, after)
+    return _room_view(request, conn, room, viewer, after, before, limit)
 
 
 def _usable_photo(conn: sqlite3.Connection, viewer: User, photo_id: int | None, room: Room):
@@ -380,6 +410,7 @@ def _send_to_twin(request, background, conn, room, viewer, text, photo, client_k
                 message=message,
                 now=now,
                 photos_dir=app.state.deployment.photos_dir,
+                ask=app.state.twin_may_ask,
             )
         except _AI_ERRORS as error:
             # 失敗の応答では BackgroundTasks が動かないので、閉じた会話の処理は別に流す

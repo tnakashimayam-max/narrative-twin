@@ -9,14 +9,17 @@
 下書きは保存しない。便りの相手を選ぶことと、言明の共有範囲を広げることは別のことで、
 言明は「本人だけ」のまま変えない。
 
+タイムラインは新しいほうから約30件ずつ返す。画面が5秒ごとに読むので、便りが増えても1回に読む量を増やさないため。
+
 関連するテスト：tests/test_timeline.py
 """
 
 from __future__ import annotations
 
 import sqlite3
+from datetime import date
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import ai, clock, config, consent, db, jobs, ledger, memory, photos, prompts, twin
@@ -33,6 +36,7 @@ _AI_ERRORS = (
     ai.AIUnavailableError,
 )
 _SHARE_CHOICES = {ShareScope.FAMILY, ShareScope.CONNECTED}
+_LETTERS_PER_PAGE = 30
 
 
 class LetterInput(BaseModel):
@@ -166,12 +170,59 @@ def share_letter(
     return _letter_view(conn, letter)
 
 
+def _letter_page(
+    conn: sqlite3.Connection, viewer: User, before: date | None
+) -> tuple[list[Letter], str | None]:
+    """before の日より前の見える便りを、新しい順に約30件返す。続きを読むための日付も返す。
+
+    共有範囲の条件を、件数で切る前に SQL で効かせる。見えない便りが切れ目を動かすと、次のページが始まる日や
+    続きの有無から、見えない便りがあることが分かるため（原則10）。見える範囲を決めるのは consent で、
+    並びは consent.visible_letters と同じにする。全部を読んでから切らないのは、5秒ごとに読まれるため。
+    続きの印は日付なので、同じ日の便りは分けない。途中で切ると、次のページでその日の残りを飛ばすため。
+    番号は乱数で順番を表さないので、印に使わない。
+
+    関連するテスト：tests/test_timeline.py の test_見えない便りはページの切れ目を動かさない
+    """
+    scopes = [scope.value for scope in consent.visible_scopes(conn, viewer)]
+    if not scopes:
+        return [], None
+    visible = f"share_with IN ({', '.join('?' for _ in scopes)})"
+    limit_day = before.isoformat() if before else "9999-12-31"
+    last = conn.execute(
+        f"""
+        SELECT substr(shared_at, 1, 10) AS day FROM letters
+        WHERE {visible} AND substr(shared_at, 1, 10) < ?
+        ORDER BY shared_at DESC, rowid DESC LIMIT 1 OFFSET ?
+        """,
+        (*scopes, limit_day, _LETTERS_PER_PAGE - 1),
+    ).fetchone()
+    first_day = last["day"] if last else ""
+    rows = conn.execute(
+        f"""
+        SELECT * FROM letters
+        WHERE {visible} AND substr(shared_at, 1, 10) >= ? AND substr(shared_at, 1, 10) < ?
+        ORDER BY shared_at DESC, rowid DESC
+        """,
+        (*scopes, first_day, limit_day),
+    ).fetchall()
+    has_more = conn.execute(
+        f"SELECT 1 FROM letters WHERE {visible} AND substr(shared_at, 1, 10) < ? LIMIT 1",
+        (*scopes, first_day),
+    ).fetchone()
+    return [db.row_to_model(row, Letter) for row in rows], first_day if has_more else None
+
+
 @router.get("/timeline")
 def read_timeline(
-    viewer: User = Depends(current_user), conn: sqlite3.Connection = Depends(get_conn)
+    before: date | None = Query(default=None),
+    viewer: User = Depends(current_user),
+    conn: sqlite3.Connection = Depends(get_conn),
 ) -> dict:
-    """見える便りを新しい順に、スレッドつきで返す。絞り込みはサーバーで行う。"""
-    letters = consent.visible_letters(conn, viewer)
+    """見える便りを新しい順に、スレッドつきで約30件返す。絞り込みはサーバーで行う。
+
+    スレッドと人の情報は、返すページの分だけ作る。
+    """
+    letters, next_before = _letter_page(conn, viewer, before)
     items = [_letter_view(conn, letter) for letter in letters]
     people: dict[int, User] = {}
     self_user = db.self_user(conn)
@@ -186,6 +237,7 @@ def read_timeline(
         "items": items,
         "people": [person_view(person) for person in people.values()],
         "self_id": self_user.id if self_user else None,
+        "next_before": next_before,
     }
 
 
