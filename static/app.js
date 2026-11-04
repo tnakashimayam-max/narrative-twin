@@ -7,15 +7,17 @@
   入口のツインは色がそろった固定の絵。ログインの前は、だれの記録の色か決まらないため。
   タブは本人に4つ、本人以外に3つ。「記録」は本人だけが開けるので、本人以外には出さない。
   トークのタブには、人どうしの新しい発言の数を出す。画面の中だけの表示で、通知はしない。
+  PC版とスマホ版の切り替えは static/device.js。作り直すのはトークだけで、ほかの画面は CSS だけで変わる。入力の途中の言葉を消さないため。
 */
 
 import { renderAdvocate } from "./advocate.js";
 import { ApiError, api, currentUserId, forgetUser, rememberUser, uploadPhoto } from "./api.js";
+import { startDevice } from "./device.js";
 import { renderHome } from "./home.js";
 import { shrinkPhoto } from "./photo.js";
 import { renderProRecords } from "./prorecords.js";
 import { renderRecords } from "./records.js";
-import { renderTalk } from "./talk.js";
+import { currentRoomId, renderTalk } from "./talk.js";
 import { renderMeeting } from "./meeting.js";
 import { renderTimeline } from "./timeline.js";
 import { avatar, el, setTwinLevels, tabIcon, twinDrawing } from "./ui.js";
@@ -92,6 +94,16 @@ async function afterLogin() {
 
 function showTabs(visible) {
   tabs.hidden = !visible;
+  // PC版の札が読む。タブが出ている間はアプリの名前を、タブがない画面は画面の名前を出す（style.css）
+  document.body.dataset.tabs = visible ? "on" : "off";
+}
+
+/* PC版とスマホ版が変わったとき。同じ部屋を続けて出す。 */
+function onDeviceChange() {
+  if (me && currentTab === "talk" && document.body.dataset.screen !== "login") {
+    const roomId = currentRoomId(me);
+    openTab("talk", roomId === null ? {} : { roomId });
+  }
 }
 
 function drawTabs() {
@@ -335,5 +347,7 @@ async function start() {
   showLogin();
 }
 
+// 最初の画面を作る前に形を決める。切り替えのボタンは「架空データ」の隣に置く（原則8）
+document.querySelector(".site-header .tags").prepend(startDevice(onDeviceChange));
 start();
 refreshUnread();
