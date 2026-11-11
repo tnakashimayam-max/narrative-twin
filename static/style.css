@@ -1,0 +1,6370 @@
+/*
+  役割：すべての画面の見た目。「藍と陽だまり」。骨組みは藍、地は陽だまりの色、印は山吹、主ボタンは朱。
+  4つの極：1. 書く・話す、2. 分かち合う（本人と家族・縁のある人の画面）。
+  守る原則：8（画面の隅の表示）、12（ツインの表示）、14（SNS の仕掛けを作らない）。
+
+  幅360pxを第一に作る。本文は16px以上、ボタンは高さ44px以上にする。高齢の本人が迷わず押せるようにするため。
+  PC版（body の data-device="pc"）は見出しとタブを1本の帯にし、トークを3つのペインに分ける。文字とボタンの決まりは同じ。
+  見出しの札の英字だけは飾りで、読み上げない。
+  人の言葉は手書き風の文字にし、ツインの言葉はふつうの文字のままにする。だれの言葉かを見分けやすくするため。
+  外部のフォントは読み込まない。使う人の機器にある教科書体を使う。
+  顔を黒い面や四角い枠で囲まない。遺影に見えるため。線だけの絵にもしない。
+  明るい・暗いは、選んだ方（html の data-theme、static/theme.js）にする。選んでいなければ端末の設定に合わせる。
+  専門職と評価の画面（body の data-look="modern"）は白を基調のまま変えない。
+  2026-11-06 の見直し：地とカードの差を広げ、影と見出しの印を付け、線と薄い文字を濃くした。暗い表示で紺どうしが溶けないようにするため。
+  色は変数に置く。朱は主ボタンと小さな印にだけ使う。
+*/
+
+:root,
+body[data-look="modern"] {
+  color-scheme: light;
+  --paper: #fff9ea;
+  --paper-deep: #f3e8cc;
+  --card: #ffffff;
+  --input: #ffffff;
+  --ink: #22304a;
+  --ink-soft: #46536b;
+  --line: #c9b98c;
+  /* ボタンと入力欄の枠。面との対比を3対1以上にして、押せる所と入れる所を見分けやすくする */
+  --control-line: #8f7f4f;
+  --line-soft: #e4d7b5;
+  --accent: #27507f;
+  --accent-soft: #e3ebf5;
+  --accent-ink: #ffffff;
+  --error: #b34327;
+  --warn-bg: #fdefc8;
+  --rail: #27507f;
+  --rail-text: #d6e3f2;
+  --rail-current: #1f4269;
+  --sun: #f0b73a;
+  --sun-soft: #fdefc8;
+  --avatar-ring: #cdbf98;
+  /* プロフィール写真を置く面とその上の言葉。ダークでも変えない（.profile-photo、.profile-thumb） */
+  --photo-mat: #fff6dc;
+  --photo-mat-ink: #22304a;
+  --frame: #27507f;
+  --me-bubble: #27507f;
+  --me-bubble-text: #ffffff;
+  --shu: #c6401f;
+  --shu-hover: #a93518;
+  --shu-mark: #de4a26;
+  --src-self: #27507f;
+  --src-self-line: #27507f;
+  --src-testimony: #7a5c3e;
+  --src-testimony-line: #7a5c3e;
+  --src-guess: #6b6b6b;
+  --src-guess-line: #6b6b6b;
+  --src-now: #2f7d5b;
+  --src-estimate: #8a4b6b;
+  --estimate-bg: #fbf4f8;
+  --hero: linear-gradient(135deg, #2c5b90 0, #27507f 55%, #1f4269 100%);
+  --hero-sun: radial-gradient(circle at 38% 32%, #fff9e6 0, #ffeec0 52%, #fbdb8c 100%);
+  --hand: "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho NK-R", "UD デジタル 教科書体 N-R",
+    "Yu Kyokasho", "YuKyokasho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --plain: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  --tab-height: 64px;
+  /* 2026-11-06 の見直しで足した色。地とカードの差、見出しの印、ボタンの面、ツインの吹き出し、ホームの「話す」 */
+  --page-glow: radial-gradient(1100px 420px at 50% -160px, rgba(240, 183, 58, 0.16), transparent 70%);
+  --shadow: 0 1px 2px rgba(34, 48, 74, 0.06), 0 6px 18px rgba(34, 48, 74, 0.08);
+  --shadow-lift: 0 2px 4px rgba(34, 48, 74, 0.08), 0 12px 28px rgba(34, 48, 74, 0.16);
+  --button-bg: #ffffff;
+  --heading-mark: #f0b73a;
+  --twin-bubble: #edf3fb;
+  --twin-bubble-line: #bccfe8;
+  --talk-cta: linear-gradient(135deg, #3268a6 0, #27507f 55%, #1f4269 100%);
+  --talk-cta-ink: #ffffff;
+  /* 花びらの色から取った印の色。決まった場所（答えのボタン、見出しの印）にだけ使い、データの色にはしない（原則13） */
+  --tone-green: #23664a;
+  --tone-green-soft: #e1f1e7;
+  --tone-green-line: #6fae8d;
+  --tone-shu: #a63c1b;
+  --tone-shu-soft: #fbe6dd;
+  --tone-shu-line: #dc9a82;
+  --tone-fuji: #54467f;
+  --tone-fuji-soft: #ece8f6;
+  --tone-fuji-line: #a69bcc;
+  --tone-sun: #7c5400;
+  --tone-sun-soft: #fdefd0;
+  --tone-sun-line: #e2b555;
+}
+
+body[data-look="modern"] {
+  --photo-mat: #f4f6fb;
+  --avatar-ring: #dfe3e8;
+  --paper: #ffffff;
+  --paper-deep: #f4f6fb;
+  --ink: #1f2933;
+  --line: #9aa5b1;
+  --control-line: #7f8c99;
+  --line-soft: #dfe3e8;
+  --page-glow: none;
+  --shadow: 0 1px 2px rgba(31, 41, 51, 0.06), 0 4px 14px rgba(31, 41, 51, 0.07);
+}
+
+/* 暗い表示。端末が暗い設定で、明るいを選んでいないとき */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #0f1b2e;
+    --paper-deep: #2a3b55;
+    --card: #1b2e4b;
+    --input: #11203a;
+    --ink: #fbf7ec;
+    --ink-soft: #c5d1e3;
+    --line: #5a76a0;
+    --control-line: #7d95ba;
+    --line-soft: #2d4569;
+    --accent: #f6c858;
+    --accent-soft: #263f66;
+    --accent-ink: #1b2a44;
+    --error: #f7ad96;
+    --warn-bg: #3f3a2a;
+    --rail: #0a1424;
+    --rail-text: #c9d7ea;
+    --rail-current: #1b3152;
+    --sun: #f6c858;
+    --sun-soft: #3f3a2a;
+    /* 暗い面でも顔のまわりに明るさを残す。暗い面に顔だけを置くと、遺影に近づくため */
+    --avatar-ring: #fff6dc;
+    --frame: #f6c858;
+    --me-bubble: #f8dc8e;
+    --me-bubble-text: #1b2a44;
+    --src-self: #3c6ba5;
+    --src-self-line: #8fb3de;
+    --src-testimony: #8a6a4a;
+    --src-testimony-line: #d2b08c;
+    --src-guess: #6f7a8c;
+    --src-guess-line: #b6c4d8;
+    --src-now: #2f7d5b;
+    --src-estimate: #c989a9;
+    --estimate-bg: #33293f;
+    --hero: linear-gradient(135deg, #2c5b90 0, #24497a 55%, #1c3c63 100%); /* 暗い地に溶けないよう、明るい藍のまま */
+    --hero-sun: radial-gradient(circle at 38% 32%, #fdf0cc 0, #f8e0a4 52%, #efc878 100%);
+    --page-glow: radial-gradient(1100px 480px at 50% -180px, rgba(60, 107, 165, 0.4), transparent 70%);
+    --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 22px rgba(0, 0, 0, 0.34);
+    --shadow-lift: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 14px 32px rgba(0, 0, 0, 0.45);
+    --button-bg: #233a5e;
+    --heading-mark: #f6c858;
+    --twin-bubble: #1f3d66;
+    --twin-bubble-line: #4f76aa;
+    --talk-cta: linear-gradient(135deg, #fadf8f 0, #f6c858 55%, #eab53f 100%);
+    --talk-cta-ink: #1b2a44;
+    --tone-green: #a6e0c2;
+    --tone-green-soft: #1c3b35;
+    --tone-green-line: #4f9a78;
+    --tone-shu: #ffb7a1;
+    --tone-shu-soft: #43281f;
+    --tone-shu-line: #b9654c;
+    --tone-fuji: #cdc2f3;
+    --tone-fuji-soft: #2c2a4c;
+    --tone-fuji-line: #7f72b8;
+    --tone-sun: #f6c858;
+    --tone-sun-soft: #3b3320;
+    --tone-sun-line: #b8923a;
+  }
+}
+
+/* 暗い表示。ボタンで暗いを選んだとき（上と同じ値。片方だけ直さないこと） */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0f1b2e;
+  --paper-deep: #2a3b55;
+  --card: #1b2e4b;
+  --input: #11203a;
+  --ink: #fbf7ec;
+  --ink-soft: #c5d1e3;
+  --line: #5a76a0;
+  --control-line: #7d95ba;
+  --line-soft: #2d4569;
+  --accent: #f6c858;
+  --accent-soft: #263f66;
+  --accent-ink: #1b2a44;
+  --error: #f7ad96;
+  --warn-bg: #3f3a2a;
+  --rail: #0a1424;
+  --rail-text: #c9d7ea;
+  --rail-current: #1b3152;
+  --sun: #f6c858;
+  --sun-soft: #3f3a2a;
+  /* 暗い面でも顔のまわりに明るさを残す。暗い面に顔だけを置くと、遺影に近づくため */
+  --avatar-ring: #fff6dc;
+  --frame: #f6c858;
+  --me-bubble: #f8dc8e;
+  --me-bubble-text: #1b2a44;
+  --src-self: #3c6ba5;
+  --src-self-line: #8fb3de;
+  --src-testimony: #8a6a4a;
+  --src-testimony-line: #d2b08c;
+  --src-guess: #6f7a8c;
+  --src-guess-line: #b6c4d8;
+  --src-now: #2f7d5b;
+  --src-estimate: #c989a9;
+  --estimate-bg: #33293f;
+  --hero: linear-gradient(135deg, #2c5b90 0, #24497a 55%, #1c3c63 100%); /* 暗い地に溶けないよう、明るい藍のまま */
+  --hero-sun: radial-gradient(circle at 38% 32%, #fdf0cc 0, #f8e0a4 52%, #efc878 100%);
+  --page-glow: radial-gradient(1100px 480px at 50% -180px, rgba(60, 107, 165, 0.4), transparent 70%);
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 22px rgba(0, 0, 0, 0.34);
+  --shadow-lift: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 14px 32px rgba(0, 0, 0, 0.45);
+  --button-bg: #233a5e;
+  --heading-mark: #f6c858;
+  --twin-bubble: #1f3d66;
+  --twin-bubble-line: #4f76aa;
+  --talk-cta: linear-gradient(135deg, #fadf8f 0, #f6c858 55%, #eab53f 100%);
+  --talk-cta-ink: #1b2a44;
+  --tone-green: #a6e0c2;
+  --tone-green-soft: #1c3b35;
+  --tone-green-line: #4f9a78;
+  --tone-shu: #ffb7a1;
+  --tone-shu-soft: #43281f;
+  --tone-shu-line: #b9654c;
+  --tone-fuji: #cdc2f3;
+  --tone-fuji-soft: #2c2a4c;
+  --tone-fuji-line: #7f72b8;
+  --tone-sun: #f6c858;
+  --tone-sun-soft: #3b3320;
+  --tone-sun-line: #b8923a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--plain);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+/* 日本語を文節で折り返す。「かま/いません」のように言葉の途中で折れないようにするため。
+   対応していないブラウザでは、今までどおりの折り返しになる */
+html {
+  word-break: auto-phrase;
+}
+
+/* 入力欄の案内は、何を書くかを示す唯一の言葉なので、既定の薄い色にしない */
+::placeholder {
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
+/* 藍の帯の上では、選んでいる場所の枠を山吹にする */
+.tabs :focus-visible {
+  outline-color: var(--sun);
+}
+
+/* [hidden] を display の指定より強くする。切り替えた画面が残らないようにするため。 */
+[hidden] {
+  display: none !important;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+h1:focus,
+h2:focus {
+  outline: none;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+p {
+  margin: 0 0 8px;
+}
+
+/* ---- 共通の部品 ---- */
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--control-line);
+  border-radius: 10px;
+  background: var(--button-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+button:hover,
+.button:hover {
+  background: var(--accent-soft);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+label.button:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* 主ボタンは朱。暗い表示でも同じ色 */
+button.primary {
+  border-color: var(--shu);
+  background: var(--shu);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--shu-hover);
+}
+
+button.wide {
+  width: 100%;
+}
+
+button.quiet {
+  border-color: var(--control-line);
+  background: transparent;
+  color: var(--ink);
+}
+
+button.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  padding: 6px 4px;
+}
+
+input[type="file"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: 16px;
+}
+
+input[type="text"],
+input[type="search"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+label.field {
+  display: grid;
+  gap: 2px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+label.check input {
+  width: 22px;
+  height: 22px;
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.error {
+  margin: 8px 0;
+  color: var(--error);
+  font-weight: 700;
+}
+
+.notice {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--warn-bg);
+  font-size: 16px;
+}
+
+.card {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.row.spread {
+  justify-content: space-between;
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.panel {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+}
+
+/* 専門職の記録の絞り込み（本人の言葉、証言、AIの推測）。選んでいるものを藍の地に白い字で（押した印が見えなかった） */
+.record-filters button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* たたみの見出しを開いた中身が、下の部品に隠れないようにすき間をあける */
+details.fold[open] {
+  margin-bottom: 12px;
+}
+
+/* 写真を選ぶ欄（static/ui.js の photoPicker）。ボタンの形の札と、選んだファイル名 */
+.photo-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+}
+
+.photo-picker-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--control-line);
+  border-radius: 10px;
+  background: var(--button-bg);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-picker:hover .photo-picker-button {
+  background: var(--sun-soft);
+}
+
+.photo-picker input:focus-visible + .photo-picker-button {
+  outline: 3px solid var(--sun);
+  outline-offset: 2px;
+}
+
+.photo-picker-name {
+  color: var(--ink-soft);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+/* チェックとラジオの印は藍に（ブラウザの青を使わない。2026-11-07 の見直し） */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* ---- 画面の骨組み ---- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.site-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
+  font-size: 16px;
+}
+
+/* 入口は藍の面に札を出すので、見出しの札を出さない */
+body[data-screen="login"] .site-header {
+  display: none;
+}
+
+/* 見出しの札。右の縁を -9 度で切る（tan 9度 = 0.158）。押すとホームへ戻るリンク（static/app.js の goHome） */
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 28px 6px 12px;
+  background: var(--rail);
+  color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+}
+
+.plate:hover {
+  filter: brightness(1.12);
+}
+
+/* 札は斜めに切ってあり、外に出す輪は切れて見えないので、内側に山吹の輪を描く */
+.plate:focus-visible {
+  outline: 3px solid var(--sun);
+  outline-offset: -5px;
+}
+
+.brand-logo {
+  display: block;
+  width: 263px;
+  height: auto;
+  max-width: 100%;
+}
+
+.plate-logo {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: auto;
+  width: clamp(170px, 20.5vw, 263px);
+}
+
+.plate-mark {
+  display: none;
+  flex: none;
+  width: 42px;
+  height: 30px;
+}
+
+body[data-device="phone"] .plate-logo {
+  width: clamp(112px, 34vw, 140px);
+}
+
+body[data-device="phone"] .plate {
+  padding: 4px 22px 4px 10px;
+}
+
+body[data-device="phone"][data-tabs="on"] .plate-text {
+  display: none;
+}
+
+body[data-device="phone"][data-tabs="off"] .plate-logo {
+  display: none;
+}
+
+body[data-device="phone"][data-tabs="off"] .plate-mark {
+  display: block;
+}
+
+.site-header > .brand-logo {
+  width: 200px;
+  margin: 8px 12px;
+}
+
+.plate-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plate-title {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.view.talk-view {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 「ツインに聞く」「タイムライン」は長いので、言葉の長さに合わせて幅を分ける */
+.tabs {
+  flex: none;
+  display: flex;
+  height: var(--tab-height);
+  background: var(--rail);
+}
+
+.tabs button {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rail-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tabs button:hover {
+  background: var(--rail-current);
+}
+
+.tabs button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.tabs button[aria-current="page"] {
+  background: var(--rail-current);
+  color: #ffffff;
+}
+
+/* いまいる所の印。山吹の線を -9 度に傾ける */
+.tabs button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 3px;
+  background: var(--sun);
+  transform: skewX(-9deg);
+}
+
+/* ---- ログイン ---- */
+
+.user-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.user-button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 60px;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 18px;
+  text-align: left;
+}
+
+/* ホームでいちばん使う入口なので、陽だまりの面にする */
+.user-button.lead {
+  border: 2px solid var(--sun);
+  background: var(--sun-soft);
+  font-weight: 700;
+}
+
+.switch-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---- 人のアイコン ---- */
+
+.avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sun-soft);
+  box-shadow: 0 0 0 1px var(--avatar-ring);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 18px;
+  overflow: hidden;
+}
+
+/* 色のついた輪は本人にだけ付ける。全員に付けると何の印でもなくなり、SNS の「新着あり」の輪にも見えるため。
+   本人は藍の輪と山吹の輪の二重 */
+.avatar.me {
+  box-shadow: 0 0 0 2px var(--frame), 0 0 0 4px var(--card), 0 0 0 5.5px var(--sun);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar.small {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+.avatar.large,
+.avatar.portrait {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+}
+
+/* ---- プロフィール写真：丸いアイコンとは別の枠 ---- */
+
+/* 暗い表示でも面は明るいままにする。黒い面や濃い枠に顔を置くと、遺影に見えるため */
+/* 顔の写真は丸く切り抜き、山吹の輪で囲む。四角い台紙は遺影に見えるので使わない（2026-11-07 の見直し） */
+.profile-photo {
+  width: min(100%, 280px);
+  margin: 8px auto;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.profile-photo[hidden] {
+  display: none;
+}
+
+.profile-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--card), 0 0 0 7px var(--sun), var(--shadow-lift);
+}
+
+/* 自分の画面の名前の行。写真を左に置き、名前が長いときは折り返して行を増やさない */
+.home-head {
+  flex-wrap: nowrap;
+}
+
+.home-head h1 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 自分の画面の小さな写真。押すと大きく開く。面と言葉の色は暗い表示でも変えない */
+.profile-thumb {
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 96px;
+  padding: 4px 0 2px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.profile-thumb:hover {
+  background: transparent;
+}
+
+.profile-thumb:hover img {
+  box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--sun-hover, #e0a42a);
+}
+
+.profile-thumb[hidden] {
+  display: none;
+}
+
+.profile-thumb img {
+  display: block;
+  width: calc(100% - 12px);
+  margin: 0 auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--sun);
+}
+
+@media (min-width: 720px) {
+  .profile-thumb {
+    width: 132px;
+  }
+}
+
+/* ---- ツインの姿：花の子。考えている間だけ、周りの光がゆっくり動く ---- */
+
+.twin-figure {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+}
+
+.twin-figure svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.twin-figure.large {
+  width: 96px;
+  height: 96px;
+}
+
+.twin-figure.small {
+  width: 36px;
+  height: 36px;
+}
+
+.twin-figure::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(39, 71, 122, 0) 0deg,
+    rgba(39, 71, 122, 0.35) 120deg,
+    rgba(120, 150, 200, 0.45) 200deg,
+    rgba(39, 71, 122, 0) 330deg
+  );
+  filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.twin-figure.thinking::before {
+  opacity: 1;
+  animation: twin-glow 4.5s linear infinite;
+}
+
+@keyframes twin-glow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-figure.thinking::before {
+    animation: none;
+  }
+}
+
+/* ---- ツインの3Dの舞台（専門職の画面）。姿は static/twin3d/、台座の光はここで描く（static/twin_stage.js） ----
+   近未来の感じは、光の台座、床の点、ゆっくり回る輪で出す。面の色は変えない（藍と陽だまり）。
+   顔のまわりはいつも明るくする。暗い面や四角い枠で顔を囲まない（遺影に見せない）。数字や割合は出さない（原則13）。 */
+
+.twin-stage {
+  --ring: rgba(39, 80, 127, 0.72);
+  --ring-soft: rgba(39, 80, 127, 0.32);
+  --ring-faint: rgba(39, 80, 127, 0.15);
+  /* 足の位置（舞台の上からの割合）。3Dの舞台がカメラから計算して入れる。2Dの姿のときはこの値 */
+  --feet: 70%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.twin-stage-scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* 後ろの光。陽だまりの色で、顔のまわりを明るくする */
+.twin-stage-light {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 44%;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 249, 230, 1) 0, rgba(255, 238, 192, 0.7) 34%, rgba(253, 239, 200, 0.25) 56%, rgba(253, 239, 200, 0) 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* 床の点。奥へ倒した面に点を並べ、外へ向かって消す */
+.twin-stage-grid {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: var(--feet);
+  width: 100%;
+  aspect-ratio: 1;
+  background-image: radial-gradient(var(--ring-soft) 1.6px, transparent 2.1px);
+  background-size: 11px 11px;
+  -webkit-mask-image: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.75) 34%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 0, rgba(0, 0, 0, 0.75) 34%, transparent 66%);
+  transform: translate(-50%, -50%) perspective(520px) rotateX(72deg);
+  pointer-events: none;
+}
+
+/* 台座から上へ向かう、うすい光の柱 */
+.twin-stage-beam {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: calc(100% - var(--feet));
+  width: 62%;
+  height: 74%;
+  background: linear-gradient(to top, var(--ring-soft), rgba(39, 80, 127, 0.06) 45%, transparent 85%);
+  clip-path: polygon(32% 100%, 68% 100%, 100% 0, 0 0);
+  opacity: 0.45;
+  transform: translateX(-50%);
+  transition: opacity 0.6s;
+  pointer-events: none;
+}
+
+/* 台座の輪。奥へ倒した円を重ね、外の2本をゆっくり回す */
+.twin-stage-rings {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: var(--feet);
+  width: 86%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) perspective(520px) rotateX(72deg);
+  pointer-events: none;
+}
+
+.twin-stage-rings i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+/* 真ん中の光る円。姿はこの上に立つ */
+.twin-stage-rings i:nth-child(1) {
+  inset: 24%;
+  border: 2px solid var(--ring);
+  background: radial-gradient(circle, rgba(255, 249, 230, 0.9) 0, var(--ring-faint) 62%, var(--ring-soft) 100%);
+  box-shadow: 0 0 22px var(--ring-soft), inset 0 0 16px var(--ring-soft);
+}
+
+/* 点線の輪 */
+.twin-stage-rings i:nth-child(2) {
+  inset: 11%;
+  border: 2px dashed var(--ring-soft);
+  animation: twin-ring-turn 28s linear infinite;
+}
+
+/* いちばん外の輪と、その上を回る光の弧 */
+.twin-stage-rings i:nth-child(3) {
+  border: 1px solid var(--ring-faint);
+  background: conic-gradient(from 0deg, transparent 0 62%, var(--ring-soft) 80%, var(--ring) 92%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle, transparent 66%, #000 67%, #000 71%, transparent 72%);
+  mask-image: radial-gradient(circle, transparent 66%, #000 67%, #000 71%, transparent 72%);
+  animation: twin-ring-turn 10s linear infinite;
+}
+
+/* 答えが届いたときに1回だけ広がる輪。読み上げている間は、声に合わせてくり返し広がる */
+.twin-stage-rings .twin-stage-burst {
+  inset: 24%;
+  border: 2px solid var(--ring);
+  opacity: 0;
+}
+
+.twin-stage-rings .twin-stage-burst.go {
+  animation: twin-ring-burst 1.1s ease-out 1;
+}
+
+.twin-stage[data-mood="speaking"] .twin-stage-rings .twin-stage-burst {
+  animation: twin-ring-burst 1.6s ease-out infinite;
+}
+
+/* 考えている間は、輪と弧が速く回り、後ろの光が息をするように明るくなる */
+.twin-stage[data-mood="thinking"] .twin-stage-rings i:nth-child(2) {
+  border-color: var(--ring);
+  animation-duration: 7s;
+}
+
+.twin-stage[data-mood="thinking"] .twin-stage-rings i:nth-child(3) {
+  animation-duration: 2.4s;
+}
+
+.twin-stage[data-mood="thinking"] .twin-stage-light {
+  animation: twin-light-breathe 2s ease-in-out infinite;
+}
+
+.twin-stage[data-mood="thinking"] .twin-stage-beam,
+.twin-stage[data-mood="speaking"] .twin-stage-beam {
+  opacity: 0.85;
+}
+
+@keyframes twin-ring-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes twin-ring-burst {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes twin-light-breathe {
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 0.8;
+  }
+}
+
+/* 台座からのぼる光の粒。ふだんはゆっくり、考えている間は速く多く */
+.twin-stage-motes {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 8%;
+  width: 56%;
+  height: calc(var(--feet) - 8%);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.twin-stage-motes i {
+  position: absolute;
+  top: 100%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(39, 80, 127, 0.6);
+  box-shadow: 0 0 6px rgba(39, 80, 127, 0.5);
+  opacity: 0;
+  animation: twin-mote 7s linear infinite;
+}
+
+.twin-stage-motes i:nth-child(1) { left: 12%; animation-delay: -0.5s; }
+.twin-stage-motes i:nth-child(2) { left: 30%; animation-delay: -4.2s; width: 3px; height: 3px; }
+.twin-stage-motes i:nth-child(3) { left: 46%; animation-delay: -2.1s; }
+.twin-stage-motes i:nth-child(4) { left: 62%; animation-delay: -5.6s; width: 3px; height: 3px; }
+.twin-stage-motes i:nth-child(5) { left: 78%; animation-delay: -1.3s; }
+.twin-stage-motes i:nth-child(6) { left: 90%; animation-delay: -3.4s; width: 3px; height: 3px; }
+.twin-stage-motes i:nth-child(7) { left: 22%; animation-delay: -6.3s; width: 3px; height: 3px; }
+
+.twin-stage[data-mood="thinking"] .twin-stage-motes i {
+  animation-duration: 2.2s;
+}
+
+.twin-stage[data-mood="speaking"] .twin-stage-motes i {
+  animation-duration: 3.6s;
+}
+
+@keyframes twin-mote {
+  0% {
+    top: 100%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    top: 0;
+    opacity: 0;
+  }
+}
+
+/* 考えている間だけ、足元から頭へ上がる光の輪。姿の前を通るので、細く、うすくする */
+.twin-stage-scan {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: var(--feet);
+  width: 66%;
+  aspect-ratio: 1;
+  border: 2px solid rgba(39, 80, 127, 0.5);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(39, 80, 127, 0.35);
+  opacity: 0;
+  transform: translate(-50%, -50%) perspective(520px) rotateX(76deg);
+  pointer-events: none;
+}
+
+.twin-stage[data-mood="thinking"] .twin-stage-scan {
+  animation: twin-scan 2.6s ease-in-out infinite;
+}
+
+@keyframes twin-scan {
+  0% {
+    top: var(--feet);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    top: 12%;
+    opacity: 0;
+  }
+}
+
+/* 姿。3Dの canvas か、2Dの花の子が入る */
+.twin-stage-figure {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
+
+.twin-stage-figure > svg {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  width: 78%;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.twin-stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  cursor: grab;
+  animation: twin-stage-in 0.5s ease-out;
+}
+
+.twin-stage-canvas.dragging {
+  cursor: grabbing;
+}
+
+.twin-stage-canvas:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+@keyframes twin-stage-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.twin-stage-name {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* 「ツインに聞く」の右の窓は、専門職の「記録」のいちばん上の花びらの舞台（.twin-stage-petals）へ移した（2026-11-06） */
+
+/* ケア会議の舞台。名前は舞台の下の大きな文字で出す */
+.twin-stage-meeting {
+  width: 112px;
+}
+
+@media (min-width: 900px) {
+  /* 会議は「今の様子とツインを大きく」（画面の方針）。2026-11-07 の見直しで大きくした */
+  .meeting-panel .twin-stage-meeting {
+    width: clamp(220px, 20vw, 340px);
+  }
+
+  body[data-device="phone"] .meeting-panel .twin-stage-meeting {
+    width: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-stage *,
+  .twin-stage-rings .twin-stage-burst.go {
+    animation: none !important;
+  }
+}
+
+/* ---- トークの一覧 ---- */
+
+.room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.room-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+}
+
+.room-item:hover {
+  background: var(--paper);
+}
+
+.room-item[aria-current="true"] {
+  background: var(--accent-soft);
+}
+
+.room-item .room-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.45;
+}
+
+.room-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.room-item .room-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-when {
+  flex: none;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.room-item .room-preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-item.has-unread .room-preview {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 未読は印なので山吹にする。朱は主ボタンだけに使い、押すものと見分けるため */
+.unread-count {
+  flex: none;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sun);
+  color: #22304a;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.tabs button .unread-count {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+}
+
+.tabs button {
+  position: relative;
+}
+
+.new-divider span {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.read-mark {
+  display: inline;
+}
+
+.room-actions {
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* ---- トークの部屋 ---- */
+
+.room-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.room-header > span {
+  display: flex;
+}
+
+.room-head-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.room-header .room-title,
+.room-subtitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.room-header .room-title {
+  font-weight: 700;
+}
+
+.room-subtitle {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.room-info-button {
+  flex: none;
+}
+
+.room-info-button[aria-expanded="true"] {
+  background: var(--accent-soft);
+}
+
+.room-banner {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--warn-bg);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.guess-tag {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0 8px;
+  border: 3px double var(--frame);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.guess-answers {
+  margin: 4px 0 8px 52px;
+}
+
+.sheet-actions {
+  position: sticky;
+  bottom: -20px;
+  margin: 0 -16px -20px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+
+.scope-choice {
+  align-items: flex-start;
+}
+
+.scope-names {
+  display: block;
+}
+
+.fold {
+  margin: 6px 0;
+}
+
+.fold summary,
+.day-fold summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.day-fold summary::before,
+.fold summary::before {
+  content: "▶";
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.day-fold[open] summary::before,
+.fold[open] summary::before {
+  content: "▼";
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 10px 16px;
+  overscroll-behavior: contain;
+}
+
+.messages-inner {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.date-divider {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 10px;
+}
+
+.date-divider span {
+  padding: 1px 12px;
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.room-notice {
+  margin: 8px auto;
+  max-width: 90%;
+  color: var(--ink-soft);
+  font-size: 16px;
+  text-align: center;
+}
+
+.bubble-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.bubble-row.mine {
+  flex-direction: row-reverse;
+}
+
+.bubble-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 78%;
+}
+
+.bubble-row.mine .bubble-body {
+  align-items: flex-end;
+}
+
+.bubble-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-bottom: 2px;
+}
+
+.bubble-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.bubble-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bubble-row.mine .bubble-line {
+  flex-direction: row-reverse;
+}
+
+.bubble {
+  /* 日本語を文節で折り返す（言葉の途中で行が割れないように。対応するブラウザだけ） */
+  word-break: auto-phrase;
+  padding: 8px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px 16px 16px 16px;
+  background: var(--card);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.bubble.person {
+  font-family: var(--hand);
+}
+
+.bubble-row.mine .bubble {
+  border-color: var(--me-bubble);
+  border-radius: 16px 4px 16px 16px;
+  background: var(--me-bubble);
+  color: var(--me-bubble-text);
+}
+
+.bubble.guess {
+  border: 4px double var(--frame);
+  background: var(--sun-soft);
+}
+
+.bubble.question {
+  margin-top: 6px;
+  border: 2px solid var(--frame);
+  background: var(--card);
+}
+
+.bubble-photo {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  min-height: 80px;
+}
+
+.bubble-time {
+  flex: none;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.bubble-state {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.bubble-actions {
+  margin-top: 4px;
+}
+
+/* 入力の帯は面の色で、欄は丸い。藍は上の帯に残す */
+.composer {
+  flex: none;
+  padding: 6px 10px 10px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.composer-inner {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 140px;
+  padding: 8px 16px;
+  border-radius: 22px;
+  background: var(--paper);
+  resize: none;
+  font-family: var(--hand);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.composer textarea::placeholder {
+  font-family: var(--plain);
+}
+
+.composer .photo-button {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 22px;
+  color: var(--accent);
+}
+
+.composer .send-button {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 22px;
+}
+
+.line-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* スタンプを選ぶ欄。絵を大きくして、言葉を添える */
+.composer .stamp-button {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 22px;
+  color: var(--accent);
+}
+
+.stamp-button .stamp {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.stamp-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.letter-reply + .stamp-choices {
+  margin-top: 6px;
+}
+
+button.stamp-choice {
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 14px;
+}
+
+.stamp-choice .stamp {
+  width: 56px;
+  height: 56px;
+  margin: 0;
+}
+
+/* スマホは横幅が足りないので、部品の言葉を絵の下に置き、入れる欄の幅を残す */
+body[data-device="phone"] .composer-row > .photo-button,
+body[data-device="phone"] .composer-row > .stamp-button,
+body[data-device="phone"] .composer-row > .send-button {
+  flex-direction: column;
+  gap: 0;
+  padding: 2px 8px;
+  border-radius: 16px;
+  line-height: 1.2;
+}
+
+.composer-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.composer-preview img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.close-day {
+  flex: none;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* ---- タイムライン ---- */
+
+.letter-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 12px 16px 14px 14px;
+  border-block: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+/* タイムラインは余白なしで、白い面を積む */
+.panel.feed {
+  padding: 0 0 24px;
+}
+
+/* 記録の中の便りは、アイコンがないので2列にしない */
+.rail-item .letter-card {
+  display: block;
+  padding: 8px 12px;
+}
+
+.letter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding-bottom: 6px;
+}
+
+.letter-scope {
+  flex-basis: 100%;
+}
+
+/* 便りはツイン（AI）の下書きを本人が確かめたもの。人が書いた言葉の手書き風にはしない（原則3） */
+.letter-body {
+  padding: 8px 0;
+  font-family: var(--plain);
+  font-size: 18px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.letter-photo {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: var(--paper-deep);
+}
+
+/* タイムラインの便りの写真は、カードの端から端まで出す。アイコンの列（14 + 44 + 12）と右の余白（16）の分だけ外へ広げる */
+.letter-main .letter-photo {
+  width: calc(100% + 86px);
+  max-width: none;
+  max-height: 560px;
+  margin: 2px -16px 4px -70px;
+  border-radius: 0;
+}
+
+.letter-thread {
+  margin-top: 8px;
+  padding-left: 12px;
+  border-left: 3px solid var(--sun);
+}
+
+.letter-thread:empty {
+  display: none;
+}
+
+.comment {
+  padding: 2px 0 10px;
+}
+
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* 人の言葉は手書き風。ツインの言葉はふつうの文字（原則3、12） */
+.comment-text {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.comment-text.person {
+  font-family: var(--hand);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.comment-text.question {
+  padding: 8px 12px;
+  border: 3px solid var(--frame);
+  border-radius: 10px;
+  background: var(--sun-soft);
+}
+
+.comment-time {
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+/* 出どころの札：本人は実線、証言は破線、問いは太線。色だけに頼らない（原則3） */
+.source-tag {
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.source-tag.self {
+  border: 2px solid var(--frame);
+}
+
+.source-tag.testimony {
+  border: 2px dashed var(--ink-soft);
+}
+
+.source-tag.question {
+  border: 3px solid var(--frame);
+  font-weight: 700;
+}
+
+.letter-reply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.letter-reply textarea {
+  flex: 1 1 120px;
+  min-width: 0;
+  min-height: 44px;
+  resize: none;
+}
+
+/* ---- 出どころの区別：色だけでなく、ラベルと線の種類でも分ける ---- */
+
+.record-line {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--line);
+}
+
+.record-line.self-words {
+  border-left-style: solid;
+  border-left-color: var(--accent);
+  font-family: var(--hand);
+}
+
+.record-line.twin-words {
+  border-left-style: dotted;
+}
+
+.record-who {
+  display: block;
+  color: var(--ink-soft);
+  font-family: var(--plain);
+  font-size: 16px;
+}
+
+/* ---- 地図と家系図 ---- */
+
+.diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  touch-action: manipulation;
+}
+
+.diagram text {
+  font-family: var(--plain);
+  fill: var(--ink);
+  /* 線の上でも名前が読めるように、文字のまわりを地の色で縁取る */
+  paint-order: stroke;
+  stroke: var(--card);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+/* 地図は枠の内側いっぱいに広げ、幅360pxでも文字が16px以上になるようにする */
+.map-card {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.map-card > *:not(.diagram) {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.diagram .badge {
+  cursor: pointer;
+}
+
+.diagram .badge:focus-visible circle,
+.diagram .badge:focus-visible rect {
+  stroke-width: 4;
+}
+
+.legend {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend svg {
+  flex: none;
+  width: 44px;
+  height: 22px;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 29, 51, 0.45);
+}
+
+.sheet-inner {
+  width: 100%;
+  max-width: 44rem;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 14px 16px 20px;
+  border-radius: 16px 16px 0 0;
+  background: var(--card);
+}
+
+.sheet-inner > * + * {
+  margin-top: 12px;
+}
+
+@media (min-width: 720px) {
+  .sheet {
+    align-items: center;
+  }
+
+  .sheet-inner {
+    border-radius: 16px;
+  }
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--input);
+  font-size: 16px;
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.person-row .person-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.candidate-evidence {
+  margin: 6px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+  font-family: var(--hand);
+}
+
+/* ---- 評価の画面 ---- */
+
+.case-form {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 32px;
+}
+
+.case-form label {
+  font-weight: 700;
+}
+
+.case-form textarea,
+.case-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.case-list {
+  padding: 0;
+  list-style: none;
+}
+
+.case-list li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.case-list p {
+  margin: 0 0 8px;
+}
+
+/* ---- 今日うかがったこと ---- */
+
+.review-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.review-item.guess {
+  padding: 10px;
+  border: 4px double var(--frame);
+  border-radius: 8px;
+  margin-top: 8px;
+  background: var(--sun-soft);
+}
+
+/* カードが二重線なので、札まで二重線にしない。推測だと分かる線と言葉は残る（原則3） */
+.review-item.guess .guess-tag {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.review-item textarea {
+  width: 100%;
+  margin: 8px 0;
+}
+
+/* ---- ツインの色が1年ずつのる画面 ---- */
+
+.twin-figure.growth {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 12px auto;
+}
+
+.growth-year {
+  font-size: 24px;
+  text-align: center;
+}
+
+/* ---- ツインと話す。出どころは色だけでなく、ラベルと枠の線でも分ける ---- */
+
+.source-card {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.source-card.self {
+  border: 2px solid var(--src-self-line);
+}
+
+.source-card.testimony {
+  border: 2px dashed var(--src-testimony-line);
+}
+
+.source-card.guess {
+  border: 4px double var(--src-guess-line);
+}
+
+.source-card.now {
+  border: 1px solid var(--line-soft);
+  border-left: 8px solid var(--src-now);
+}
+
+.source-card .lead-in {
+  margin: 0 0 4px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.source-card .quote {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-label {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.source-label.self {
+  background: var(--src-self);
+}
+
+.source-label.testimony {
+  background: var(--src-testimony);
+}
+
+.source-label.guess {
+  background: var(--src-guess);
+}
+
+.source-label.now {
+  background: var(--src-now);
+}
+
+.turn {
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+
+.twin-answer {
+  margin-top: 8px;
+}
+
+.answer-group h3,
+.estimate-frame h3,
+.estimate-frame h4 {
+  margin: 12px 0 4px;
+}
+
+.notice {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+}
+
+.not-yet {
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.twin-lead {
+  margin: 10px 0;
+}
+
+/* 証言の点線と取り違えないよう、推定の枠は太い二重線にする */
+.estimate-frame {
+  margin: 12px 0;
+  padding: 12px;
+  border: 6px double var(--src-estimate);
+  border-radius: 10px;
+  background: var(--estimate-bg);
+}
+
+/* 問いに合う本人の言葉が記録になかったときの札（static/voice.js の offRecordNote）。代弁の主張より前に、
+   ツインの文と見分けられるよう、藍の細い枠にふつうの字（手書き風にしない） */
+.voice-off-record {
+  width: fit-content;
+  margin: 6px 0 8px;
+  padding: 4px 12px;
+  border: 1.5px solid var(--frame);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--plain);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* ツイン（AI）の代弁の枠。推定意思（梅色の二重線）とは別のもの（原則11）なので、ケア会議の代弁の枠
+   （.meeting-voice-frame）と同じ藍の二重線と陽だまりの地にそろえる（2026-11-07 の見直し。同じ画面に両方が出ると
+   見分けられなかった） */
+.estimate-frame.voice-frame {
+  padding: 12px 16px;
+  border: 4px double var(--frame);
+  border-radius: 12px;
+  background: var(--sun-soft);
+}
+
+.estimate-meter {
+  font-size: 18px;
+}
+
+.estimate-meter .tag {
+  margin-left: 4px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--src-estimate);
+  color: #ffffff;
+}
+
+.estimate-grounds .source-card {
+  margin: 6px 0;
+  padding: 6px 10px;
+}
+
+/* 専門職の PC の幅では、根拠と反対の根拠を左右に並べて見比べる */
+@media (min-width: 900px) {
+  .estimate-grounds.two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+/* 答えが長くても、聞く欄をいつでも使えるようにする。スクロールするのは .view なので、その下端に固定する */
+.advocate-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 8px 0;
+  background: var(--paper);
+}
+
+.turn {
+  scroll-margin-top: 8px;
+}
+
+/* 同じ説明を答えごとに繰り返さない。最新の答えにだけ出す */
+.turn:not(:last-child) .turn-note {
+  display: none;
+}
+
+.sheet-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--card);
+}
+
+.letter-note {
+  margin: 0;
+  padding-bottom: 8px;
+}
+
+body[data-look="modern"] .source-card.self .quote {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.elements-fold summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.review-origin {
+  margin: 4px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--line);
+}
+
+.ai-reading {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 4px double var(--src-guess-line);
+  border-radius: 8px;
+}
+
+.estimate-text {
+  font-size: 18px;
+}
+
+.scope-note {
+  margin-top: 8px;
+}
+
+.elements-fold {
+  margin-top: 10px;
+}
+
+.now-panel textarea,
+.sheet textarea {
+  width: 100%;
+}
+
+.composer-row textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.hand {
+  font-family: var(--hand);
+}
+
+/* ---- 入口 ---- */
+
+.login-screen {
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.logo-band {
+  padding: 9px 0 10px 20px;
+}
+
+/* 藍の面。下の縁を幅に合わせて -9 度で切る（tan 9度 = 0.1584）。.login-screen の最大幅で頭打ちにする */
+.hero-panel {
+  position: relative;
+  min-height: 248px;
+  padding: 0 0 64px 18px;
+  overflow: hidden;
+  background: var(--hero);
+  color: #ffffff;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - min(15.84vw, 81px)), 0 100%);
+}
+
+.hero-tag {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 12px 4px;
+}
+
+.hero-tag .tag {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #ffffff;
+}
+
+.hero-title {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding-right: 160px;
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 1.6;
+}
+
+.hero-role {
+  position: relative;
+  z-index: 2;
+  margin: 6px 0 0;
+  padding-right: 160px;
+  color: #d6e3f2;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.hero-role b {
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.hero-sun {
+  position: absolute;
+  right: -8px;
+  bottom: 30px;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  background: var(--hero-sun);
+  box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.07), 0 0 0 30px rgba(255, 255, 255, 0.04);
+}
+
+.hero-twin {
+  position: absolute;
+  right: -8px;
+  bottom: 23px;
+  z-index: 1;
+}
+
+.hero-twin svg {
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(8, 20, 44, 0.32));
+}
+
+.login-choice {
+  padding: 4px 16px 24px;
+  text-align: center;
+}
+
+.login-choice h1 {
+  margin-bottom: 4px;
+}
+
+.login-note {
+  margin: 12px 0 0;
+}
+
+.person-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* PC の入口を2列に（ご本人の決定、2026-11-07 の見直しの案A）。幅 1000px 以上の PC で、左に藍の面と大きな花の子、
+   右に人の札を並べ、最初の画面で専門職まで全員が見えるようにする。スマホとスマホ版の表示は今のまま */
+@media (min-width: 1000px) {
+  body[data-device="pc"] .login-screen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-areas: "logo panel" "hero panel";
+    grid-template-rows: auto 1fr;
+    gap: 0 44px;
+    max-width: 1180px;
+    padding: 18px 32px 24px;
+    align-items: start;
+  }
+
+  body[data-device="pc"] .logo-band {
+    grid-area: logo;
+    padding-left: 4px;
+  }
+
+  body[data-device="pc"] .hero-panel {
+    grid-area: hero;
+    min-height: 560px;
+    padding: 20px 0 120px 40px;
+    border-radius: 22px 22px 0 0;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 90px), 0 100%);
+  }
+
+  body[data-device="pc"] .hero-title {
+    padding-right: 0;
+    font-size: 36px;
+    line-height: 1.55;
+  }
+
+  body[data-device="pc"] .hero-role {
+    padding-right: 0;
+    margin-top: 14px;
+    font-size: 19px;
+  }
+
+  body[data-device="pc"] .hero-sun {
+    right: -20px;
+    bottom: 64px;
+    width: 300px;
+    height: 300px;
+  }
+
+  body[data-device="pc"] .hero-twin {
+    right: -12px;
+    bottom: 58px;
+  }
+
+  body[data-device="pc"] .hero-twin svg {
+    width: 300px;
+    height: 300px;
+  }
+
+  body[data-device="pc"] .login-choice {
+    grid-area: panel;
+    padding: 8px 0 0;
+  }
+
+  body[data-device="pc"] .person-card {
+    padding: 10px 2px 8px;
+  }
+}
+
+/* 写真の札。1段3枚 */
+.person-card {
+  position: relative;
+  flex: 0 0 calc((100% - 16px) / 3);
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  padding: 12px 2px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.person-card:hover {
+  background: var(--sun-soft);
+}
+
+.person-card b {
+  display: block;
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.person-role {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+/* 本人の札だけ陽だまりの面に、朱の -9 度の印 */
+.person-card.first {
+  background: var(--sun-soft);
+}
+
+/* 本人の札の朱の −9度の印。番号の札と色で本人が分かるようになったので、2026-11-07 から出さない
+   （角の近くで「/」の字のように見えていた） */
+.person-card.first::before {
+  display: none;
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  width: 4px;
+  height: 22px;
+  background: var(--shu-mark);
+  transform: skewX(-9deg);
+}
+
+/* 初めて開く人がどの人で入ればよいか分かるように、デモの道筋の3人に色を付ける（tyumajinさんの依頼、2026-11-07）。
+   本人と担当のケアマネジャーは薄い赤（吹き出しと同じ色）、最初の家族はクリーム（陽だまり）。static/app.js の toneOf */
+.person-card.tone-red {
+  border-color: var(--tone-shu-line);
+  background: color-mix(in srgb, var(--shu) 18%, var(--card));
+}
+
+.person-card.tone-cream {
+  border-color: color-mix(in srgb, var(--sun) 55%, var(--line-soft));
+  background: var(--sun-soft);
+}
+
+.person-card.tone-red:hover,
+.person-card.tone-cream:hover {
+  filter: brightness(0.97);
+}
+
+/* 入る順の番号（札の右上）。山吹の丸に濃い字（static/app.js の stepOf） */
+.person-step,
+.login-guide-step {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sun);
+  color: #2a1d00;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.person-step {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  box-shadow: 0 1px 3px rgba(34, 48, 74, 0.25);
+}
+
+/* 初めて開く人への道案内（どなたですか？の下） */
+.login-guide {
+  margin: 4px 0 12px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--sun) 55%, var(--line-soft));
+  border-radius: 14px;
+  background: var(--sun-soft);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.9;
+  text-align: center;
+}
+
+.login-guide-item {
+  white-space: nowrap;
+}
+
+.login-guide-step {
+  width: 22px;
+  height: 22px;
+  margin: 0 4px 0 2px;
+  font-size: 13px;
+  vertical-align: 1px;
+}
+
+/* 本人以外のホームの「誠一さんの今」と、顔つきの切り替え（ご本人の決定、2026-11-07 の見直しの案C。static/home.js の selfNowCard） */
+.self-now-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 12px;
+}
+
+.self-now-row .avatar.large {
+  width: 88px;
+  height: 88px;
+  box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--sun);
+}
+
+.self-now-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.self-now-date {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.self-now-body {
+  margin: 4px 0 0;
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.self-now-photo {
+  flex: none;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.switch-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+}
+
+.switch-person .avatar.small {
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+}
+
+/* ---- 記録：藍の年の札と、縦のレール ---- */
+
+.year-plate {
+  width: fit-content;
+  margin: 12px 0 4px;
+  padding: 2px 22px 2px 12px;
+  background: var(--rail);
+  color: #ffffff;
+  font-family: var(--plain);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+.rail-item {
+  position: relative;
+  margin-left: 8px;
+  padding: 2px 0 2px 16px;
+  border-left: 3px solid var(--frame);
+}
+
+/* レールの山吹の点。開いている日は朱の印にする */
+.rail-item::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 16px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--frame);
+  border-radius: 50%;
+  background: var(--sun);
+}
+
+.rail-item[open]::before {
+  left: -7px;
+  top: 12px;
+  width: 8px;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: var(--shu-mark);
+  transform: skewX(-9deg);
+}
+
+.rail-item > summary {
+  flex-wrap: wrap;
+  gap: 0 10px;
+  color: var(--ink);
+}
+
+.rail-date {
+  font-family: var(--plain);
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-kinds {
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* ---- 地図と家系図：山吹の点の方眼 ---- */
+
+.map-card .diagram,
+.sheet .diagram {
+  background-image: radial-gradient(color-mix(in srgb, var(--sun) 30%, transparent) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+
+/* 地図の続柄は名前より小さく、薄い色にする */
+.diagram .map-attr {
+  fill: var(--ink-soft);
+}
+
+/* PC でも文字の大きさをスマホに近づける。名前が大きくなりすぎないようにするため */
+body[data-device="pc"] .map-card .diagram {
+  max-width: 345px;
+}
+
+/* ---- ケア会議：今の様子とツインを大きく。字幕はいちばん大きい文字にする ---- */
+
+.meeting-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 今の様子を上に固定するので、上の余白を詰める */
+  padding-top: 0;
+}
+
+/* 幅の狭い画面でも、今の様子はいつも見えるように上に固定する（原則2）。大きな画面では字幕と一緒に見える */
+.meeting-now {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 6px 12px;
+  border-left: 8px solid var(--src-now);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.meeting-now h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.meeting-now-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.meeting-now-latest {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.meeting-now-line {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+/* だれの記録かを本文と別の行にする。同じ行だと、本文の折り返しが不ぞろいになるため */
+.meeting-now-latest .hint,
+.meeting-now-line .hint {
+  display: block;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* 会議の画面のいちばん上の行（閉じるボタン）。右に寄せる */
+.meeting-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.meeting-stage,
+.meeting-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.meeting-twin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.meeting-reading {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.meeting-question {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meeting-changed {
+  margin: 0;
+}
+
+/* 届いた言葉の日付。押すと字幕が替わる。新しい順に並べ、幅が足りなければ横に動かす */
+.meeting-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.meeting-chips button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.meeting-chips button[aria-pressed="true"] {
+  border: 2px solid var(--frame);
+  background: var(--sun-soft);
+  font-weight: 700;
+}
+
+.meeting-caption {
+  padding: 14px 16px;
+  border: 2px solid var(--frame);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+/* ツイン（AI）の代弁は、本人の言葉の字幕（実線）と分けて二重線の枠にする。AI の推測と同じ線にそろえる（出どころは線でも分ける） */
+.meeting-voice-frame {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 4px double var(--frame);
+  border-radius: 12px;
+  background: var(--sun-soft);
+}
+
+.meeting-voice-frame h3 {
+  margin: 0 0 4px;
+}
+
+.meeting-voice-claim {
+  margin: 8px 0;
+  font-size: 22px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.meeting-lead-in {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.meeting-quote {
+  margin: 0 0 12px;
+  font-size: 26px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.meeting-speak {
+  min-width: 8rem;
+  margin-top: 10px;
+}
+
+.meeting-waiting {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* 字幕の枠の中では、もう1つ枠を重ねない */
+.meeting-caption .not-yet {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 24px;
+}
+
+.meeting-next {
+  margin: 8px 0 0;
+  font-size: 18px;
+}
+
+/* 幅の狭い画面では字幕の場所を空けるため見出しを出さない。入力欄の名前は読み上げ用に持っている */
+.meeting-ask-label {
+  display: none;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.meeting-close {
+  align-self: flex-start;
+}
+
+/* 大きな画面：今の様子を上に全幅で、その下にツインと字幕を横に並べる。文字は画面に合わせて大きくする */
+@media (min-width: 900px) {
+  .meeting-panel {
+    max-width: min(92vw, 100rem);
+  }
+
+  .meeting-now {
+    position: static;
+    padding: 10px 14px;
+  }
+
+  .meeting-ask-label {
+    display: block;
+  }
+
+  .meeting-now h2 {
+    font-size: 22px;
+  }
+
+  .meeting-now-latest {
+    font-size: clamp(24px, 2vw, 40px);
+  }
+
+  .meeting-stage {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .meeting-twin {
+    flex: none;
+    flex-direction: column;
+    width: clamp(220px, 20vw, 340px);
+    text-align: center;
+  }
+
+  .meeting-panel .twin-figure.large {
+    width: clamp(210px, 19vw, 320px);
+    height: clamp(210px, 19vw, 320px);
+  }
+
+  .meeting-main {
+    flex: 1;
+  }
+
+  .meeting-lead-in {
+    font-size: clamp(20px, 1.6vw, 30px);
+  }
+
+  .meeting-panel .meeting-quote {
+    font-size: clamp(34px, 3vw, 60px);
+  }
+
+  .meeting-panel .advocate-composer textarea {
+    font-size: 18px;
+  }
+
+  .meeting-panel .advocate-composer .primary {
+    min-width: 7rem;
+  }
+}
+
+/* ---- トークの発言のかたまり ---- */
+
+/* 続けて話すと吹き出しをつなげ、アイコンと時刻は最後の吹き出しの横に1つだけ出す */
+.msg-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 10px 0;
+}
+
+.msg-group.mine {
+  align-items: flex-end;
+}
+
+.msg-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(100%, 40rem);
+}
+
+.msg-group.mine .msg-line {
+  max-width: min(92%, 36rem);
+}
+
+/* アイコンの幅（44px）と間（8px）の分だけ、名前を吹き出しにそろえる */
+.msg-slot {
+  flex: none;
+  display: flex;
+  width: 44px;
+}
+
+.msg-who,
+.msg-after,
+.msg-foot {
+  margin-left: 52px;
+}
+
+.msg-group.mine .msg-foot {
+  margin: 0 6px 0 0;
+}
+
+.msg-who {
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.msg-after {
+  margin-top: 4px;
+}
+
+.msg-foot {
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+/* 吹き出しの横の時刻と既読。自分の発言は吹き出しの左、相手の発言は右に置く */
+.msg-line > .msg-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.msg-group.mine .msg-line > .msg-foot {
+  order: -1;
+  align-items: flex-end;
+  margin: 0;
+}
+
+.msg-group .bubble {
+  min-width: 0;
+  border-radius: 20px;
+}
+
+.msg-group:not(.mine) .bubble.person {
+  border-color: transparent;
+  background: var(--paper-deep);
+}
+
+.msg-group.mine .bubble {
+  border-color: var(--me-bubble);
+  background: var(--me-bubble);
+  color: var(--me-bubble-text);
+}
+
+/* つなげる側の角だけ小さくする */
+.msg-group:not(.mine) .bubble.join-top {
+  border-top-left-radius: 6px;
+}
+
+.msg-group:not(.mine) .bubble.join-bottom {
+  border-bottom-left-radius: 6px;
+}
+
+.msg-group.mine .bubble.join-top {
+  border-top-right-radius: 6px;
+}
+
+.msg-group.mine .bubble.join-bottom {
+  border-bottom-right-radius: 6px;
+}
+
+/* スタンプ（static/stamps.js）。文の中では文字の大きさに合わせる */
+.stamp {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  margin: 0 0.06em;
+  vertical-align: -0.4em;
+}
+
+.room-item .room-preview .stamp {
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.28em;
+}
+
+/* スタンプだけの発言は吹き出しをやめ、絵を大きく出す */
+.msg-group:not(.mine) .bubble.stamp-only,
+.msg-group.mine .bubble.stamp-only,
+.bubble-row .bubble.stamp-only,
+.bubble-row.mine .bubble.stamp-only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
+.msg-group.mine .bubble.stamp-only,
+.bubble-row.mine .bubble.stamp-only {
+  justify-content: flex-end;
+}
+
+.comment-text.stamp-only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.stamp-only .stamp {
+  margin: 0;
+}
+
+.stamp-one .stamp {
+  width: 96px;
+  height: 96px;
+}
+
+.stamp-few .stamp {
+  width: 72px;
+  height: 72px;
+}
+
+.stamp-many .stamp {
+  width: 56px;
+  height: 56px;
+}
+
+.comment-text.stamp-one .stamp {
+  width: 72px;
+  height: 72px;
+}
+
+.msg-group .bubble.question {
+  margin-top: 0;
+}
+
+.msg-line .bubble-photo {
+  flex: 0 1 240px;
+  width: 240px;
+  border-radius: 16px;
+}
+
+.msg-flash .bubble,
+.msg-flash .bubble-photo {
+  outline: 3px solid var(--sun);
+  outline-offset: 2px;
+}
+
+.guess-answers button {
+  border-color: var(--frame);
+  border-radius: 999px;
+  color: var(--accent);
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.thinking-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  animation: thinking-dot 1.1s infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thinking-dot {
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dots i {
+    animation: none;
+  }
+}
+
+/* ---- トークの一覧のペイン ---- */
+
+.pane-list,
+.pane-room,
+.pane-info,
+.room-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.talk-view > .pane-list,
+.talk-view > .pane-info,
+.room-body {
+  flex: 1;
+}
+
+.pane-list {
+  background: var(--card);
+}
+
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 8px;
+}
+
+.list-head h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+/* スマホ版は上の札とタブに「トーク」があるので、見出しは読み上げだけに残し、探す欄を「新しい部屋」の横へ上げる */
+body[data-device="phone"] .list-head h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body[data-device="phone"] .list-head .list-search {
+  order: 0;
+  flex: 1 1 0;
+}
+
+input.search-box {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid var(--control-line);
+  border-radius: 22px;
+  background: var(--paper);
+  font-size: 16px;
+}
+
+.list-search {
+  order: 1;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.pane-list .room-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.room-list-empty {
+  padding: 8px 10px;
+}
+
+.list-note {
+  margin: 0;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ---- この部屋のこと（PC版は右のペイン、スマホ版は部屋に重ねる画面） ---- */
+
+.pane-info {
+  background: var(--card);
+}
+
+.info-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 60px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.info-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.info-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.info-tabs button {
+  flex: 1 1 0;
+  padding: 0 4px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.info-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--sun);
+  color: var(--ink);
+}
+
+.info-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.info-body p {
+  margin: 0;
+}
+
+.info-section h3 {
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.info-twin,
+.info-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.info-profile strong {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+/* 右のペインの写真は、下のツインの説明と話を探す欄が最初の画面に入る大きさにする。明るい面は .profile-photo のまま */
+.info-profile .profile-photo {
+  width: min(100%, 200px);
+  margin: 0 auto;
+}
+
+/* グループの部屋のアイコン。2人の顔を斜めに少し重ねる。輪は面の色にして、本人の二重の輪も重ねない */
+.group-faces {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+}
+
+.group-faces .avatar {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.group-faces .avatar:first-child {
+  top: 0;
+  right: 0;
+}
+
+.group-faces .avatar:last-child {
+  bottom: 0;
+  left: 0;
+}
+
+.group-faces.large {
+  width: 72px;
+  height: 72px;
+}
+
+.group-faces.large .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+}
+
+/* 確かめの部品は外枠を付けない。推測のカードに二重線があるので、外にも枠があると枠の中の枠になるため */
+.review-list {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pane-info .review-list p {
+  margin-bottom: 8px;
+}
+
+.twin-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--paper-deep);
+}
+
+.twin-state-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.photo-grid button {
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.photo-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.result-button {
+  display: block;
+  width: 100%;
+  border-color: var(--line-soft);
+  background: var(--paper);
+  font-weight: 400;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.result-meta {
+  display: block;
+  color: var(--ink-soft);
+}
+
+.result-button mark {
+  background: var(--sun-soft);
+  color: inherit;
+  font-weight: 700;
+}
+
+/* ---- PC版とスマホ版の切り替え ---- */
+
+.site-header .tags {
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.device-switch {
+  flex: none;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.device-switch button {
+  min-width: 44px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.device-switch button[aria-pressed="true"] {
+  background: var(--rail);
+  color: #ffffff;
+}
+
+/* スマホ版の部屋では見出しの帯を隠し、会話の面を広くする。「架空データ」は会話の面の隅に出す（原則8）。
+   札は押せないので、下の発言を押す邪魔をしない */
+body[data-device="phone"][data-in-room="on"] .site-header {
+  display: none;
+}
+
+.messages-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 部屋の見出しの中の「架空データ」の札（スマホ）。名前の下の行、説明の右に小さく置く */
+.room-head-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  min-width: 0;
+}
+
+/* 説明が切れないよう、札は入らなければ次の行へ回す */
+.room-head-sub > :first-child {
+  min-width: 0;
+}
+
+.room-mode-tag {
+  flex: none;
+  padding: 0 7px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* スマホ版を広い画面で開くと、幅390pxで中央に置く。PC 1台で両方を確かめられるようにするため */
+@media (min-width: 480px) {
+  body[data-device="phone"] {
+    background-color: var(--paper-deep);
+  }
+
+  body[data-device="phone"] .app {
+    max-width: 390px;
+    margin: 0 auto;
+    background: var(--paper);
+    box-shadow: 0 0 24px rgba(39, 80, 127, 0.22);
+  }
+}
+
+/* 広い画面でスマホ版の部屋を開いているときは、切り替えのボタンを電話の幅の外に置く。PC版へすぐ戻せるようにするため。
+   本物のスマホでは「一覧へ」か「くわしく」で帯に戻ると押せる */
+@media (min-width: 840px) {
+  body[data-device="phone"][data-in-room="on"] .site-header {
+    display: flex;
+    position: fixed;
+    top: 10px;
+    left: calc(50% + 207px);
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  body[data-device="phone"][data-in-room="on"] .plate,
+  body[data-device="phone"][data-in-room="on"] #mode-label {
+    display: none;
+  }
+}
+
+/* 幅が基準の大きな画面の指定を、スマホ版の幅の中では使わない */
+@media (min-width: 900px) {
+  body[data-device="phone"] .estimate-grounds.two {
+    display: block;
+  }
+
+  body[data-device="phone"] .meeting-stage {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  body[data-device="phone"] .meeting-twin {
+    flex-direction: row;
+    width: auto;
+    text-align: left;
+  }
+
+  body[data-device="phone"] .meeting-panel .twin-figure.large {
+    width: 96px;
+    height: 96px;
+  }
+
+  body[data-device="phone"] .meeting-panel .meeting-quote {
+    font-size: 24px;
+  }
+}
+
+/* PC版：見出しを1本の藍の帯にして、タブを帯の中へ入れる。入口は今の形のまま */
+body[data-device="pc"]:not([data-screen="login"]) .app {
+  display: grid;
+  grid-template: "plate tabs tools" auto "main main main" minmax(0, 1fr) / auto 1fr auto;
+  min-width: 900px;
+}
+
+body[data-device="pc"]:not([data-screen="login"]) .app::before {
+  content: "";
+  grid-area: 1 / 1 / 2 / 4;
+  background: var(--rail);
+}
+
+body[data-device="pc"]:not([data-screen="login"]) .site-header {
+  display: contents;
+}
+
+body[data-device="pc"] .plate {
+  grid-area: plate;
+  padding-right: 30px;
+  background: var(--rail-current);
+}
+
+/* タブがある間は今いる所がタブで分かるので、札にはアプリの名前を出す。会議のようにタブがない画面は画面の名前を出す */
+body[data-device="pc"][data-tabs="on"] .plate-text {
+  display: none;
+}
+
+body[data-device="pc"] .tabs {
+  grid-area: tabs;
+  height: auto;
+  padding-left: 8px;
+}
+
+body[data-device="pc"] .tabs button {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 6px;
+  padding: 0 16px;
+}
+
+body[data-device="pc"] .tabs button[aria-current="page"]::before {
+  top: auto;
+  bottom: 0;
+}
+
+body[data-device="pc"] .tabs button .unread-count {
+  position: static;
+}
+
+body[data-device="pc"] .site-header .tags {
+  grid-area: tools;
+  padding: 6px 12px;
+}
+
+body[data-device="pc"] .device-switch {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+}
+
+body[data-device="pc"] .device-switch button {
+  padding: 0 12px;
+  color: #ffffff;
+}
+
+body[data-device="pc"] .device-switch button:hover {
+  background: var(--rail-current);
+}
+
+body[data-device="pc"] .device-switch button[aria-pressed="true"] {
+  background: #fff9ea;
+  color: #22304a;
+}
+
+body[data-device="pc"] .device-switch :focus-visible {
+  outline-color: var(--sun);
+}
+
+body[data-device="pc"] #view {
+  grid-area: main;
+}
+
+body[data-device="pc"] .panel {
+  max-width: 56rem;
+}
+
+body[data-device="pc"] .messages-inner,
+body[data-device="pc"] .composer-inner {
+  max-width: 48rem;
+}
+
+/* PC版のホーム：話すことと確かめを左に、地図や人の管理を右に並べる。スマホ版は同じ順に縦に続く */
+.home-main,
+.home-side {
+  min-width: 0;
+}
+
+body[data-device="pc"] .panel.home-wide {
+  max-width: 72rem;
+}
+
+body[data-device="pc"] .home-columns {
+  grid-template-columns: minmax(0, 1fr) 26rem;
+  align-items: start;
+  gap: 20px;
+}
+
+/* PC版のタイムライン：読みやすい幅の便りと、月から探す欄。スマホ版には横の余りがないので出さない */
+.feed-aside {
+  display: none;
+}
+
+body[data-device="pc"] .feed-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 42rem) 16rem;
+  justify-content: center;
+  align-items: start;
+  gap: 20px;
+  padding: 12px 16px 0;
+}
+
+body[data-device="pc"] .feed-layout .panel.feed {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+body[data-device="pc"] .feed .letter-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+body[data-device="pc"] .feed-aside:not([hidden]) {
+  display: block;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100dvh - 100px);
+  overflow-y: auto;
+}
+
+.month-list {
+  display: grid;
+  gap: 6px;
+}
+
+.month-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* PC版の記録：左に日付、右に開いた日の中身 */
+.view.records-panes {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(300px, 26rem) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.records-panes > .panel {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--line-soft);
+}
+
+.records-reader {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+}
+
+.records-reader > div {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.records-reader .letter-card {
+  display: block;
+  padding: 12px 16px;
+}
+
+/* PC版のトーク：一覧、部屋、この部屋のこと。右は閉じられる */
+.view.talk-panes {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(320px, 1fr) minmax(300px, 360px);
+}
+
+.view.talk-panes[data-info="closed"] {
+  grid-template-columns: minmax(280px, 340px) minmax(320px, 1fr);
+}
+
+.view.talk-panes[data-info="closed"] > .pane-info {
+  display: none;
+}
+
+.talk-panes > .pane-list {
+  border-right: 1px solid var(--line-soft);
+}
+
+.talk-panes > .pane-info {
+  border-left: 1px solid var(--line-soft);
+}
+
+/* 「もっと前を読む」。部屋の上と、この部屋のことの探す欄と写真に出す */
+.earlier-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0 0.75rem;
+}
+
+.earlier-bar[hidden] {
+  display: none;
+}
+
+.earlier-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+/* 幅の狭い PC 画面では左右を細くして、会話の幅を取る */
+@media (max-width: 1099px) {
+  .view.talk-panes {
+    grid-template-columns: 280px minmax(320px, 1fr) 300px;
+  }
+
+  .view.talk-panes[data-info="closed"] {
+    grid-template-columns: 280px minmax(320px, 1fr);
+  }
+}
+
+/* 幅900未満のウィンドウで PC版を選んだとき、見出しを2段にして切り替えと架空データの表示を画面の中に残す（原則8）。
+   会話の3列だけが横に動く */
+@media (max-width: 899px) {
+  body[data-device="pc"]:not([data-screen="login"]) .app {
+    grid-template: "plate tools" auto "tabs tabs" auto "main main" minmax(0, 1fr) / 1fr auto;
+    min-width: 0;
+  }
+
+  body[data-device="pc"]:not([data-screen="login"]) .app::before {
+    grid-area: 1 / 1 / 3 / 3;
+  }
+
+  .view.talk-panes {
+    overflow-x: auto;
+  }
+}
+
+
+/* ---- 専門職のツール ---- */
+
+.tool-cards {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+body[data-device="pc"] .tool-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body[data-device="pc"] .panel.tools-panel {
+  max-width: 72rem;
+}
+
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tool-head h2 {
+  margin: 0;
+}
+
+.tool-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--ink);
+}
+
+.tool-what {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+
+/* ツインの考えの進み方。上に固定する。見出しが隠れないよう、飛ぶ先に余白を取る */
+.tool-steps {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--paper-deep);
+  box-shadow: 0 0 0 6px var(--paper);
+  list-style: none;
+  font-size: 16px;
+}
+
+.tool-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  color: var(--ink-soft);
+}
+
+.tool-step-no {
+  font-family: var(--plain);
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-steps li[aria-current="step"] {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* いま・ここの印。朱の -9 度 */
+.tool-steps li[aria-current="step"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 4px;
+  background: var(--shu-mark);
+  transform: skewX(-9deg);
+}
+
+.advocate-flow .voice-frame,
+.advocate-flow .turn {
+  scroll-margin-top: 96px;
+}
+
+/* 「ほかの言葉も見る」のボタンと並ばないようにあける */
+.voice-area {
+  margin-top: 8px;
+}
+
+.ask-guide {
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.ask-examples {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ask-examples button {
+  justify-content: flex-start;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+/* ケア会議の例の札は、入れる欄の上に横に並べる（縦に積むと字幕と代弁が下へ押し出されるため） */
+.meeting-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+/* 入口と人の一覧で、専門職を分ける見出し */
+.grid-head {
+  flex: 0 0 100%;
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.people-group {
+  margin: 14px 0 2px;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.job-table {
+  margin: 12px 0 0;
+  font-size: 16px;
+}
+
+.job-table dt {
+  font-weight: 700;
+}
+
+.job-table dd {
+  margin: 0 0 6px;
+  color: var(--ink-soft);
+}
+
+/* 地図の職種の札。色だけで分けないよう、枠を付ける */
+.diagram .map-job {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 1.5;
+}
+
+/* デモの入口の「新規で始める」。人を選ぶ所と線で分ける */
+.fresh-start {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.fresh-earlier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fresh-earlier:empty {
+  display: none;
+}
+
+button.fresh-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 「ログイン画面」のボタン */
+.login-return {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* スマホ版は札と切り替えで幅が埋まるので、帯の2段目の右に置く。部屋の中では帯ごと隠れる */
+body[data-device="phone"][data-return-button="on"]:not([data-in-room="on"]):not([data-screen="login"]) .site-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0 6px;
+}
+
+body[data-device="phone"][data-return-button="on"]:not([data-in-room="on"]):not([data-screen="login"]) .site-header .tags {
+  display: contents;
+}
+
+/* 「架空データ」の札は字の幅だけにする（列いっぱいに伸びると入力欄に見えた。2026-11-07 の見直し） */
+body[data-device="phone"][data-return-button="on"]:not([data-in-room="on"]):not([data-screen="login"]) .site-header .tag {
+  justify-self: start;
+  width: fit-content;
+}
+
+body[data-device="phone"][data-return-button="on"]:not([data-in-room="on"]):not([data-screen="login"]) .login-return {
+  grid-column: 2 / -1;
+  justify-self: end;
+  margin-bottom: 4px;
+}
+
+/* 広い画面でスマホ版の部屋を開いたとき、外に出した切り替えの下に並べる */
+body[data-device="phone"][data-return-button="on"][data-in-room="on"] .site-header .tags {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* PC版は藍の帯の上に置く */
+body[data-device="pc"] .login-return {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: #ffffff;
+}
+
+body[data-device="pc"] .login-return:hover {
+  background: var(--rail-current);
+}
+
+body[data-device="pc"] .login-return:focus-visible {
+  outline-color: var(--sun);
+}
+
+/* ボタンの分だけ帯が狭くなるので、窓が狭いときはタブの余白を詰める。トークの数字が付いても重ならない幅 */
+@media (max-width: 1239px) {
+  body[data-device="pc"][data-return-button="on"] .tabs button {
+    padding: 0 8px;
+  }
+}
+
+/* さらに狭いときは絵を隠し、言葉だけにする */
+@media (max-width: 1099px) {
+  body[data-device="pc"][data-return-button="on"] .tabs button svg {
+    display: none;
+  }
+}
+
+/* いちばん狭いときは、札を NT の印だけにする。タブの言葉を優先する */
+@media (max-width: 999px) {
+  body[data-device="pc"][data-return-button="on"] .plate-logo {
+    display: none;
+  }
+
+  body[data-device="pc"][data-return-button="on"] .plate-mark {
+    display: block;
+  }
+}
+
+/* スマホ版の部屋の隅の札に、空の部屋の案内が隠れないようにする */
+body[data-device="phone"] .messages-inner > .room-notice:first-child {
+  margin-top: 36px;
+}
+
+/* 専門職がツインに伝えること（static/tell.js）。残すかは項目ごとに人が決める */
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.tell-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.tell-frame {
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--sun);
+  background: var(--card);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px 0;
+}
+.tell-lead {
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.tell-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.tell-item {
+  border-top: 1px dashed var(--line-soft);
+  padding-top: 8px;
+}
+.tell-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.tell-item-head {
+  margin: 0;
+  font-size: 14px;
+}
+.tell-kind {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--sun-soft);
+  font-weight: 700;
+}
+.tell-text {
+  margin: 4px 0;
+}
+.tell-buttons {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tell-done {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.tell-残さない .tell-text {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+.tell-waiting h3 {
+  font-size: 15px;
+  margin: 12px 0 4px;
+}
+.document-summary {
+  margin: 4px 0 8px;
+}
+.erase-area {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+}
+
+/* ご本人と託されたご家族のホームに出す、確かめ待ちの手紙の知らせ（static/letter_notice.js）。静かな枠1つにし、数は出さない */
+/* 2つの知らせを色で見分ける（tyumajinさんの依頼、2026-11-07）。
+   - 手紙の下書き（ツイン（AI）が書き、確かめを待つもの）：ツインの吹き出しと同じ、うすい藍の面と藍の印
+   - 届いた手紙（人が書いて送ったもの）：白い紙の面に、朱の印（郵便ポストの色）
+   .card の縁と見出しの印より後に効くよう、.card を重ねて書く */
+.card.letter-notice {
+  border: 1.5px solid var(--twin-bubble-line);
+  border-left: 6px solid var(--accent);
+  background: var(--twin-bubble);
+}
+.card.letter-notice > h2:first-child::before {
+  background: var(--accent);
+}
+.card.letter-notice.received-letters {
+  border-color: var(--tone-shu-line);
+  border-left-color: var(--shu);
+  background: var(--card);
+}
+.card.letter-notice.received-letters > h2:first-child::before {
+  background: var(--shu);
+}
+.letter-notice h2 {
+  margin: 0 0 6px;
+}
+/* 行の頭に、送り主（届いた手紙）か頼んだ人（下書き）の小さなアイコンを出す */
+.letter-notice-what {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.letter-notice-what .avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+.letter-notice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 6px 0;
+}
+.letter-notice-row p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+/* ==== 2026-11-06 の見直し：見やすく、色で見分けやすく ====
+   紺どうし、クリームどうしで溶けていた面を分ける。色は藍と陽だまりと、花びらから取った印の色（--tone-*）だけを使う。
+   印の色は決まった場所（答えのボタン、見出しの印、候補のカード）にだけ使い、データの多さや成長を色で表さない（原則13）。 */
+
+/* 地。上から光がさすように、うすい光を重ねる */
+body {
+  background: var(--page-glow), var(--paper);
+}
+
+/* カード。影と縁で地から浮かせる */
+.card {
+  border-color: var(--line-soft);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+/* カードの見出しに、陽だまりの印を付ける。どこからがひとまとまりかを見つけやすくするため */
+.card > h2:first-child {
+  position: relative;
+  padding-left: 14px;
+}
+
+.card > h2:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.22em;
+  bottom: 0.22em;
+  width: 5px;
+  border-radius: 3px;
+  background: var(--heading-mark);
+}
+
+/* ボタン。押せる所が浮いて見えるよう、うすい影を付ける。画面の中身のふつうのボタンだけで、帯のタブや一覧には付けない。
+   :where で強さを0にし、部品ごとの指定（影なし）があればそちらを使う */
+:where(.view, .sheet) :where(button:not(.quiet, .link, .primary, .room-item, .stamp-button, .tell-toggle), .button) {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+button:not(:disabled):active,
+.button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  box-shadow: 0 2px 8px rgba(198, 64, 31, 0.28);
+}
+
+/* 入力欄。地より一段沈めて、書く所だと分かるようにする */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+select,
+textarea {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* いまいる所のタブ。山吹の線を太くする */
+.tabs button[aria-current="page"]::before {
+  height: 4px;
+}
+
+/* トークの一覧の、開いている部屋。左に山吹の線を付ける */
+.room-item[aria-current="true"] {
+  box-shadow: inset 4px 0 0 var(--sun);
+}
+
+/* ツイン（AI）の吹き出し。人の吹き出し（手書き風の文字、くすんだ面）と、色でも見分けられるようにする */
+.msg-group.twin .bubble:not(.stamp-only):not(.question):not(.guess) {
+  border-color: var(--twin-bubble-line);
+  background: var(--twin-bubble);
+}
+
+/* ---- ホーム：「ツイン（AI）と話す」は塗りの大きなボタン、確かめは白いカード ---- */
+
+.user-button.talk-cta {
+  min-height: 76px;
+  padding: 10px 14px 10px 12px;
+  border: none;
+  border-radius: 18px;
+  background: var(--talk-cta);
+  color: var(--talk-cta-ink);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: var(--shadow-lift);
+}
+
+.user-button.talk-cta:hover {
+  background: var(--talk-cta);
+  filter: brightness(1.06);
+}
+
+/* ツインの顔のまわりは明るい輪のまま（暗い面に顔だけを置かない） */
+.user-button.talk-cta .twin-figure {
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+/* 押すと進むことを示す矢印 */
+.user-button.talk-cta::after {
+  content: "›";
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border-radius: 50%;
+  /* 文字の色（明るい表示は白、暗い表示は紺）を薄くした丸。どちらの面でも見える */
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* 「手紙を書く」は、「ツイン（AI）と話す」の下に置く2番目の入口。塗りにせず、カードの面に話す入口と同じ色の縁を付ける
+   （static/home.js、static/my_letter.html） */
+/* 目立つように、朱（郵便ポストの色）の塗りにする（tyumajinさんの依頼、2026-11-07）。
+   藍の「話す」と並べて、どちらも入口だと分かり、色で見分けられる。明るい表示でもダークでも同じ朱 */
+.user-button.letter-cta {
+  min-height: 70px;
+  padding: 9px 14px 9px 12px;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #dc5a30 0, var(--shu) 55%, var(--shu-hover) 100%);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(169, 53, 24, 0.18), 0 10px 24px rgba(169, 53, 24, 0.24);
+}
+
+.user-button.letter-cta:hover {
+  background: linear-gradient(135deg, #dc5a30 0, var(--shu) 55%, var(--shu-hover) 100%);
+  filter: brightness(1.06);
+}
+
+/* 封筒の印。話す入口のツインの顔と同じ位置に、同じ大きさの白い丸で置き、封筒を朱で描く */
+.letter-cta-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--shu);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.user-button.letter-cta::after {
+  content: "›";
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* 「5つの花びら」は、「手紙を書く」の下に置く3番目の入口（static/home.js、static/self_petals.js、tyumajinさんの依頼、2026-11-07）。
+   ツインの体の若草から取った深い緑の塗り。藍の「話す」、朱の「手紙」と並べて色で見分けられる。明るい表示でもダークでも同じ緑。
+   白い字との差は、いちばん明るい端でも 4.5:1 以上 */
+.user-button.petals-cta {
+  min-height: 70px;
+  padding: 9px 14px 9px 12px;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #3f7f5f 0, #33694e 55%, #285640 100%);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(40, 86, 64, 0.18), 0 10px 24px rgba(40, 86, 64, 0.24);
+}
+
+.user-button.petals-cta:hover {
+  background: linear-gradient(135deg, #3f7f5f 0, #33694e 55%, #285640 100%);
+  filter: brightness(1.06);
+}
+
+/* 5色の花びらの印。話す入口のツインの顔、手紙の封筒と同じ位置に、同じ大きさの白い丸で置く */
+.petals-cta-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.user-button.petals-cta::after {
+  content: "›";
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* 本人の「5つの花びら」の画面。上の「ホームへ戻る」は左に寄せる */
+.self-petals-back {
+  align-self: flex-start;
+  justify-self: start;
+  width: auto;
+}
+
+/* 花びらの節は白い面に描く。本人の画面はダークの表示もあるので、節の中の字と線の色は明るい表示の値に固定する
+   （ダークのままだと、白い面に明るい字になって題や花びらの名前が読めなかった。2026-11-07 の確かめ） */
+.self-petals-panel .petal-section {
+  --ink: #22304a;
+  --ink-soft: #46536b;
+  --line-soft: #e4d7b5;
+  --accent: #27507f;
+  color: var(--ink);
+}
+
+/* 確かめの見出しに、山吹の「？」の印を付ける（カードの見出しの線の代わり） */
+.card.review-list > h2:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0;
+}
+
+.card.review-list > h2:first-child::before {
+  content: "？";
+  position: static;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--tone-sun-line);
+  border-radius: 50%;
+  background: var(--tone-sun-soft);
+  color: var(--tone-sun);
+  font-size: 18px;
+}
+
+/* 確かめのカード。白い面に、推測だと分かる二重線（原則3）。塗りの「話す」と別のものに見えるようにする */
+.review-item.guess {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.review-item.guess .guess-tag {
+  color: var(--accent);
+}
+
+/* 3つの答え。色を分けるが、どれも同じ重さ（塗りの濃さ、線の太さ）にする */
+.review-item .answer-yes,
+.review-item .answer-no,
+.review-item .answer-rest {
+  border-width: 2px;
+  color: var(--ink);
+}
+
+.review-item .answer-yes {
+  border-color: var(--tone-green-line);
+  background: var(--tone-green-soft);
+}
+
+.review-item .answer-no {
+  border-color: var(--tone-shu-line);
+  background: var(--tone-shu-soft);
+}
+
+.review-item .answer-rest {
+  border-color: var(--tone-fuji-line);
+  background: var(--tone-fuji-soft);
+}
+
+.review-item .answer-yes:hover,
+.review-item .answer-no:hover,
+.review-item .answer-rest:hover {
+  filter: brightness(1.05);
+}
+
+/* 確かめの欄は外枠を付けない決まり（推測のカードに二重線があるため）なので、影も付けない */
+.card.review-list {
+  box-shadow: none;
+}
+
+/* 話に出てきた人の候補。人の話なので、若竹の線を左に付ける */
+.candidate-card {
+  border-left: 5px solid var(--tone-green-line);
+}
+
+/* ---- 明るい・暗いの切り替え（static/theme.js） ---- */
+
+.theme-switch {
+  flex: none;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+body[data-device="pc"] .theme-switch {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body[data-device="pc"] .theme-switch:hover {
+  background: var(--rail-current);
+}
+
+body[data-device="pc"] .theme-switch:focus-visible {
+  outline-color: var(--sun);
+}
+
+/* スマホの見出しは混み合うので、月と太陽の絵だけにする。言葉は読み上げで伝える */
+body[data-device="phone"] .theme-switch {
+  width: 44px;
+  padding: 0;
+}
+
+body[data-device="phone"] .theme-switch-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 専門職と評価の画面は白を基調のまま変えないので、切り替えを出さない */
+body[data-look="modern"] .theme-switch {
+  display: none;
+}
+
+/* ツインのアイコンの3D（static/twin3d/icons.js）。2Dの絵の上にぴったり重ね、写し終えたら2Dの絵を見えなくする。
+   2Dの絵は読み上げのために残す */
+.twin-figure .twin-icon-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.twin-figure.is-3d > svg {
+  opacity: 0;
+}
+
+/* 発言のかたまりを、見えない名前（.visually-hidden）を置く基準にする。
+   基準がないとページ全体が基準になり、会話の長さまでページが伸びて、「ここから新しい発言」へ動かすときにページごとずれるため */
+.msg-group {
+  position: relative;
+}
+
+/* タイムラインの「月から探す」。太い枠のボタンが縦に並ぶと重いので、うすい線の行にする */
+.month-list .month-button {
+  border-color: var(--line-soft);
+  background: transparent;
+  box-shadow: none;
+}
+
+.month-list .month-button:hover {
+  border-color: var(--control-line);
+  background: var(--accent-soft);
+}
+
+/* ---- 資料を渡したときのツインの答え（static/tell.js）。レビューを文章で先に出し、記録の候補はたたむ ---- */
+.doc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.doc-chip { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-size: 16px; }
+.doc-chip.ai { background: var(--sun-soft); }
+.review-frame { margin: 8px 0 10px; padding: 12px 14px; border-left: 4px solid var(--accent); background: var(--card); border-radius: 8px; }
+.review-frame h4 { margin: 0 0 6px; font-size: 16px; }
+.review-frame h5 { margin: 10px 0 2px; font-size: 16px; color: var(--accent); }
+.review-frame ul { margin: 2px 0; padding-left: 1.3em; }
+.review-frame li { margin: 3px 0; line-height: 1.7; }
+.review-overview { margin: 0 0 4px; font-size: 16px; line-height: 1.8; }
+.cand-where { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); font-size: 16px; }
+.tell-back, .candidates-fold { margin: 8px 0; border: 1px solid var(--line-soft); border-radius: 10px; padding: 0 12px; background: var(--card); }
+.tell-back > summary, .candidates-fold > summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-weight: 700; }
+.tell-back textarea { width: 100%; }
+.candidates { border: 0; padding: 0; }
+.cand-group h4 { margin: 10px 0 4px; font-size: 16px; color: var(--accent); border-bottom: 1px solid var(--line-soft); padding-bottom: 2px; }
+.cand-list { list-style: none; margin: 0; padding: 0; }
+.cand { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed var(--line-soft); }
+.cand-check { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.cand-check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.cand-body { flex: 1; min-width: 0; }
+.cand-head { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.cand-text { margin: 4px 0 2px; line-height: 1.7; }
+.cand-quote { margin: 2px 0; color: var(--ink-soft); font-size: 16px; }
+.cand-body textarea { width: 100%; margin: 4px 0; }
+.cand-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 10px 0 4px; }
+.cand-count { color: var(--ink-soft); font-size: 16px; }
+.cand-decided > summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--ink-soft); }
+.cand-done { display: block; font-size: 16px; }
+
+/* ---- 記録：日付で探す欄と、年と月のホイール（static/records.js、static/month_wheel.js） ----
+   PC版は左の一覧の上に貼り付け、日付の一覧を動かしても、いつでも別の月へ移れるようにする */
+.records-find {
+  --wheel-row: 44px; /* 押す所の決まり（44px 以上）にそろえる */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 12px;
+  margin: 8px 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.records-find[hidden] {
+  display: none;
+}
+
+/* 貼り付いたとき、上の余白から下の日付が透けないよう、地の色の帯を上に敷く */
+.records-panes .records-find {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  box-shadow: 0 -12px 0 4px var(--paper), var(--shadow);
+}
+
+.find-label {
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.find-date {
+  display: contents;
+}
+
+.find-date-controls {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 日付の欄は、ほかの入力欄（input[type="text"] ほか）と同じ見た目にそろえる */
+.find-date-controls input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--ink);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  font: inherit;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.find-date-controls button {
+  flex: none;
+  min-height: 44px;
+}
+
+.month-wheel {
+  display: grid;
+  grid-template-columns: minmax(7.5em, 1.3fr) minmax(5.5em, 1fr);
+  gap: 8px;
+  max-width: 19rem;
+}
+
+/* 真ん中の帯が選んでいる値。帯は文字の下に敷く */
+.wheel-window {
+  position: relative;
+  border: 1px solid var(--control-line);
+  border-radius: 12px;
+  background: var(--input);
+  overflow: hidden;
+}
+
+.wheel-window::before {
+  content: "";
+  position: absolute;
+  inset: var(--wheel-row) 4px;
+  border-block: 2px solid var(--tone-sun-line);
+  border-radius: 8px;
+  background: var(--tone-sun-soft);
+  pointer-events: none;
+}
+
+.wheel-list {
+  position: relative;
+  height: calc(var(--wheel-row) * 3);
+  padding-block: var(--wheel-row);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  /* 上と下の行は少しだけ薄く見せ、回るものだと分かるようにする（文字は字の濃さの決まりを満たす濃さに残す） */
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.8), #000 34%, #000 66%, rgb(0 0 0 / 0.8));
+}
+
+.wheel-list::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel-list:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 12px;
+}
+
+.wheel-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--wheel-row);
+  scroll-snap-align: center;
+  color: var(--ink-soft);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wheel-option[aria-selected="true"] {
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* 記録のある年と月に付ける点（数は出さない） */
+.wheel-option.has-record::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow: 0 0 0 1px var(--frame);
+}
+
+/* 探した結果の知らせ（記録のない日や月）と、近い日や月へのボタン */
+.records-status {
+  margin: 4px 0 10px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--tone-sun-line);
+  border-radius: 8px;
+  background: var(--tone-sun-soft);
+}
+
+.records-status[hidden] {
+  display: none;
+}
+
+.records-status-text {
+  margin: 0;
+  color: var(--ink);
+}
+
+.records-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.records-status-actions:not(:empty) {
+  margin-top: 6px;
+}
+
+.month-plate {
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.records-list[aria-busy="true"] {
+  min-height: 120px;
+}
+
+.records-reader > .reader-empty {
+  max-width: 44rem;
+  margin: 48px auto;
+  text-align: center;
+}
+
+/* スマホでは、見出しを上に置いて欄を広く使う */
+body[data-device="phone"] .records-find {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+body[data-device="phone"] .month-wheel {
+  max-width: none;
+  margin-bottom: 2px;
+}
+
+
+/* ---- 専門職のツールのカード：ツールごとの色（2026-11-06 の見直し） ----
+   ツインにたずねるは藍、ケアプランのチェックは若竹、書類を作るは朱（ロゴの Twin と同じ暖かい色）。
+   色は上の縁、見出しの帯、絵の札、主なボタンにだけ使う。画面の飾りの色で、記録やツインの色にはしない（原則13） */
+.tool-card {
+  --tool: var(--accent);
+  --tool-soft: var(--accent-soft);
+  --tool-line: color-mix(in srgb, var(--accent) 45%, #ffffff);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--tool-line);
+  border-top: 5px solid var(--tool);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgb(20 40 70 / 0.06), 0 12px 26px -16px rgb(20 40 70 / 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.tool-card.tool-plan {
+  --tool: var(--tone-green);
+  --tool-soft: var(--tone-green-soft);
+  --tool-line: var(--tone-green-line);
+}
+
+.tool-card.tool-letter {
+  --tool: var(--tone-shu);
+  --tool-soft: var(--tone-shu-soft);
+  --tool-line: var(--tone-shu-line);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .tool-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgb(20 40 70 / 0.08), 0 18px 32px -18px rgb(20 40 70 / 0.45);
+  }
+}
+
+.tool-card .tool-head {
+  gap: 14px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tool-line) 55%, transparent);
+  background: linear-gradient(180deg, var(--tool-soft), color-mix(in srgb, var(--tool-soft) 35%, var(--card)));
+}
+
+.tool-card .tool-head h2 {
+  color: var(--ink);
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+/* 絵の札：ツールの色で塗り、線の絵を白で描く */
+.tool-card .tool-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--tool);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -8px var(--tool);
+}
+
+.tool-card .tool-icon svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 1.8;
+}
+
+/* ツインの姿は塗らず、白い札に明るい縁で置く（顔を濃い色で囲まない） */
+.tool-card.tool-voice .tool-icon {
+  background: #ffffff;
+  border: 2px solid var(--tool-line);
+  box-shadow: 0 6px 14px -10px var(--tool);
+}
+
+.tool-card .tool-what {
+  padding: 14px 18px 4px;
+  line-height: 1.8;
+}
+
+.tool-actions {
+  display: grid;
+  gap: 8px;
+  padding: 12px 18px 18px;
+}
+
+.tool-card button.tool-main {
+  min-height: 48px;
+  border-color: var(--tool);
+  background: var(--tool);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -8px var(--tool);
+}
+
+.tool-card button.tool-main:hover {
+  border-color: color-mix(in srgb, var(--tool) 82%, #000000);
+  background: color-mix(in srgb, var(--tool) 82%, #000000);
+}
+
+.tool-card button.tool-sub {
+  border-color: var(--tool-line);
+  background: var(--card);
+  color: var(--tool);
+}
+
+.tool-card button.tool-sub:hover {
+  background: var(--tool-soft);
+}
+
+/* 準備中のツール（static/tools.js の plannedTool と plannedList、2026-11-08）。
+   点線の枠で淡く出し、右に「準備中」の札を置いて、使えるボタンと見分けられるようにする。
+   押すと、カードの下の「準備中のツール」の行に少しの間だけ色を付ける */
+.tool-card button.tool-planned {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  border: 1.5px dashed var(--tool-line);
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.tool-card button.tool-planned:hover {
+  background: color-mix(in srgb, var(--tool-soft) 60%, transparent);
+}
+
+.tool-planned-tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--tool-soft);
+  color: var(--tool);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* カードの下の説明。文字の形と大きさは上の「見えるのは、〜が決めた範囲です。」と同じ .hint のまま */
+.tool-planned-list p,
+.tool-planned-list ul {
+  margin: 0;
+}
+
+.tool-planned-list ul {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  padding-left: 1.4em;
+  line-height: 1.7;
+}
+
+.tool-planned-list li {
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+
+.tool-planned-list li.is-pointed {
+  background: var(--accent-soft);
+}
+
+/* ボタンを下にそろえる（説明の長さが違っても、3枚のボタンの高さがそろう） */
+body[data-device="pc"] .tool-card .tool-what {
+  flex: 1;
+}
+
+body[data-device="pc"] .tool-cards {
+  gap: 16px;
+}
+
+/* ---- 資料の画面（static/documents.js と static/document_room.js。11/6 に作り直した） ----
+   PC は左に「資料を登録する」とこれまでの資料、右に選んだ資料。スマホは一覧と資料を切り替える。
+   右は、見出しの下を「レビュー」「記録の候補」で切り替え、幅があればチャットを横、狭ければ下に置く。
+   3列（一覧／資料／チャット）にするのは、窓の幅がおよそ 1280px 以上のときだけ（右が 920px 以上）。狭ければ2列、スマホは1列。
+   元の資料は、見出しの「元の資料を開く」で、画面の上に重ねる窓（.doc-pdf-dialog）に大きく出す。
+   色はツールの「ケアプランをチェックする」と同じ若竹（画面の飾りの色。記録の色にはしない） */
+.view.docs-view {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-device="phone"] .view.docs-view {
+  overflow-y: auto;
+  display: block;
+}
+
+.docs-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+body[data-device="phone"] .docs-layout {
+  display: block;
+}
+
+body[data-device="phone"] .docs-layout[data-mode="detail"] .docs-side,
+body[data-device="phone"] .docs-layout[data-mode="list"] .docs-main {
+  display: none;
+}
+
+/* 左：登録と一覧 */
+.docs-side {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--tone-green-soft) 25%, var(--card));
+}
+
+body[data-device="phone"] .docs-side {
+  padding: 12px 16px 24px;
+  border: 0;
+}
+
+.doc-register {
+  padding: 16px;
+  border: 1px solid var(--tone-green-line);
+  border-top: 5px solid var(--tone-green);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--tone-green-soft), color-mix(in srgb, var(--tone-green-soft) 30%, var(--card)));
+}
+
+.doc-register h1 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.doc-register p {
+  margin: 0 0 12px;
+  line-height: 1.75;
+}
+
+.doc-register .document-button {
+  display: block;
+}
+
+.doc-register .doc-register-button {
+  width: 100%;
+  min-height: 52px;
+  border-color: var(--tone-green);
+  background: var(--tone-green);
+  color: #ffffff;
+  font-size: 17px;
+  box-shadow: 0 6px 14px -8px var(--tone-green);
+}
+
+.doc-register .doc-register-button:hover {
+  border-color: color-mix(in srgb, var(--tone-green) 82%, #000000);
+  background: color-mix(in srgb, var(--tone-green) 82%, #000000);
+}
+
+.doc-register .ai-waiting,
+.doc-register .error {
+  margin: 10px 0 0;
+}
+
+.doc-list-title {
+  margin: 20px 0 8px;
+  font-size: 18px;
+}
+
+.doc-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 1件の資料。行全体が押せる。選んでいる資料は若竹の面にする */
+.doc-list .doc-entry {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-left: 5px solid var(--tone-green-line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+}
+
+.doc-list .doc-entry:hover {
+  border-left-color: var(--tone-green);
+  background: color-mix(in srgb, var(--tone-green-soft) 45%, var(--card));
+}
+
+.doc-list .doc-entry[aria-current="true"] {
+  border-color: var(--tone-green);
+  border-left-color: var(--tone-green);
+  background: var(--tone-green-soft);
+  box-shadow: inset 0 0 0 1px var(--tone-green);
+}
+
+.doc-entry-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.doc-entry-kind {
+  display: inline-block;
+  width: fit-content;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--tone-green-soft);
+  color: var(--tone-green);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.doc-entry[aria-current="true"] .doc-entry-kind {
+  background: var(--card);
+}
+
+.doc-entry-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.doc-entry-sub {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.doc-entry .doc-chips {
+  margin: 4px 0 0;
+}
+
+.doc-chip.done {
+  background: var(--tone-green-soft);
+  color: var(--tone-green);
+}
+
+.doc-chip.wait {
+  background: var(--tone-sun-soft);
+  color: var(--tone-sun);
+}
+
+.doc-chip.talk {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 右：選んだ資料 */
+.docs-main {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-device="phone"] .docs-main {
+  display: block;
+  overflow: visible;
+}
+
+.docs-empty {
+  max-width: 32rem;
+  margin: auto;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.doc-detail {
+  container-type: inline-size;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-detail-loading {
+  padding: 24px;
+}
+
+.doc-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+  padding: 14px 22px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.doc-detail-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-detail-title h2 {
+  margin: 4px 0 2px;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.doc-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.doc-detail-head .doc-chips {
+  margin: 4px 0 0;
+}
+
+.doc-detail-head .doc-chips:empty {
+  display: none;
+}
+
+.doc-back {
+  min-height: 44px;
+}
+
+/* スマホでは「← 資料の一覧へ」を題の上の行に置く（横に並ぶと、題が半分の幅で何行にも折れていた） */
+body[data-device="phone"] .doc-back {
+  flex-basis: 100%;
+  max-width: fit-content;
+}
+
+.doc-name-check {
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
+/* 狭いとき（スマホと、右が 920px より狭い PC。窓でいえば 1280px より狭いとき）：中身とチャットを縦に並べ、右全体が上下に動く */
+.doc-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.doc-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 22px 0;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--card);
+}
+
+.doc-tabs button {
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 4px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.doc-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--tone-green);
+  color: var(--ink);
+}
+
+.doc-tab-badge {
+  min-width: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--tone-sun-soft);
+  color: var(--tone-sun);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.doc-pane {
+  padding: 16px 22px 22px;
+}
+
+.doc-pane[hidden] {
+  display: none !important;
+}
+
+/* 見出しの「元の資料を開く」。PC は題の右、スマホは題の下に置く */
+.doc-pdf-open {
+  flex: none;
+  align-self: center;
+}
+
+/* 元の資料のモーダル画面。画面の上に重ね、PDF を大きく見せる。
+   背景は藍を半分透かして、下のレビューがうっすら見えるようにする（顔を囲む黒い枠にはしない） */
+.doc-pdf-dialog {
+  width: min(1200px, calc(100vw - 48px));
+  height: calc(100vh - 48px);
+  height: calc(100dvh - 48px);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--tone-green);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 24px 60px -20px rgba(12, 23, 44, 0.55);
+  overscroll-behavior: contain;
+}
+
+.doc-pdf-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-pdf-dialog::backdrop {
+  background: rgba(12, 23, 44, 0.5);
+}
+
+.doc-pdf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 16px 12px 22px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.doc-pdf-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.doc-pdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.doc-pdf-hint {
+  margin: 8px 16px 0;
+}
+
+.doc-pdf-box {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 12px;
+}
+
+.doc-pdf-box > .hint,
+.doc-pdf-box > .error {
+  margin: 8px 10px;
+}
+
+.doc-pdf-frame {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.doc-items-sub {
+  margin: 20px 0 4px;
+  font-size: 17px;
+}
+
+.doc-check-button {
+  margin-top: 6px;
+}
+
+.doc-pane-chat {
+  border-top: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--accent-soft) 35%, var(--card));
+}
+
+.doc-chat h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.doc-chat-log {
+  min-height: 60px;
+  margin: 6px -8px 0;
+  padding: 0 8px;
+}
+
+.doc-chat-examples {
+  margin: 8px 0 4px;
+}
+
+.doc-chat-composer {
+  margin-top: 8px;
+}
+
+/* 広いとき（右が 920px 以上）：左に中身、右にチャット。それぞれが上下に動き、チャットの入れる欄は下に残る */
+@container (min-width: 920px) {
+  .doc-detail-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .doc-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doc-content > .doc-pane {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .doc-detail-body > .doc-pane-chat {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 0;
+    border-left: 1px solid var(--line-soft);
+  }
+
+  .doc-pane-chat > .doc-chat {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doc-chat-log {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+/* スマホ */
+body[data-device="phone"] .doc-detail-head {
+  padding: 10px 16px;
+}
+
+body[data-device="phone"] .doc-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0 4px;
+  overflow-x: auto;
+}
+
+body[data-device="phone"] .doc-tabs button {
+  flex: 1 0 auto;
+  padding: 0 10px;
+}
+
+body[data-device="phone"] .doc-detail-body {
+  overflow: visible;
+}
+
+body[data-device="phone"] .doc-pane {
+  padding: 12px 16px 20px;
+}
+
+body[data-device="phone"] .doc-pane-chat {
+  border-top: 0;
+  background: none;
+}
+
+/* スマホの元の資料：全画面に近い大きさ。ボタンは題の下に横いっぱいに並べる */
+body[data-device="phone"] .doc-pdf-open {
+  width: 100%;
+}
+
+body[data-device="phone"] .doc-pdf-dialog {
+  width: calc(100vw - 16px);
+  height: calc(100vh - 16px);
+  height: calc(100dvh - 16px);
+  border-radius: 12px;
+}
+
+body[data-device="phone"] .doc-pdf-head {
+  padding: 10px 10px 10px 14px;
+}
+
+body[data-device="phone"] .doc-pdf-title {
+  flex-basis: 100%;
+  font-size: 18px;
+}
+
+body[data-device="phone"] .doc-pdf-actions {
+  width: 100%;
+}
+
+body[data-device="phone"] .doc-pdf-actions button {
+  flex: 1;
+}
+
+body[data-device="phone"] .doc-pdf-box {
+  padding: 8px;
+}
+
+/* 窓を開いている間は、下の画面が動かないようにする */
+body[data-device="phone"] .view.docs-view:has(.doc-pdf-dialog[open]) {
+  overflow: hidden;
+}
+
+/* ---- ツインの花びら（専門職の「記録」のいちばん上、static/petals.js。2026-11-06） ----
+   真ん中に3Dのツインを立たせ、まわりに5つの花びらのボタンを、姿の花びらと同じ向きで置く。ボタンから花びらへ細い引き出し線。
+   幅が足りないとき（右が 700px より狭いとき。スマホも）は、姿の下にボタンを並べ、線は引かない。
+   色がのるのは花びら（姿と、ボタンと読みの見出しの花びらのアイコン）だけ。選んだことは藍の線と枠、形、動きで示す（原則13）。
+   顔のまわりは陽だまりの光で明るくする。暗い面で顔を囲まない（遺影に見せない）。数字は出さない。 */
+.petal-section {
+  container: petal / inline-size;
+  position: relative;
+  margin: 4px 0 28px;
+  padding: 20px 20px 24px;
+  /* overflow: hidden は付けない。付けると、広い PC で姿を上に残す（sticky）が効かなくなる */
+  border: 1px solid rgba(39, 80, 127, 0.14);
+  border-radius: 24px;
+  background:
+    radial-gradient(520px 320px at var(--glow-x, 50%) var(--glow-y, 300px), rgba(255, 238, 192, 0.62), rgba(255, 238, 192, 0) 72%),
+    linear-gradient(180deg, #ffffff 0, #f6f8fc 100%);
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.05), 0 18px 40px -26px rgba(31, 66, 105, 0.45);
+}
+
+/* 上の縁の、藍から陽だまりへの細い光の線 */
+.petal-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, transparent, rgba(39, 80, 127, 0.55), rgba(240, 183, 58, 0.8), transparent);
+}
+
+.petal-section-head {
+  max-width: 40rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.petal-eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.petal-section-head h2 {
+  margin: 2px 0 6px;
+  font-size: 28px;
+  line-height: 1.35;
+}
+
+.petal-lead {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+/* 姿とボタン。狭いときは縦に並べる */
+.petal-orbit-box {
+  container-type: inline-size;
+  margin-top: 6px;
+}
+
+/* ツインの姿の下の「5つの花びらとは」（static/petals.js の aboutPetals）。上に細い線、見出しに山吹の印。
+   姿の幅に合わせて読みやすい行の長さにする */
+.petal-about {
+  max-width: 640px;
+  margin: 10px auto 4px;
+  padding: 14px 18px 4px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.petal-about h3 {
+  position: relative;
+  margin: 0 0 6px;
+  padding-left: 14px;
+  font-size: 17px;
+}
+
+.petal-about h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.22em;
+  bottom: 0.22em;
+  width: 5px;
+  border-radius: 3px;
+  background: var(--heading-mark);
+}
+
+.petal-about p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15.5px;
+  line-height: 1.85;
+}
+
+.petal-orbit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 置き終わるまで見せない（ボタンが左上に集まって見えないように） */
+.petal-orbit:not(.ready) {
+  visibility: hidden;
+}
+
+.petal-orbit .twin-stage-petals {
+  width: min(240px, 72%);
+}
+
+.petal-lines {
+  display: none;
+}
+
+.petal-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 花びらのボタン。花びらのアイコン（その花びらの色で塗り、根元が濃く先が明るい）と名前 */
+.petal-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 6px 18px 6px 8px;
+  border: 1.5px solid rgba(39, 80, 127, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 18px -12px rgba(31, 66, 105, 0.55);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.petal-button-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.petal-button:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px -12px rgba(31, 66, 105, 0.6);
+}
+
+/* フォーカスの輪は山吹（選んだ印の藍と見分ける）。白地との対比が3対1を超える濃さ */
+.petal-button:focus-visible,
+.petal-index-item:focus-visible,
+.petal-switch-item:focus-visible {
+  outline: 3px solid #a8730f;
+  outline-offset: 4px;
+}
+
+/* 選んだボタン：藍の塗りと太い枠、白い字。花びらのアイコンは白い丸の上のまま（濃い地でも見分けられる）。大きくはしない */
+.petal-button[aria-pressed="true"] {
+  border: 2px solid #1f4269;
+  background: var(--accent);
+  box-shadow: 0 12px 24px -12px rgba(31, 66, 105, 0.75);
+  color: #ffffff;
+}
+
+.petal-button[aria-pressed="true"]:hover {
+  border-color: #1f4269;
+}
+
+.petal-button[aria-pressed="true"] .petal-button-icon {
+  border-color: #ffffff;
+}
+
+.petal-button[aria-pressed="true"] .petal-icon .petal-icon-shape {
+  stroke-width: 2.6;
+}
+
+/* 広いとき：姿を真ん中に、ボタンを花びらの向きに置き、引き出し線を引く（置く場所は static/petals.js が決める） */
+.petal-orbit[data-layout="wide"] {
+  display: block;
+  height: 520px;
+}
+
+.petal-orbit[data-layout="wide"] .twin-stage-petals {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 92px;
+  width: 300px;
+  transform: translateX(-50%);
+}
+
+.petal-orbit[data-layout="wide"] .petal-lines {
+  display: block;
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.petal-orbit[data-layout="wide"] .petal-buttons {
+  display: block;
+}
+
+.petal-orbit[data-layout="wide"] .petal-button {
+  position: absolute;
+  z-index: 4;
+  translate: -50% -50%;
+}
+
+/* 星座のような点線の輪と、引き出し線 */
+.petal-orbit-ring {
+  fill: none;
+  stroke: rgba(39, 80, 127, 0.14);
+  stroke-width: 1.2;
+  stroke-dasharray: 1 7;
+  stroke-linecap: round;
+}
+
+.petal-leader path {
+  fill: none;
+  stroke: rgba(39, 80, 127, 0.34);
+  stroke-width: 1.4;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+.petal-leader circle {
+  fill: #ffffff;
+  stroke: rgba(39, 80, 127, 0.5);
+  stroke-width: 1.5;
+}
+
+.petal-leader.on path {
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 3px rgba(39, 80, 127, 0.45));
+}
+
+.petal-leader.on circle {
+  r: 6px;
+  fill: var(--accent);
+  stroke: #ffffff;
+  stroke-width: 2;
+  animation: petal-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes petal-dot {
+  50% {
+    r: 8px;
+  }
+}
+
+/* 読みの窓。花びらの名前を大きく、その下に3つの面。下に隠れていて動かしたときは、上に少し余白を残す */
+.petal-reading {
+  margin-top: 6px;
+  scroll-margin-top: 16px;
+}
+
+.petal-reading-hint {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 17px;
+  text-align: center;
+}
+
+/* 何も選んでいないとき：5つの花びらの名前と一言の問い。押すとその花びらを選ぶ */
+.petal-index {
+  display: grid;
+  gap: 8px;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.petal-index-item {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 14px -12px rgba(31, 66, 105, 0.5);
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+}
+
+.petal-index-item:hover {
+  border-color: var(--accent);
+  background: #ffffff;
+}
+
+.petal-index-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.petal-index-text {
+  display: grid;
+  gap: 0;
+  line-height: 1.5;
+}
+
+.petal-index-text strong {
+  font-size: 18px;
+}
+
+.petal-index-text span {
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+/* 読みの窓の上の、花びらの切り替えの帯。1行で、読みを下へ読んでも上に残る（姿のボタンが画面の外でも移れる）。
+   広い PC（姿とボタンが横にあるとき）は出さない */
+.petal-switch {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: safe center;
+  gap: 6px;
+  margin: 0 -8px 14px;
+  padding: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-soft);
+  background: #ffffff;
+  scrollbar-width: thin;
+}
+
+.petal-switch-item {
+  flex: none;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 12px 4px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.petal-switch-item[aria-current="true"] {
+  border: 2px solid #1f4269;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.petal-switch-item[aria-current="true"] .petal-icon {
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* 線の意味の見本 */
+.petal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.petal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.petal-legend i {
+  display: inline-block;
+  width: 26px;
+  height: 0;
+  border-top: 2px solid var(--accent);
+}
+
+.petal-legend i.dashed {
+  border-top-style: dashed;
+  border-top-color: rgba(39, 80, 127, 0.6);
+}
+
+.petal-face-date {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.petal-reading-body {
+  animation: petal-in 0.22s ease-out both;
+}
+
+.petal-reading-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.petal-reading-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 5px rgba(39, 80, 127, 0.1);
+}
+
+.petal-reading-head h3 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.3;
+}
+
+.petal-reading-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.petal-faces {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* 読みの窓の幅で、3つの面を横に並べるか縦に積むかを決める（広い PC の右の列では縦） */
+.petal-reading {
+  container: petal-reading / inline-size;
+}
+
+@container petal-reading (min-width: 720px) {
+  .petal-faces {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* 1つの面。本人が確かめた面は実線、それ以外は点線（言葉の札と線の種類で分け、色だけにしない） */
+.petal-face {
+  padding: 14px 16px 16px;
+  border: 2px dashed rgba(39, 80, 127, 0.42);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 22px -18px rgba(31, 66, 105, 0.6);
+  animation: petal-in 0.26s ease-out both;
+}
+
+.petal-face:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.petal-face:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.petal-face.confirmed {
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.petal-face.empty {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: none;
+}
+
+.petal-face-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.petal-face-head h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.petal-status {
+  flex: none;
+  padding: 0 10px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.petal-status.confirmed {
+  border-style: solid;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.petal-face-readings p,
+.petal-face-empty {
+  margin: 8px 0 0;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.petal-face-empty {
+  color: var(--ink-soft);
+}
+
+/* 根拠の本人の言葉。記録の「本人の言葉」と同じ枠と札、手書き風の字 */
+.petal-words {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.petal-words-label {
+  margin: 0 0 4px;
+}
+
+.petal-word {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border: 2px solid var(--src-self-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.petal-word-body {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.petal-word-meta {
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+@keyframes petal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* 広い PC：節を記録の欄より広い帯にし、左に姿とボタン、右に読みの窓。読みが長いときも、姿は上に残す */
+@media (min-width: 1280px) {
+  body[data-device="pc"] .petal-section {
+    width: min(1280px, calc(100vw - 72px));
+    margin-left: calc(50% - min(640px, 50vw - 36px));
+  }
+
+  body[data-device="pc"] .petal-row {
+    display: grid;
+    grid-template-columns: minmax(700px, 1.3fr) minmax(360px, 1fr);
+    gap: 8px 28px;
+    align-items: start;
+  }
+
+  body[data-device="pc"] .petal-row .petal-orbit-box {
+    position: sticky;
+    top: 8px;
+  }
+
+  body[data-device="pc"] .petal-row .petal-reading {
+    align-self: center;
+    margin-top: 0;
+  }
+
+  body[data-device="pc"] .petal-row .petal-reading:has(.petal-reading-body) {
+    align-self: start;
+    padding-top: 18px;
+  }
+
+  body[data-device="pc"] .petal-row .petal-reading-head {
+    justify-content: flex-start;
+  }
+
+  body[data-device="pc"] .petal-row .petal-switch {
+    display: none;
+  }
+}
+
+/* スマホ */
+body[data-device="phone"] .petal-section {
+  margin: 0 0 22px;
+  padding: 16px 12px 18px;
+  border-radius: 18px;
+}
+
+body[data-device="phone"] .petal-section-head h2 {
+  font-size: 24px;
+}
+
+/* スマホ：ボタンは1列にそろえる（2・1・1・1 と不ぞろいにならないように） */
+body[data-device="phone"] .petal-buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+body[data-device="phone"] .petal-button {
+  justify-content: flex-start;
+}
+
+body[data-device="phone"] .petal-reading-head h3 {
+  font-size: 26px;
+}
+
+/* 動きを減らす設定：ボタンの浮き、読みの窓のすべり、線の先の点の脈を止める */
+@media (prefers-reduced-motion: reduce) {
+  .petal-button,
+  .petal-button:hover,
+  .petal-button[aria-pressed="true"] {
+    transform: none;
+    transition: none;
+  }
+
+  .petal-reading-body,
+  .petal-face,
+  .petal-leader.on circle {
+    animation: none;
+  }
+}

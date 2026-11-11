@@ -1,0 +1,191 @@
+/*
+  役割：別のタブで開くページの、見出しの帯・地の色・主なボタン・ページの見出しを、アプリの本体（style.css）とそろえる。
+  対象：手紙を頼む（letter.html）、手紙を確かめる（letter_check.html）、手紙を書く（my_letter.html）、
+        アセスメントなどの入力（care_form.html）、生活まとめプラン（life_plan.html）、ケアプラン案（plan.html）、1枚の紙（sheet.html）。
+  4つの極：特定の極に属さない土台。
+  守る原則：画面の方針（藍と陽だまり。骨組みは藍、地は陽だまり、印は山吹、主ボタンは朱。専門職は白を基調にしたモダン）。
+
+  アプリの中からこれらのページを開いたとき、別のアプリに移ったように見えないようにする（2026-11-07 の見直し。
+  tyumajinさんの依頼「各画面をデザインに統一する」「色合いは地味にしないで」）。
+  ページごとの CSS のあとに読み込んで上書きする。印刷の見た目は変えない（@media screen の中だけ）。
+  - 見出しの帯：アプリの PC と同じ。全幅の藍の帯に、ひとつ濃い藍の −9度の札（ロゴ）、右に白い縁のボタン
+  - 地：専門職のページ（body の data-look="modern"）はうすい藍に陽だまりの光、本人と家族のページは陽だまりの地
+  - 主なボタンは朱。ページの見出し（h1.page-title）に、アプリのカードの見出しと同じ山吹の印
+*/
+
+/* hidden を付けた要素は、ページの CSS（display: flex など）より強く隠す。アプリの style.css と同じ決まり。
+   生活まとめプランで、下書きがないのに「作った日」の空の選択欄が出ていた */
+[hidden] {
+  display: none !important;
+}
+
+@media screen {
+  /* 中身が短いページでも、地を画面の下まで敷く */
+  body {
+    min-height: 100vh;
+    /* 光とグラデーションは繰り返さない（ページの高さごとに縞ができるため）。その先は同じ色で塗る */
+    background: radial-gradient(1100px 420px at 50% -160px, rgba(240, 183, 58, 0.18), transparent 70%) no-repeat, #fff9ea;
+  }
+
+  body[data-look="modern"] {
+    background: radial-gradient(1100px 420px at 50% -160px, rgba(240, 183, 58, 0.16), transparent 70%) no-repeat,
+      linear-gradient(180deg, #e8eff8 0, #f4f6fb 380px) no-repeat, #f4f6fb;
+  }
+
+  /* ---- 見出しの帯 ---- */
+  .page-logo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    max-width: none;
+    min-height: 62px;
+    margin: 0 0 12px;
+    padding: 0 12px 0 0;
+    background: #27507f;
+    box-shadow: 0 2px 10px rgba(20, 40, 70, 0.18);
+  }
+
+  /* ロゴの札。右の縁を -9 度で切る（アプリの .plate と同じ） */
+  .page-logo > img {
+    display: block;
+    box-sizing: content-box;
+    width: clamp(160px, 20vw, 240px);
+    max-width: 58%;
+    height: auto;
+    padding: 10px 32px 10px 14px;
+    background: #1f4269;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  }
+
+  /* 札は斜めに切ってあるので、フォーカスの輪は内側に描く（外は切れて見えない） */
+  .page-logo > img:focus-visible {
+    outline: 3px solid #f0b73a;
+    outline-offset: -5px;
+  }
+
+  .page-logo .page-nav,
+  .page-logo .page-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 帯の上のボタン（もとの画面へ戻る、ログイン画面）。アプリの帯のボタンと同じ白い縁 */
+  .page-logo .page-nav button {
+    min-height: 42px;
+    margin: 0;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 10px;
+    background: transparent;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .page-logo .page-nav button:hover {
+    background: #1f4269;
+  }
+
+  .page-logo .page-nav button:focus-visible {
+    outline: 3px solid #f0b73a;
+    outline-offset: 2px;
+  }
+
+  /* 起動の種類の札（架空データなど。static/page_nav.js）。帯の上に白い縁で */
+  .page-logo .page-mode-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  /* 手紙を書くの PC・スマホの切り替え（帯の上） */
+  .page-logo .device-switch {
+    border-color: rgba(255, 255, 255, 0.6);
+    background: transparent;
+  }
+
+  .page-logo .device-switch button {
+    color: #ffffff;
+  }
+
+  .page-logo .device-switch button:hover {
+    background: #1f4269;
+  }
+
+  .page-logo .device-switch button[aria-pressed="true"] {
+    background: #ffffff;
+    color: #1f4269;
+  }
+
+  /* スマホの幅では帯を詰める。ロゴを小さくし、ボタンを1段に収める */
+  @media (max-width: 560px) {
+    .page-logo {
+      gap: 6px;
+      padding: 0 8px 8px 0;
+    }
+
+    .page-logo > img {
+      width: 140px;
+      padding: 8px 24px 8px 10px;
+    }
+
+    .page-logo .page-nav,
+    .page-logo .page-tools {
+      gap: 6px;
+      padding-left: 8px;
+    }
+
+    .page-logo .page-nav button {
+      min-height: 40px;
+      padding: 0 10px;
+      font-size: 14px;
+    }
+
+    .page-logo .device-switch button {
+      min-width: 48px;
+      min-height: 40px;
+      padding: 0 10px;
+      font-size: 14px;
+    }
+  }
+
+  /* ---- 主なボタン：朱（アプリの決まり） ---- */
+  button.primary {
+    border-color: #c6401f;
+    background: #c6401f;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(198, 64, 31, 0.28);
+  }
+
+  button.primary:hover:not(:disabled) {
+    border-color: #a93518;
+    background: #a93518;
+  }
+
+  /* ---- ページの見出し：山吹の印 ---- */
+  h1.page-title {
+    position: relative;
+    padding-left: 16px;
+  }
+
+  h1.page-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.2em;
+    bottom: 0.2em;
+    width: 5px;
+    border-radius: 3px;
+    background: #f0b73a;
+  }
+}

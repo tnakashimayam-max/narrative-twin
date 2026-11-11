@@ -1,0 +1,141 @@
+/*
+  役割：1枚の紙を A4 1枚に収める印刷用の見た目。
+  4つの極：4. 10年後に代弁する。
+  画面では読みやすさを優先し、印刷では話題を2段に組み、根拠の言葉を話題ごとに1件にする。全部の言葉は画面で読める。
+*/
+
+@page {
+  size: A4;
+  margin: 8mm;
+}
+
+body {
+  background: #fff;
+  font-size: 8.5pt;
+  line-height: 1.3;
+}
+
+main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.actions,
+.status {
+  display: none;
+}
+
+h1 {
+  font-size: 14pt;
+}
+
+p {
+  margin: 1pt 0;
+}
+
+.lower p {
+  font-size: 8pt;
+  line-height: 1.26;
+}
+
+h2 {
+  font-size: 9.5pt;
+  margin: 6pt 0 2pt;
+}
+
+.tag,
+.label,
+.now {
+  font-size: 7.5pt;
+  margin-top: 1pt;
+}
+
+.label {
+  margin-bottom: 1pt;
+}
+
+.claim {
+  font-size: 10pt;
+  line-height: 1.38;
+  margin: 2pt 0;
+  padding: 4pt 7pt;
+}
+
+.topics {
+  columns: 2;
+  column-gap: 12pt;
+}
+
+.topic {
+  break-inside: avoid;
+  margin: 0 0 3pt;
+}
+
+.topic h3 {
+  font-size: 9.5pt;
+}
+
+.quote {
+  font-size: 8pt;
+  line-height: 1.26;
+  margin: 1pt 0 1pt 5pt;
+  padding-left: 5pt;
+}
+
+.quote small {
+  font-size: 7pt;
+}
+
+.quote.extra,
+#sheet > .quote {
+  display: none;
+}
+
+/* 左右の高さがそろうよう、下半分は1つの流れにして2段に組む。会議の言葉が増えても空きが出ない */
+.lower {
+  columns: 2;
+  column-gap: 12pt;
+}
+
+.lower > div {
+  display: contents;
+}
+
+.lower h2 {
+  break-after: avoid;
+}
+
+.plan,
+.pair {
+  break-inside: avoid;
+}
+
+.plan {
+  padding: 4pt 7pt;
+  margin: 2pt 0 0;
+}
+
+.plan dt {
+  font-size: 8.5pt;
+}
+
+.plan dd {
+  margin-bottom: 3pt;
+}
+
+.pair {
+  margin: 2pt 0;
+}
+
+.pair .asked {
+  font-size: 7.5pt;
+  line-height: 1.3;
+}
+
+.pair .answer,
+.treasure {
+  font-size: 9pt;
+  margin: 0;
+}

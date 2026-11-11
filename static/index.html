@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+  役割：画面の骨組み。中身は app.js と、タブごとの部品が組み立てる。
+  4つの極：1. 書く・話す、2. 分かち合う。
+  守る原則：8（画面の隅に「架空データ」か「自分の記録で試用中」を常に出す）。
+  サーバーとのやり取りの取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Narrative Twin</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="apple-touch-icon" href="brand/narrativetwin-icon-light-180.png" />
+    <link rel="stylesheet" href="style.css" />
+    <!-- 覚えている表示（明るい・暗い）を、描く前に置く。開いた直後に色が入れ替わって見えないようにするため（static/theme.js） -->
+    <script>
+      try {
+        var theme = localStorage.getItem("nt_theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch (error) {}
+    </script>
+  </head>
+  <body>
+    <!-- ツインの色の下ごしらえ。1回だけ置く。display:none にすると色が消えるブラウザがある -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <linearGradient id="twbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#BDE3F6" /><stop offset=".62" stop-color="#E6F4EC" /><stop offset="1" stop-color="#FFEBB8" /></linearGradient>
+        <clipPath id="twc"><circle cx="50" cy="50" r="49.4" /></clipPath>
+        <linearGradient id="pbase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" /><stop offset="1" stop-color="#F1E8DA" /></linearGradient>
+        <radialGradient id="skin" cx=".42" cy=".34" r=".78"><stop offset="0" stop-color="#FFFCF3" /><stop offset=".62" stop-color="#FCF1DE" /><stop offset="1" stop-color="#F0DBBC" /></radialGradient>
+        <linearGradient id="leafG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A8DBAC" /><stop offset="1" stop-color="#62AD82" /></linearGradient>
+        <linearGradient id="pw0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F5F86" stop-opacity=".98" /><stop offset="1" stop-color="#3F5F86" stop-opacity=".66" /></linearGradient>
+        <linearGradient id="pw1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E67F65" stop-opacity=".98" /><stop offset="1" stop-color="#E67F65" stop-opacity=".66" /></linearGradient>
+        <linearGradient id="pw2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9922C" stop-opacity=".98" /><stop offset="1" stop-color="#C9922C" stop-opacity=".66" /></linearGradient>
+        <linearGradient id="pw3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3D7A5B" stop-opacity=".98" /><stop offset="1" stop-color="#3D7A5B" stop-opacity=".66" /></linearGradient>
+        <linearGradient id="pw4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6F5F9A" stop-opacity=".98" /><stop offset="1" stop-color="#6F5F9A" stop-opacity=".66" /></linearGradient>
+        <filter id="wc" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="3" seed="8" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="shape" />
+          <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="3" result="g" />
+          <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .3 .84" result="ga" />
+          <feComposite in="shape" in2="ga" operator="in" />
+        </filter>
+      </defs>
+    </svg>
+    <div class="app">
+      <header class="site-header">
+        <!-- 左上のロゴ。押すと、どの画面からでもホームへ戻る（static/app.js の goHome） -->
+        <a class="plate" id="home-link" href="./" aria-label="Narrative Twin（ホームへ戻る）" data-tip="どの画面からでも、ホームへ戻ります">
+          <img class="plate-logo" src="brand/narrativetwin-logo-on-dark.svg" alt="" width="263" height="44" />
+          <img class="plate-mark" src="brand/narrativetwin-symbol-on-dark.svg" alt="" width="42" height="30" />
+          <span class="plate-text">
+            <strong class="plate-title" id="plate-title">Narrative Twin</strong>
+          </span>
+        </a>
+        <span class="tags">
+          <span class="tag" id="mode-label">架空データ</span>
+        </span>
+      </header>
+      <main id="view" class="view"></main>
+      <nav id="tabs" class="tabs" aria-label="画面の切り替え" hidden></nav>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

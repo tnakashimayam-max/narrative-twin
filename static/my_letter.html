@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  役割：本人が手紙を書くページ。ツイン（AI）と話したことをもとに下書きを作り、直し、校正し、送る。これまでの手紙も見返せる。
+        送られた相手がこのページを開くと、届いた手紙を読める（読むだけ）。
+  4つの極：3. 読み解き、積み上げる（セルフを通して書く）、4. 10年後に代弁する。
+  守る原則：1（送るかは本人が決める）、5（版を残し、いつでも戻せる）、12（紙に「ツイン（AI）」と出す）。
+  本人のホームの「手紙を書く」から開く（static/home.js）。処理は app/self_letters.py、動きは static/my_letter.js。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>手紙</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="my-letter.css" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body>
+    <!-- ml-frame：スマホ版を広い画面で開いたとき、幅390pxの枠に入れる（my-letter.css） -->
+    <div class="ml-frame">
+    <div class="page-logo">
+      <img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" />
+      <div class="page-tools"><div class="ml-device" id="ml-device"></div><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    </div>
+    <main class="ml-page">
+      <header class="ml-head">
+        <h1><span class="ml-mark" aria-hidden="true"></span>手紙</h1>
+        <p id="ml-lead">ツイン（AI）と話したことをもとに、手紙の下書きを書きます。読んで修正してから送ります。</p>
+      </header>
+      <div class="ml-switch" id="ml-switch" hidden>
+        <button type="button" id="go-write" aria-pressed="true" data-tip="期間と相手を選んで、新しい手紙の下書きを作ります">手紙を書く</button>
+        <button type="button" id="go-list" aria-pressed="false" data-tip="これまでに書いた手紙と、届いた手紙を見返せます">これまでの手紙</button>
+      </div>
+      <p class="ml-status" id="status" role="status"></p>
+      <section id="ml-view" aria-live="polite"></section>
+    </main>
+    </div>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="my_letter.js"></script>
+  </body>
+</html>

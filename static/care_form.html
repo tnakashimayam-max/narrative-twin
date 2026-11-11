@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  役割：専門職が、アセスメントシート、フェイスシート、ライフサポートプランを入れ、前の記録を読み、直し、コピーし、削除するページ。
+        入力した記録は、本人と家族には見せない。資料のレビュー、ケアプランのチェック、生活まとめプランの材料になる。
+  4つの極：4. 10年後に代弁する。
+  守る原則：3（専門職の記録は本人の言葉と分ける）、5（直しても前の版は残す）。
+  形は資料の画面（static/documents.js）と同じ。左に「新しく入れる」とこれまでの記録、右に選んだ記録。
+  狭い画面では、一覧と記録を切り替える。入力欄は、サーバーが返す書式の定義（forms/）から組み立てる。処理は app/care_form_records.py。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>アセスメントなどの入力</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="life-plan.css" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body data-look="modern">
+    <div class="page-logo"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <div class="page cf-page">
+      <p class="hint cf-status" id="status" role="status"></p>
+      <div class="cf-layout" id="cf-layout" data-mode="list">
+        <aside class="cf-side" aria-label="記録を入れる所と、これまでの記録">
+          <div class="cf-register">
+            <h1 class="page-title">アセスメントなど</h1>
+            <p>メッセージだけでは分からない、今の心身の状況を入れる記録です。資料のレビュー、ケアプランのチェック、生活まとめプランの材料になります。</p>
+            <p class="cf-private">ご本人とご家族には見せません。</p>
+            <button type="button" id="new-record" class="cf-register-button" data-tip="書式を選んで、新しい記録を入れる欄を開きます">新しく入れる</button>
+          </div>
+          <h2 class="cf-list-title">これまでの記録</h2>
+          <div class="cf-filter" id="cf-filter" role="group" aria-label="書式で絞る"></div>
+          <p class="hint" id="cf-empty" hidden>まだ入れた記録はありません。「新しく入れる」から入れてください。</p>
+          <ul class="cf-list" id="records" aria-label="これまでの記録"></ul>
+        </aside>
+        <main class="cf-main" aria-label="選んだ記録">
+          <div id="cf-pane"></div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="care_form.js"></script>
+  </body>
+</html>

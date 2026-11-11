@@ -1,0 +1,258 @@
+/*
+  役割：生活まとめプランの見た目。画面では紙の見本として出し、印刷では A4 横の帳票にする。
+        専門職の書式の入力画面（care_form.html）も、ページの枠とボタンはこの見た目を使う。
+  4つの極：4. 10年後に代弁する。
+  守る原則：12（紙の札に必ず「ツイン（AI）」と出す。札は消さない）。
+
+  色はアプリと同じ藍と陽だまり。表の見出しは藍、本人の願いの列（支援して欲しいこと）だけ陽だまりにして、読み分けられるようにする。
+  黒い面や太い四角い枠で囲まない（遺影に見せない決まり）。線は細く、淡い藍にする。
+*/
+
+:root {
+  --ai: #27507f;
+  --ai-deep: #1b3a5e;
+  --ai-soft: #eef2f8;
+  --ai-line: #c5d0de;
+  --sun: #e9c46a;
+  --sun-soft: #fdf5df;
+  --ink: #1b2a3f;
+  --sub: #5b6678;
+  --paper: #ffffff;
+  --ui-font: "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --sheet-font: "Yu Gothic", "YuGothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #f2f1ec; color: var(--ink); font: 16px/1.7 var(--ui-font); }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; }
+.page h1 { font-size: 22px; margin: 18px 0 6px; }
+.hint { color: var(--sub); font-size: 16px; }
+.error { color: #a12b2b; }
+.page-logo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: 1240px; margin: 12px auto 0; padding: 0 16px; }
+.page-logo img { display: block; width: 263px; max-width: 100%; height: auto; }
+.page-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+button, select { min-height: 44px; padding: 0 18px; font: inherit; border: 1px solid var(--ink); background: #fff; color: var(--ink); border-radius: 8px; cursor: pointer; }
+button.primary { background: var(--ai); border-color: var(--ai); color: #fff; }
+button.quiet { border-color: var(--ai-line); color: var(--sub); }
+button:disabled { opacity: 0.5; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+.actions label { display: flex; gap: 8px; align-items: center; font-size: 16px; color: var(--sub); }
+
+/* ---- 紙（帳票） ---- */
+
+.sheet {
+  width: 297mm;
+  max-width: 100%;
+  margin: 14px auto;
+  padding: 12mm 12mm 10mm;
+  background: var(--paper);
+  box-shadow: 0 2px 16px rgba(27, 42, 63, 0.12);
+  font-family: var(--sheet-font);
+  color: var(--ink);
+  overflow-x: auto;
+}
+
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  padding-bottom: 3mm;
+  margin-bottom: 4mm;
+  border-bottom: 2px solid var(--ai);
+}
+.sheet-title { margin: 0; font-size: 28px; letter-spacing: 0.18em; color: var(--ai-deep); font-weight: 700; }
+.sheet-sub { margin: 1mm 0 0; font-size: 16px; color: var(--sub); letter-spacing: 0.08em; }
+.sheet-meta { display: grid; grid-template-columns: auto auto; gap: 1mm 6mm; font-size: 16px; margin: 0; }
+.sheet-meta dt { color: var(--sub); }
+.sheet-meta dd { margin: 0; min-width: 42mm; border-bottom: 1px solid var(--ai-line); padding: 0 1mm; font-weight: 600; }
+.sheet-meta dd .honor { font-weight: 400; margin-left: 3mm; }
+
+.plan-table { width: 100%; min-width: 980px; border-collapse: collapse; table-layout: fixed; font-size: 16px; line-height: 1.6; }
+.plan-table th, .plan-table td { border: 1px solid var(--ai-line); padding: 1.6mm 2mm; vertical-align: top; text-align: left; word-break: break-word; }
+.plan-table thead th {
+  background: var(--ai);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.06em;
+  font-size: 16px;
+  padding: 2mm;
+}
+.plan-table thead th.support { background: #7f5c0e; }
+.plan-table .area { background: var(--ai-soft); color: var(--ai-deep); font-weight: 600; text-align: center; vertical-align: middle; letter-spacing: 0.04em; }
+.plan-table .area span { display: block; line-height: 1.35; }
+.plan-table .part { background: #f6f8fb; color: var(--ai-deep); text-align: center; vertical-align: middle; font-size: 16px; }
+.plan-table td.support { background: var(--sun-soft); }
+.plan-table td.who { color: var(--ai-deep); }
+.plan-table td { height: 12mm; }
+.plan-table td.empty::after { content: ""; }
+.plan-table textarea {
+  width: 100%;
+  min-height: 3.2em;
+  border: 1px dashed var(--ai-line);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font: inherit;
+  color: inherit;
+  background: #fffef9;
+  resize: vertical;
+}
+
+.sheet-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 3mm; font-size: 16px; color: var(--sub); }
+.sheet-foot .label { margin: 0; color: var(--ink); }
+.sheet-foot .brand { margin: 0; letter-spacing: 0.08em; }
+
+/* 画面だけの、もとにしたピースと読んだ記録 */
+.material { max-width: 297mm; margin: 0 auto; }
+.material h2 { font-size: 16px; margin: 18px 0 6px; }
+.material li { font-size: 16px; }
+
+/* ---- 専門職の書式の入力（care_form.html） ---- */
+
+.form-note { background: var(--sun-soft); border-left: 4px solid var(--sun); padding: 8px 12px; font-size: 16px; }
+.record-list { list-style: none; padding: 0; margin: 8px 0 14px; display: grid; gap: 6px; }
+.record-list li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: #fff; border: 1px solid var(--ai-line); border-radius: 10px; padding: 8px 12px; font-size: 16px; }
+.care-form { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(27, 42, 63, 0.08); padding: 16px 18px 20px; }
+.care-form fieldset { border: 0; border-top: 2px solid var(--ai); margin: 18px 0 0; padding: 10px 0 0; }
+.care-form legend { padding: 0 8px 0 0; font-weight: 700; color: var(--ai-deep); font-size: 17px; }
+.field-row { display: grid; grid-template-columns: minmax(9rem, 15rem) 1fr; gap: 6px 14px; padding: 8px 0; border-bottom: 1px solid #eef1f5; align-items: start; }
+.field-row > .field-name { font-weight: 600; font-size: 16px; padding-top: 8px; }
+.field-row input[type="text"], .field-row input[type="date"], .field-row textarea { width: 100%; min-height: 44px; font: inherit; padding: 6px 8px; border: 1px solid var(--ai-line); border-radius: 6px; background: #fcfdff; }
+.field-row textarea { min-height: 4.5em; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips label { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 2px 14px; border: 1px solid var(--ai-line); border-radius: 999px; font-size: 16px; cursor: pointer; background: #fff; }
+.chips input { accent-color: var(--ai); }
+.chips label:has(input:checked) { background: var(--ai-soft); border-color: var(--ai); color: var(--ai-deep); font-weight: 600; }
+.detail-box { margin-top: 6px; }
+.detail-box textarea { min-height: 2.6em; }
+.group-name { grid-column: 1 / -1; font-weight: 700; color: var(--ai-deep); padding-top: 6px; }
+.repeat-table { width: 100%; border-collapse: collapse; }
+.repeat-table th { font-size: 16px; color: var(--sub); font-weight: 600; text-align: left; padding: 2px 4px; }
+.repeat-table td { padding: 2px 4px; }
+.repeat-table input { width: 100%; min-height: 44px; font: inherit; padding: 4px 6px; border: 1px solid var(--ai-line); border-radius: 6px; }
+.form-actions { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 0; background: #f2f1ec; }
+
+@media (max-width: 640px) {
+  .field-row { grid-template-columns: 1fr; }
+}
+
+/* ---- 印刷：A4 横の帳票 ---- */
+
+@page { size: A4 landscape; margin: 9mm 10mm; }
+
+@media print {
+  body { background: #fff; }
+  .screen-only, .page-logo, .page > header, .material { display: none !important; }
+  .page { max-width: none; padding: 0; }
+  .sheet { width: auto; margin: 0; padding: 0; box-shadow: none; overflow: visible; }
+  /* 18行に文が入ると A4 横2枚になる。1枚に詰めると字が 6.5pt ほどになり読めないので、2枚にして見出しの行をくり返す */
+  .sheet-head { padding-bottom: 2mm; margin-bottom: 2.5mm; }
+  .sheet-title { font-size: 16pt; }
+  .sheet-sub { font-size: 8.5pt; }
+  .sheet-meta { font-size: 9pt; }
+  .plan-table { min-width: 0; font-size: 8.8pt; line-height: 1.45; }
+  .plan-table th, .plan-table td { padding: 1mm 1.5mm; }
+  .plan-table thead th { padding: 1.2mm; font-size: 8.5pt; }
+  .plan-table .part { font-size: 8.5pt; }
+  .plan-table thead { display: table-header-group; }
+  .plan-table tr { page-break-inside: avoid; break-inside: avoid; }
+  .plan-table td { height: auto; }
+  .sheet-foot { margin-top: 2mm; font-size: 7.5pt; }
+  .plan-table textarea { border: 0; background: transparent; resize: none; }
+  .sheet, .plan-table thead th, .plan-table .area, .plan-table .part, .plan-table td.support {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ファイルから読み込む枠（care_form.html）。落とせる間は藍で縁取る */
+.drop-zone { margin: 12px 0; padding: 14px 16px; border: 2px dashed var(--ai-line); border-radius: 12px; background: #fff; }
+.drop-zone.over { border-color: var(--ai); background: var(--ai-soft); }
+.drop-zone:focus-visible { outline: 3px solid var(--ai); outline-offset: 2px; }
+.drop-title { margin: 0; font-weight: 700; color: var(--ai-deep); }
+.drop-zone .hint { margin: 4px 0 10px; }
+.file-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--ai); border-radius: 8px; color: var(--ai-deep); background: #fff; cursor: pointer; font-weight: 600; }
+.confirm-box { margin: 10px 0; padding: 10px 14px; border-left: 4px solid var(--sun); background: var(--sun-soft); font-size: 16px; }
+.confirm-box ul { margin: 4px 0 0; padding-left: 1.2em; }
+.read-note { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--ai); background: var(--ai-soft); font-size: 16px; }
+
+/* ---- アセスメントなどの画面の形（care_form.html）。資料の画面（style.css の .docs-layout）と同じ形と若竹の色 ----
+   広い画面は、左に「新しく入れる」とこれまでの記録、右に選んだ記録。760px 以下は一覧と記録を切り替える。 */
+.cf-page {
+  --cf-green: #23664a;
+  --cf-green-soft: #e1f1e7;
+  --cf-green-line: #6fae8d;
+  --cf-line: #dfe3e8;
+  max-width: 1400px;
+}
+.cf-layout { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); margin-top: 12px; min-height: 75vh; background: #fff; border: 1px solid var(--cf-line); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(27, 42, 63, 0.08); }
+.cf-side { padding: 16px; border-right: 1px solid var(--cf-line); background: color-mix(in srgb, var(--cf-green-soft) 25%, #fff); }
+.cf-register { padding: 16px; border: 1px solid var(--cf-green-line); border-top: 5px solid var(--cf-green); border-radius: 14px; background: linear-gradient(180deg, var(--cf-green-soft), color-mix(in srgb, var(--cf-green-soft) 30%, #fff)); }
+.cf-register h1 { margin: 0 0 6px; font-size: 24px; }
+.cf-register p { margin: 0 0 10px; line-height: 1.75; }
+.cf-register .cf-private { font-weight: 700; color: var(--ai-deep); }
+.cf-register-button { width: 100%; min-height: 52px; border-color: var(--cf-green); background: var(--cf-green); color: #fff; font-size: 17px; font-weight: 700; box-shadow: 0 6px 14px -8px var(--cf-green); }
+.cf-register-button:hover { background: color-mix(in srgb, var(--cf-green) 82%, #000); }
+.cf-list-title { margin: 20px 0 8px; font-size: 18px; }
+.cf-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.cf-filter-chip { min-height: 44px; padding: 0 14px; border: 1px solid var(--cf-green-line); border-radius: 999px; background: #fff; color: var(--ink); font-size: 16px; }
+.cf-filter-chip[aria-pressed="true"] { background: var(--cf-green); border-color: var(--cf-green); color: #fff; font-weight: 700; }
+.cf-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cf-entry { display: grid; justify-items: start; gap: 3px; width: 100%; height: auto; padding: 12px 14px; border: 1px solid var(--cf-line); border-left: 5px solid var(--cf-green-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; }
+.cf-entry:hover { border-left-color: var(--cf-green); background: color-mix(in srgb, var(--cf-green-soft) 45%, #fff); }
+.cf-entry[aria-current="true"] { border-color: var(--cf-green); border-left-color: var(--cf-green); background: var(--cf-green-soft); box-shadow: inset 0 0 0 1px var(--cf-green); }
+.cf-entry-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--sub); font-size: 16px; }
+.cf-entry-kind { display: inline-block; width: fit-content; padding: 0 10px; border-radius: 999px; background: var(--cf-green-soft); color: var(--cf-green); font-size: 16px; font-weight: 700; }
+.cf-entry[aria-current="true"] .cf-entry-kind { background: #fff; }
+.cf-entry-title { font-size: 18px; font-weight: 700; line-height: 1.5; }
+.cf-entry-sub { color: var(--sub); font-size: 16px; }
+.cf-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.cf-chips:empty { display: none; }
+.cf-chip { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--ai-soft); color: var(--ai-deep); font-size: 16px; }
+.cf-chip.private { background: var(--sun-soft); color: #6b4a00; }
+.cf-chip.copy { background: var(--cf-green-soft); color: var(--cf-green); }
+.cf-chip.old { background: #fdefd0; color: #6b4a00; font-weight: 700; }
+
+.cf-main { min-width: 0; display: flex; flex-direction: column; }
+.cf-status { margin: 12px 0 0; padding: 10px 16px; border-left: 4px solid var(--ai); border-radius: 8px; background: var(--ai-soft); color: var(--ai-deep); }
+.cf-status:empty { display: none; }
+.cf-empty-pane { max-width: 32rem; margin: auto; padding: 40px 24px; text-align: center; }
+.cf-detail-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 16px; padding: 14px 22px 12px; border-bottom: 1px solid var(--cf-line); }
+.cf-detail-title { flex: 1; min-width: 16rem; }
+.cf-detail-title h2 { margin: 6px 0 2px; font-size: 22px; line-height: 1.4; }
+.cf-detail-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0; color: var(--sub); font-size: 16px; }
+.cf-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cf-back { display: none; }
+.cf-detail-body { padding: 14px 22px 24px; }
+.cf-section { margin: 16px 0 0; padding-top: 8px; border-top: 2px solid var(--ai); }
+.cf-section h3 { margin: 0 0 4px; color: var(--ai-deep); font-size: 17px; }
+.cf-values { margin: 0; }
+.cf-value-row { display: grid; grid-template-columns: minmax(9rem, 14rem) 1fr; gap: 4px 14px; padding: 8px 0; border-bottom: 1px solid #eef1f5; }
+.cf-value-row dt { font-weight: 600; }
+.cf-value-row dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cf-group-name { margin: 12px 0 0; font-weight: 700; color: var(--ai-deep); }
+.cf-detail-text { margin-top: 4px; padding: 6px 10px; border-radius: 6px; background: var(--ai-soft); }
+.cf-repeat { width: 100%; border-collapse: collapse; }
+.cf-repeat th, .cf-repeat td { padding: 4px 8px; border: 1px solid var(--cf-line); font-size: 16px; text-align: left; }
+.cf-history { margin-top: 20px; padding: 8px 12px; border: 1px solid var(--cf-line); border-radius: 10px; }
+.cf-history summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.cf-history ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cf-history button { width: 100%; height: auto; padding: 8px 12px; text-align: left; }
+.cf-new-top { margin: 0 0 8px; }
+.cf-form-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-weight: 700; }
+.cf-detail-body .care-form { padding: 0; box-shadow: none; }
+.cf-detail-body .form-actions { background: #fff; border-top: 1px solid var(--cf-line); }
+
+@media (max-width: 760px) {
+  .cf-layout { display: block; min-height: 0; }
+  .cf-side { border-right: 0; }
+  .cf-layout[data-mode="detail"] .cf-side,
+  .cf-layout[data-mode="list"] .cf-main { display: none; }
+  .cf-back { display: inline-flex; align-items: center; }
+  .cf-detail-head, .cf-detail-body { padding-left: 16px; padding-right: 16px; }
+  .cf-value-row { grid-template-columns: 1fr; }
+}

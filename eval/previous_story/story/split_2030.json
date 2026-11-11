@@ -1,0 +1,4403 @@
+{
+"conv-2030-01-05": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "うん、和子に話したよ。前より疲れやすくなったから、ちょうどよかったと言われた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんに話せたことで、支えられていると感じているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂には電話で話した。仕事の合間だったから短くな。ちょっと申し訳なかったかな。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんを気遣う気持ちが強いかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "AIの推測",
+"subject": "誠一さん",
+"speaker": "ツイン（AI）",
+"body": "美穂さんに短く話したことを、少し気にしているかもしれません。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": null,
+"confirm_question": "美穂さんに短く話したことを、少し気にしているかもしれません。合っていますか？"
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太には、じいちゃんは暇になったぞと言ったら笑われた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことを、軽く話せる関係でいたいかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-01-13": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "役は降りましたが、庭はまだ手放していません。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を離れても、庭だけは自分の手で続けたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "全部は無理になってきたので、縁側の前だけ残そうかと思っています。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭を全部守ることは難しくなっても、縁側の前の暮らしは大事にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長のころは、人の段取りを見るのが仕事でした。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "段取りを見る力を、今も誰かの役に立てたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "今は自分の庭の段取りを、少しずつ変えています。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "体や今の暮らしに合わせて、庭との付き合い方を変えていきたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-01-20": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "この写真、見てください。隣町の海まで車で行ったときのものです。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "写真を通して、今も外に出られることを伝えたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "片道一時間くらいかな。ハンドルを握るのも久しぶりでした。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "運転できたことを、自分の力として感じたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昔は製材所まで毎日運転していました。今は近くへ出るくらいになりました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "以前の暮らしと今を比べて、変化を感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-01-28": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋です。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "将棋そのものを、暮らしの中心に置きたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "正雄さんとよく指します。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんと一緒に過ごす時間を、大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "勝つとうれしいものですね。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "勝ち負けより、指すこと自体の喜びを感じたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "腰が痛いと言うので、台所は私が代わることが増えました。ただ、将棋の時間は続けたいです。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "台所の役割を続けながらも、将棋を手放したくないのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "少し違います。台所の手伝いより、将棋を続けることを先に考えています。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役割よりも、自分の時間を大切にしたいという思いがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-02-05": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "来週末に帰ってくる。昼ご飯を一緒に食べるだけだよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんと顔を合わせて過ごすことを大切にしているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "楽しみだ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんとの再会を心から喜んでいるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昔から、家族が顔を見せに来るのが一番うれしい。",
+"period": "今",
+"theme": "大切にしてきたこと",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "顔を見せてくれる家族の存在に、支えられてきたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "製材所で班長をしていたころも、仕事は人と人だと思っていた。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事を通じて人と関わることに、誇りがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-02-13": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "製材所では、毎日たくさんの材木を運んでいました。一人で持てる重さじゃないものもありました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること",
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "一人では無理な仕事を、仲間と一緒にやってきたことを伝えたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは真意は分かりにくいため、確かめながら聞く必要があります。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "掛け声をかけて、息を合わせて運びました。誰かが手を貸してくれると、本当に助かりました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "手を貸してくれた人への感謝を伝えたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは真意は分かりにくいため、確かめながら聞く必要があります。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になってからは、若いもんに仕事を頼むことが多くなりました。頼むのも大事な仕事でした。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事を人に任せることも、自分の大切な役割だと思っているかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは真意は分かりにくいため、確かめながら聞く必要があります。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-02-20": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "年も年だからな。そろそろ若い人に任せようと思ってね。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "長く続けた役に、区切りをつけたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子がほっとしていたよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に心配をかけていたことを、気にしていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂も、無理しないでって言ってくれた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "無理をしない暮らしを、受け入れたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太はあまり気にしていなかったが、それでいいと思っている。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族の反応に関係なく、自分の決めた道を進みたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "AIの推測",
+"subject": "誠一さん",
+"speaker": "ツイン（AI）",
+"body": "役を降りたことを、少し寂しく思っているかもしれません。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": null,
+"confirm_question": "役を降りたことを、少し寂しく思っているかもしれません。合っていますか？"
+}
+]
+},
+"conv-2030-02-28": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "これは製材所で班長をしていた頃の写真です。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "その頃の自分を人に見てもらいたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になったのは三十代の終わりでした。ずっと人の段取りを考える仕事でした。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "段取りを考えることに、誇りを持っていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役は先月降りました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けることより、体を大事にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "少し疲れやすくなったので、そろそろ任せようと思いまして。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "次の人に役を渡すことで、周りに迷惑をかけない形を選んだのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-03-03": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "兄のことを少し話します。若いころ、製材所の仕事のことで言い合いになって、それきりでした。",
+"period": "若いころ",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "今も兄のことが心に残っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "兄とは最後まで仲直りできなかった。このことは誰にも言わないでほしい。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "この話を外に出さず、守ってほしいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "話せて、少し気持ちが落ち着きました。",
+"period": "今",
+"theme": "つらかったこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "話せる場があると、少し楽になるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-03-08": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子さんの腰が少し気になっていてね。それでも、将棋を指す時間が一番好きだな。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんに負担をかけずに、将棋を続けたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "正雄さんとは月に二回くらい指すよ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとのつながりを続けたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "負けると悔しいけど、それが楽しいんだ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "真剣に取り組める場を、大事にしたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "前より将棋の時間が取れるようになった。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役目から離れた時間を、ほっとして過ごしたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子さんも、腰を休めながらならいいと言ってくれているよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんに心配をかけないように、将棋を続けたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-03-15": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "楽しみだよ。週末に帰ってくるんだ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "週末に美穂さんと顔を合わせられることを、心待ちにしているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "仕事は大事にしてきたな。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事を通して、自分の役目を果たしてきた誇りがあるのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "製材所で班長をやっていた。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班のまとめ役として、仲間に頼られていたことを大切に思っているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "みんなが怪我なく帰れるように、そればかり考えていた。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"結びつき",
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仲間の無事を何よりも大切に思っていたのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "家族との飯も大事にしてきた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "食卓を囲む時間が、家族の絆を支えてきたと感じているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子と美穂と三人で、よく食卓を囲んだよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族みんなが揃う食卓を、特別な時間として覚えているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-03-23": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所に勤めていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "製材所での仕事を、自分の歩みの一部として話したいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長にもなりました。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長という立場を、自分の仕事の区切りとして伝えたいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "まとめるというより、重い材木は一人では運べないんです。だから、みんなで声をかけ合ってやっていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班をまとめる人ではなく、仲間と一緒に動く人だったと伝えたいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "一人で持てない材木は、班のみんなに頼みました。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "頼ることを、仕事の大事な一部として考えているのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "頼まれることも多かったです。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "頼まれる側だったことを、自分の働き方の特徴として伝えたいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは頼まれる側がほとんどでした。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "頼む立場になる前の自分を、正しく伝えたいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "頼むようになったのは班長になってからです。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長になって立場が変わったことを、はっきり伝えたいのかもしれません。",
+"confidence": 0.3,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-03-31": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころからずっと役をやっていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けてきたことに誇りがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "先月、役を降りました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことに、ほっとした気持ちがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子にも少し休めと言われまして。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんの言葉を素直に受け止めているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂が、お父さんのペースでいいよと言ってくれました。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "娘の言葉に支えられていると感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太も、じいちゃん将棋やろうと誘ってくれます。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "孫との将棋を、また楽しみにしているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-04-08": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長をやっていたころは、人を回すのが仕事だった。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "今の役割を離れた寂しさが、ふり返りに出ているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭の手入れは続けたい。ただ、木が増えすぎてね。少し減らそうと思っている。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭との関わりは続けたいが、無理のない形に変えたいと思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "手間が減れば、無理がなくていい。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "無理をしない暮らしを、これから大事にしたいと思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "役を降りたら、今度は自分の暮らしを回す番だと思うんだ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役割を終えた今、自分のペースを取り戻したいと思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-04-15": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "近所の買い物なら、まだ車で行けますよ。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "車を使い続けたい気持ちがあるかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役を降りてから、遠出は減りました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことで、気持ちが少し軽くなっているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭の手入れもあるので、家の近くで過ごすことが多いです。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家の近くにいることに安心を感じているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-04-23": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "和子さん",
+"speaker": "誠一さん",
+"body": "腰をかばって、ゆっくり歩くようになりましたね。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんの変化を、そばで見守っていたいのかもしれません。",
+"confidence": 0.45,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋が好きです。正雄さんと指すのが楽しみでした。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること",
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとのつながりを、今も心の支えにしているのかもしれません。",
+"confidence": 0.45,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭いじりも好きですね。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭のある暮らしを、大事にしたいのかもしれません。",
+"confidence": 0.45,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役を降りたので、時間ができました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことで、少し肩の荷が下りたと感じているのかもしれません。",
+"confidence": 0.45,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-05-01": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "ええ、三週間ぶりです。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "離れていた時間を、ふつうに取り戻したいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "近くに住んでいるので、よく顔を出してくれます。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "顔を見せてもらえることを、ありがたく思っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "仕事のことを聞かれます。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事の話を聞いてもらえることを、うれしく感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "私は製材所で長く働きましたから、昔の話をよくします。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "製材所での日々を、自分の大事な一部として誇りに思っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "段取りです。",
+"period": "働き盛り",
+"theme": "大切にしてきたこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "順序を大切にすることに、仕事での責任を感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "材木は乾きや癖がありますから、人の手順を崩さないようにしてきました。",
+"period": "働き盛り",
+"theme": "大切にしてきたこと",
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "現場の流れを乱さないことに、自分なりの誇りがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-05-08": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になったころの写真だ。重い材木を、みんなで運んだものさ。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長として仲間と力を合わせた日々を、大切な思い出として残しておきたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いやつが、俺がもたつく日は代わりに持ってくれた。ありがたかったな。",
+"period": "働き盛り",
+"theme": "人の手を借りること",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分が思うように動けない日があっても、周りに支えられてきたことを感じていたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-05-16": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "年も年だし、班長の仕事をまた引き受けるのは難しくなってきたからね。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けられない自分を責めず、区切りをつけたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子には先に話したよ。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に理解してもらい、安心したいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "反対はされなかったけど、ほっとした顔をしていた。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に負担をかけていないか、気にしているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂は仕事の帰りに寄ってくれてね。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "忙しい娘さんに気にかけてもらえて、嬉しいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "よく決めたねと言ってくれた。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことを、間違いではなかったと思いたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子とは相談というより、もう決めていたことを話しただけだよ。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分の判断を、家族にも尊重されたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂には電話で伝えた。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に心配をかけないよう、きちんと知らせたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-05-24": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭は続けているよ。ただ、町内会の役を降りたから、少し時間に余裕ができた。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭の時間を自分のペースで大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本人の考えは分からないため、確かめが必要です。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは班長をしていて、人の段取りを見るのが仕事だった。今は自分の庭を見るだけでいい。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事で担ってきた役割を、今は手放してもよいと感じているのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本人の考えは分からないため、確かめが必要です。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "ある。全部きれいにしようとすると、体がついてこない。小さくしても、手入れを自分で決められるほうがいい。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "無理をせず、自分の決めた形で庭と付き合いたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本人の考えは分からないため、確かめが必要です。"
+},
+"confirm_question": null
+},
+{
+"source": "AIの推測",
+"subject": "誠一さん",
+"speaker": "ツイン（AI）",
+"body": "町内会の役を降りた今、庭を自分で決めた広さに整えたいと考えているかもしれません。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+2,
+4,
+6,
+8
+],
+"interpretation": null,
+"confirm_question": "町内会の役を降りた今、庭を自分で決めた広さに整えたいと考えているかもしれません。合っていますか？"
+}
+]
+},
+"conv-2030-06-01": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "近くのスーパーまでは車で行くけど、遠くはもう行かないようにしているよ。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "遠出で疲れたり困ったりすることを避けたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "そうだね、片道で十キロくらいかな。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "遠出の負担を、自分で決めた範囲に収めたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役を降りてからは、無理しないようにしている。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役目の重さから離れて、ゆっくり過ごしたいのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-06-08": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "和子さん",
+"speaker": "誠一さん",
+"body": "和子は少し腰をかばっているようです。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんに無理をさせたくないと思っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "家事は今も二人でやっています。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "これまで通りの暮らしを続けたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋ですね。正雄さんと指すのが楽しみです。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "勝ち負けより、会うことそのものを楽しみにしているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "話すのも好きです。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "会って話すことに楽しみを感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころの製材所の話も、正雄さんとなら通じます。",
+"period": "若いころ",
+"theme": "大切にしてきたこと",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとは同じ時代を生きた話が通じることを喜んでいるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-06-16": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころ勤めていた製材所です。",
+"period": "子ども時代",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "製材所での日々を、自分の歩みとして誰かに伝えたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になった年に、仲間と撮った写真です。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長として仲間を率いた経験を、自分の誇りとして持ち続けたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "木を運ぶ仕事は、ずっと大事にしてきました。",
+"period": "働き盛り",
+"theme": "大切にしてきたこと",
+"petals": [
+"自分らしさ",
+"たずさわること"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "木を運ぶ仕事を、自分らしさの一部として守りたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂が帰ってくると、縁側で昔の話をします。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"くつろぎ"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんとのつながりを、昔の話を通して確かめたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "仕事はちゃんとやれ、と言われた気がしました。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "その言葉を、今も自分の支えや指針として受け取っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-06-24": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころ、製材所に勤めていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事を通じて人とつながっていた時期を大切に思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になったころが一番忙しかったですね。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "忙しくても役目を果たせたことに、やりがいを感じていたかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "重い材木は一人では運べませんから、みんなで声をかけ合いました。",
+"period": "若いころ",
+"theme": "人の手を借りること",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "助け合うことを自然なことと考えていたかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは、借りるより貸す方が多かったです。",
+"period": "若いころ",
+"theme": "人の手を借りること",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "人を支える側であることに誇りを持っていたかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "今は町内会の役も降りて、人に頼ることも増えました。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "頼ることに以前ほど抵抗がなくなったのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "AIの推測",
+"subject": "誠一さん",
+"speaker": "ツイン（AI）",
+"body": "役を降りてから人に頼ることが増えたのは、気持ちの変化もあるかもしれません。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": null,
+"confirm_question": "役を降りてから人に頼ることに、気持ちの変化があるかもしれません。合っていますか？"
+}
+]
+},
+"conv-2030-07-02": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "長くやってきたから、ほっとしたよ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "長い役目から解放されて、身軽になりたいと思っているかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子さんに、もう休んでいいと言われたよ。助かったな。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんの言葉に支えられて、ほっとしたのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂が「お父さんも自分のことを考えてね」と笑っていたよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族のやさしい言葉を、うれしく受け止めているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太は「じいちゃん、暇になったね」と言ってたな。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "孫との何気ないやりとりを、楽しく感じているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-07-09": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "役は降りたよ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けることに疲れていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭はまだ続けているんだ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭を続けることに、まだ張り合いを感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "全部小さくするわけじゃない。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭の一部は残したいと思っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長のころは、全部の段取りを自分で見ていたから。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事を任されていた頃の責任感を、今も大切にしているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭は全部続けるわけじゃない。手の回る分だけに絞りたいんだ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分で決めた範囲で、庭を続けたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-07-17": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "近所のスーパーと、将棋の会の集まりくらいだね。どちらも車で十五分くらいかな。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "行き慣れた場所で、無理なく過ごしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昔は製材所の仕事で、山の方まで車を走らせたもんだよ。今はそこまで行かなくなった。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事をしていた自分の力を、今も大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "うん、そうだね。役を降りてから、用事がずいぶん減ったよ。",
+"period": "退職後",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "また誰かの役に立てる場を求めているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-07-25": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "正雄と指したときのものだ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとのつながりを、誰かに話したいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋は好きだ。若いころ製材所の仕事のあとで、よく指していた。",
+"period": "若いころ",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "将棋の時間に、若いころの自分を感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "月に一度は指している。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとの関係を大切にしていたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子の腰の具合がこのところ思わしくなくてね。それでも、将棋の時間は手放したくない。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんを支えながら、自分の時間も守りたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-08-01": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "週末に来るんです。昼ごはんを一緒に食べようかと思っています。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "久しぶりに顔を合わせて、ゆっくり話したいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "仕事のことは無理に聞かないようにしています。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事のことで美穂さんを困らせたくないのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "元気でいてくれれば、それでいいんです。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "本当は、もっと話したい気持ちを抑えているのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "製材所で班長をしていたころも、班のみんなの顔を見て話すようにしていました。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること",
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班の人たちと気持ちを通わせたかったのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-08-09": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所に勤めていました。木を板にする仕事です。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "製材所の仕事に、誇りを持っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長になってからは、若い人に手を借りることが増えました。重い材は一人では運べませんから。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "一人で抱えず人に頼ることが、仕事を続けるために必要だと感じていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "そうですね。町内会の役を降りた今も、頼めることは頼むようにしています。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "頼ることで、周りとの関係を大切にしたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-08-17": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "役を降りて、少し気が楽になりました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けることに疲れを感じていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "朝は庭に出て、草をむしっています。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"くつろぎ",
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭の手入れに落ち着きを見つけているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子と縁側でお茶を飲む時間が増えました。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子との時間を大切に感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昔より話すようになりましたね。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "夫婦の距離が近くなったと感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂が近くに住んでいますから、週末には顔を出してくれます。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂が来てくれることを支えに感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太は将棋を教えてくれと言ってきますよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "健太に頼られることを喜んでいるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-08-25": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役を降りたので、時間に余裕ができた。でも庭は続けたい。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りた後も、庭との関わりを大切にしたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "少し疲れやすくなってね。全部を見るのが大変になってきた。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭を続けるために、負担を減らしたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころ製木所で班長をしていたころは、仕事の段取りを全部自分で決めていた。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "今の段取りの減少と比べて、昔の自分の姿を思い返しているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "今は、庭の段取りを少しずつ減らしていこうと思っている。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭を全部手放すのではなく、関わり方を変えたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-09-01": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "ああ、製材所の前だよ。班長になった年に撮ったものだ。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事をしていた頃の自分を、誇りに思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "いや、そこは少し違うね。遠くまで車で行くのは、もう控えているんだ。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "遠くへの運転をやめることに、少し寂しさがあるかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "近くなら平気だよ。ただ、夕方の道は暗くて見えにくい。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "見えにくさを自分で感じていて、無理はしたくないかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "直します。遠くは控えているが、近くなら平気だ。夕方の道が見えにくいから、昼に出かけるようにしている。",
+"period": "今",
+"theme": "人の手を借りること",
+"petals": [],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分で考えて工夫していることを、分かってほしいかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-09-09": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "続けていますよ。正雄さんと月に一度、指しています。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんと過ごす時間を大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所で働いていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "木に関わる仕事を誇りに思っているのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "木の匂いをかぐと、今も落ち着きます。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "木に囲まれた暮らしに安心を感じているのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "無理はしないようにしています。",
+"period": "今",
+"theme": "大切にしてきたこと",
+"petals": [],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分のペースを大事にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子さんと縁側でお茶を飲むのが好きです。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"結びつき",
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんと一緒にいる穏やかな時間を大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-09-17": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "久しぶりに顔が見られるのが一番うれしいです。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族と顔を合わせて過ごす時間を大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所で班長をしていたので、人の手伝いはよくしました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "人の手伝いを通して、自分らしさを保ちたいのかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-09-24": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころ製材所に勤めていました。丸太を運ぶ仕事が多かったですね。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事の中で、自分の力を役立てたかったのかもしれません。",
+"confidence": 0.5,
+"caution": "発言だけでは真意は分からないため、仮説です。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "ありましたよ。重い板は、一人では持てませんから。仲間に声をかけて、みんなで運んだものです。",
+"period": "若いころ",
+"theme": "人の手を借りること",
+"petals": [
+"共にあること",
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "一人で抱えず、仲間と力を合わせることに安心していたかもしれません。",
+"confidence": 0.5,
+"caution": "発言だけでは真意は分からないため、仮説です。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "手を借りるのは、恥ずかしいことではなかったです。",
+"period": "若いころ",
+"theme": "人の手を借りること",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "人に頼ることを、弱さとは考えていなかったのかもしれません。",
+"confidence": 0.5,
+"caution": "発言だけでは真意は分からないため、仮説です。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-10-02": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長をやっていたころとは違うね。役が重く感じるようになったんだ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けることに無理を感じてきたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "少し肩の荷を下ろしたよ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役から離れて、ほっとしたい気持ちがあるのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子とよく話したよ。もう十分やったろうって言われた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんに役を降りることを認めてもらえて、安心したのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "美穂も賛成してくれたんだ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんの賛成が、決断の支えになったのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "健太はよく分からないみたいだったけど、将棋の話はしてくれたよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "健太くんが話してくれたことを、大切に思っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-10-10": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "縁側から撮ったものです。少し前まで、もっと広く使っていました。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "以前の庭の広さを懐かしく思っているかもしれません。",
+"confidence": 0.35,
+"caution": "発言だけでは分からないため、本人に確かめてください。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "町内会の役を降りたので、庭の手入れも少しずつ減らしています。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭を少しずつ手放すことに、寂しさがあるかもしれません。",
+"confidence": 0.35,
+"caution": "発言だけでは分からないため、本人に確かめてください。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-10-18": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "役は降りました。車は今も乗っていますよ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を続けることに負担を感じていたのかもしれません。",
+"confidence": 0.35,
+"caution": "発言だけでは分からないため、本人に確かめてください。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "スーパーと将棋の会くらいです。遠くまでは行かなくなりました。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "遠出で疲れることを避けたいのかもしれません。",
+"confidence": 0.35,
+"caution": "発言だけでは分からないため、本人に確かめてください。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-10-25": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "和子さん",
+"speaker": "誠一さん",
+"body": "腰が重たいと言っていてな。台所に長く立つと、しんどいみたいだ。",
+"period": "今",
+"theme": "家族",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "和子さんの負担が少しでも減ればと願っているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋だな。正雄と指すのが一番楽しい。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "正雄さんとのつながりを楽しみにしているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所で、木を見るのが好きだった。",
+"period": "若いころ",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "木を見る仕事に誇りを持っていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長をしていたころは、木の目を見て材を選んだもんだ。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長として任された役目に、やりがいを感じていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "少し違うな。木を見るのは若いころの仕事の話だ。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "過去の仕事と今の好きなことを分けて考えてほしいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "今は将棋が一番好きだ。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+8
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "今の自分の楽しみを大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-11-02": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "楽しみだね。今度の週末に帰ってくるんだ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "美穂さんと過ごす時間を、特別な楽しみとして待っているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "段取りを崩さないことだね。材の癖を見て、若い者に先に話しておくようにしてた。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "若い人が困らないように先回りして伝えることに、やりがいを感じていたのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "庭は続けてるよ。疲れやすくはなったけど、縁側で花を眺める時間は好きだね。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "庭や花と静かに向き合うことで、気持ちを休めているのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-11-10": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "若いころは製材所に勤めていました。木を運ぶ仕事が多かったです。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仕事に誇りを持っていたのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "重い材木を、仲間と声を掛け合って運びました。一人では持てない木も、みんなで持てました。",
+"period": "若いころ",
+"theme": "人の手を借りること",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "一人では難しいことも、人と協力すると乗り越えられたと感じているのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-11-17": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長をやっていたころの写真だよ。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長だった頃を懐かしく思っているかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "今年、役を降りたんだ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を降りたことに、さみしさと安心が両方あるかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "和子さん",
+"body": "和子が、肩の荷が下りてよかったねと言ってくれた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に支えられていると感じ、ほっとしているかもしれません。",
+"confidence": 0.4,
+"caution": "この言明の根拠は本人の言葉ではなく、家族の言葉を本人が伝えたものです。本人の考えは発言だけでは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "美穂さん",
+"body": "美穂も、もう無理しなくていいよと言っていた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族に気づかってもらえていることを、ありがたく思っているかもしれません。",
+"confidence": 0.4,
+"caution": "この言明の根拠は本人の言葉ではなく、家族の言葉を本人が伝えたものです。本人の考えは発言だけでは分かりません。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-11-25": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "そうだね。役がなくなって、庭を少し小さくしようかと思っているんだ。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役を手放す寂しさより、無理のない形で日々を続けたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長のころは、人を見て動くのが仕事だった。庭も今は、自分の手で無理なく回せる広さがいいと思うようになった。",
+"period": "今",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "人の動きを見る役目から離れても、自分で手をかけられることに役割を感じたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "和子とは話してある。美穂も手伝えるときは来てくれると言っていた。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき",
+"共にあること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "ひとりで抱えず、家族に支えてもらえることを大切にしたいのかもしれません。",
+"confidence": 0.4,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-12-03": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "いや、そんなに乗らないな。近所の買い物くらいだよ。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "遠くへ行くことを、もう無理に続けたくないのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昔は製材所まで毎朝走ったけどね。",
+"period": "働き盛り",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること",
+"自分らしさ"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長として毎日動いていた頃を、誇りに思っているかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "思い出すよ。今は家の周りの道だけで十分だ。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "無理をせず、いまの暮らしに満足しているのかもしれません。",
+"confidence": 0.35,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-12-11": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "和子さん",
+"speaker": "誠一さん",
+"body": "家内は、朝になると腰が重いと言いますね。それでも台所には立っておりますよ。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "奥さんが無理をしていないか、気にかけているかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分からないため、確かめてください。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "将棋ですね。正雄さんと、月に一度は指しております。負けると悔しいんですが、それがまた楽しいんです。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ",
+"結びつき"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "勝ち負けより、正雄さんと指す時間そのものを楽しんでいるかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分からないため、確かめてください。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "そうですね。役を降りてから時間に余裕ができました。将棋盤の前に座る時間が、いちばん落ち着きます。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "役が終わって、自分のための静かな時間を取り戻せたことを喜んでいるかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分からないため、確かめてください。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-12-18": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "昼に来てくれました。健太も一緒でした。縁側で麦茶を飲みながら、昔の話ばかりしていました。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "家族と昔を語り合えたことを喜んでいるかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "半分は合っています。班長をしていたころ、無理をさせないことを大事にしてきました。",
+"period": "働き盛り",
+"theme": "大切にしてきたこと",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+4
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班の人たちが無理なく過ごせることを大切にしてきたかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "直した。無理をさせないより、みんなが安全に帰れるように見ていたことです。",
+"period": "働き盛り",
+"theme": "大切にしてきたこと",
+"petals": [
+"たずさわること"
+],
+"utterance_numbers": [
+6
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "自分の役目として、人の安全を見届けることを大切にしてきたかもしれません。",
+"confidence": 0.4,
+"caution": "発言だけでは本当の気持ちは分かりません。"
+},
+"confirm_question": null
+}
+]
+},
+"conv-2030-12-26": {
+"statements": [
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "これ、製材所にいたころの写真です。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "あの時代の仕事を大切な思い出として伝えたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "班長をしていました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"自分らしさ"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "班長として仲間を支えてきたことに誇りがあるのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "重い丸太は、一人では動かせませんでした。みんなで声をかけて運びました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+3
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "一人では成り立たない仕事で、仲間に助けられてきたことを伝えたいのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+},
+{
+"source": "本人の言葉",
+"subject": "誠一さん",
+"speaker": "誠一さん",
+"body": "「そっちを持て」とか、短く言うだけです。頼むときは、頭を下げました。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+5
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仲間への感謝を態度で示してきたのかもしれません。",
+"confidence": 0.5,
+"caution": null
+},
+"confirm_question": null
+}
+]
+},
+"letter-2030-02-20": {
+"statements": []
+},
+"letter-2030-04-08": {
+"statements": [
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "美穂さん",
+"body": "父が自分の暮らしを考えていると知れて、うれしく思いました。無理のない形で庭を続けられるといいなと思います。",
+"period": "今",
+"theme": "住まい・土地",
+"petals": [
+"自分らしさ",
+"たずさわること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "家族",
+"body": "自分のペースで庭や暮らしを続けたい気持ちがあるかもしれません。",
+"confidence": 0.4,
+"caution": "本人の発言が根拠にないため、家族の見方による推測です。本人に確かめてください。"
+},
+"confirm_question": null
+}
+]
+},
+"letter-2030-06-01": {
+"statements": [
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "和子さん",
+"body": "主人が無理をしないと決めてくれて、ほっとしています。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"くつろぎ"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "家族",
+"body": "本人は、体をいたわりながら暮らしたいと思っているかもしれません。",
+"confidence": 0.4,
+"caution": "本人の発言がないため、本人の考えは確かめられていません。"
+},
+"confirm_question": null
+},
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "和子さん",
+"body": "遠出のときは、私も一緒に行くようにしています。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "家族",
+"body": "本人は、一人ではなく誰かと一緒に出かけたいと思っているかもしれません。",
+"confidence": 0.4,
+"caution": "本人の発言がないため、本人の考えは確かめられていません。"
+},
+"confirm_question": null
+}
+]
+},
+"letter-2030-07-25": {
+"statements": [
+{
+"source": "縁のある人の証言",
+"subject": "誠一さん",
+"speaker": "正雄さん",
+"body": "また来月、盤を囲みましょう。",
+"period": "今",
+"theme": "好きなこと",
+"petals": [
+"共にあること",
+"結びつき"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "縁のある人",
+"body": "誠一さんも将棋の時間を楽しみにしているかもしれません。",
+"confidence": 0.3,
+"caution": "本人の発言がないため、本人の考えは確かめられていません。"
+},
+"confirm_question": null
+},
+{
+"source": "縁のある人の証言",
+"subject": "和子さん",
+"speaker": "正雄さん",
+"body": "和子さんの腰が楽になるように願っています。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "縁のある人",
+"body": "誠一さんも和子さんの腰を気にかけているかもしれません。",
+"confidence": 0.3,
+"caution": "本人の発言がないため、本人の考えは確かめられていません。"
+},
+"confirm_question": null
+}
+]
+},
+"letter-2030-09-17": {
+"statements": [
+{
+"source": "家族の証言",
+"subject": "誠一さん",
+"speaker": "美穂さん",
+"body": "父が元気に迎えてくれると、帰るのがいっそう楽しみになります。",
+"period": "今",
+"theme": "家族",
+"petals": [
+"共にあること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "家族",
+"body": "誠一さんにとっても、家族と過ごす時間が大切かもしれません。",
+"confidence": 0.35,
+"caution": "本人の発言がないため、本人の考えは分かりません。"
+},
+"confirm_question": null
+},
+{
+"source": "縁のある人の証言",
+"subject": "誠一さん",
+"speaker": "節子さん",
+"body": "誠一さんは昔から人の世話をよくしてくれました。ゆっくり休んでほしいです。",
+"period": "若いころ",
+"theme": "大切にしてきたこと",
+"petals": [
+"結びつき"
+],
+"utterance_numbers": [
+2
+],
+"interpretation": {
+"viewpoint_role": "縁のある人",
+"body": "誠一さんも、人を支えることに大切な思いがあるのかもしれません。",
+"confidence": 0.35,
+"caution": "本人の発言がないため、本人の考えは分かりません。"
+},
+"confirm_question": null
+}
+]
+},
+"letter-2030-11-10": {
+"statements": [
+{
+"source": "縁のある人の証言",
+"subject": "誠一さん",
+"speaker": "節子さん",
+"body": "昔からみんなで助け合って働いてこられたのですね。",
+"period": "若いころ",
+"theme": "仕事・役割",
+"petals": [
+"たずさわること",
+"共にあること"
+],
+"utterance_numbers": [
+1
+],
+"interpretation": {
+"viewpoint_role": "本人",
+"body": "仲間と力を合わせた日々を大切に思っているかもしれません。",
+"confidence": 0.3,
+"caution": "本人の発言がこの言明の根拠にないため、本人に確かめてください。"
+},
+"confirm_question": null
+}
+]
+}
+}

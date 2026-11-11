@@ -1,0 +1,184 @@
+{
+ "round": 2,
+ "run": "r3",
+ "split": "dev",
+ "cases": 18,
+ "answers": 64,
+ "failed": 0,
+ "by_method": {
+  "model": {
+   "same_decision": 0.556,
+   "same_reason": 0.278,
+   "voice": 0.444,
+   "no_fabrication": 0.583,
+   "total": 0.465
+  },
+  "bm25": {
+   "same_decision": 0.417,
+   "same_reason": 0.194,
+   "voice": 0.556,
+   "no_fabrication": 0.667,
+   "total": 0.459
+  },
+  "selfhood": {
+   "same_decision": 0.611,
+   "same_reason": 0.306,
+   "voice": 0.556,
+   "no_fabrication": 0.639,
+   "total": 0.528
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.528,
+   "same_reason": 0.389,
+   "voice": 0.528,
+   "no_fabrication": 0.611,
+   "total": 0.514
+  },
+  "2031-12-31": {
+   "same_decision": 0.562,
+   "same_reason": 0.188,
+   "voice": 0.562,
+   "no_fabrication": 0.625,
+   "total": 0.484
+  },
+  "2034-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  }
+ },
+ "growth_same_cases": {
+  "cases": 2,
+  "2028-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  },
+  "2031-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.5,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.562
+  },
+  "2034-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  }
+ },
+ "bible": {
+  "score": 0.588,
+  "counts": {
+   "当たり": 17,
+   "一部": 13,
+   "触れていない": 9,
+   "食い違い": 1
+  },
+  "by_kind": {
+   "価値": {
+    "当たり": 4,
+    "一部": 2,
+    "触れていない": 2
+   },
+   "決め方": {
+    "一部": 4,
+    "触れていない": 2,
+    "当たり": 2
+   },
+   "関係": {
+    "一部": 2,
+    "当たり": 4,
+    "触れていない": 2
+   },
+   "人生": {
+    "一部": 5,
+    "食い違い": 1,
+    "触れていない": 1,
+    "当たり": 2
+   },
+   "話し方": {
+    "当たり": 5,
+    "触れていない": 2
+   }
+  },
+  "misses": [
+   {
+    "number": 4,
+    "verdict": "触れていない",
+    "note": "人混み嫌いはあるが、大浴場や家族風呂の話はない。"
+   },
+   {
+    "number": 5,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 10,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 24,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 27,
+    "verdict": "食い違い",
+    "note": "妻が亡くなったのは五年ほど前とあり、2024年11月とは合わない。"
+   },
+   {
+    "number": 29,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [
+   {
+    "kind": "本人だけかお休みの言葉",
+    "length": 23
+   }
+  ],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ },
+ "cost_usd": {
+  "基本の答え": 1.0228,
+  "答え合わせの判定": 1.3946,
+  "問いを読む": 0.0072,
+  "ツインのアドボカシー": 1.2929
+ },
+ "cost_total_usd": 3.718
+}

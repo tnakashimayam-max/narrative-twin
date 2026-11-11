@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/data/mine/**)",
+      "Edit(/data/mine/**)",
+      "mcp__claude-in-chrome"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_own_records.py\"",
+            "timeout": 15,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/check_promises.py\"",
+            "timeout": 150,
+            "statusMessage": "ツインの約束のテストを流しています"
+          }
+        ]
+      }
+    ]
+  }
+}

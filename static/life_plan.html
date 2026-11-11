@@ -1,0 +1,44 @@
+<!doctype html>
+<!--
+  役割：生活まとめプランのページ。ツイン（AI）が下書きし、専門職が画面で確かめて直し、印刷か PDF で出す。
+        下書きがなければ白紙の書式を出す（書式そのものを HTML にしたもの。白紙のまま印刷もできる）。
+  4つの極：4. 10年後に代弁する。
+  守る原則：1（決めるのは人。専門職が直してから出す）、12（紙に必ず「ツイン（AI）」と出す）。
+  紙の形は forms/life_plan.json、処理は app/life_plan.py。取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>生活まとめプラン</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="life-plan.css" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body data-look="modern">
+    <div class="page-logo screen-only"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <div class="page">
+      <header class="screen-only">
+        <h1 class="page-title">生活まとめプラン</h1>
+        <p class="hint">ツイン（AI）が、今のアセスメントと今の様子から出来ること・出来ないことを見立て、セルフと本人の資源、周りの支えをもとに下書きします。確かめて修正してから、印刷か PDF で出してください。</p>
+        <div class="actions">
+          <button type="button" id="make" class="primary" data-tip="ツイン（AI）が今の記録から生活まとめプランを下書きします" hidden>下書きを作る</button>
+          <label id="choose-label" hidden>作った日
+            <select id="choose"></select>
+          </label>
+          <button type="button" id="edit" data-tip="表の中を修正できるようにします（前の版は残ります）" hidden>修正</button>
+          <button type="button" id="save" class="primary" data-tip="表で修正したところを、新しい版で保存します" hidden>修正したところを保存</button>
+          <button type="button" id="cancel" data-tip="修正したところを保存せずに、もとの表へ戻します" hidden>やめる</button>
+          <button type="button" id="print" data-tip="印刷の窓を開きます。PDF にも残せます">印刷・PDF</button>
+          <button type="button" id="blank" class="quiet" data-tip="何も書いていない書式を出します。手書き用に印刷できます">白紙を出す</button>
+        </div>
+        <p class="hint" id="status" role="status"></p>
+      </header>
+      <div id="sheet"></div>
+      <section class="screen-only material" id="material"></section>
+    </div>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="life_plan.js"></script>
+  </body>
+</html>

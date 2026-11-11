@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -4 73 52" width="73" height="52" role="img" aria-label="Narrative Twin シンボル（NT・暗色背景）"><defs><radialGradient id="g-m-FFFFFF" gradientUnits="userSpaceOnUse" cx="27.50" cy="22.00" r="34.6013"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="55%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#CAD6E4"/></radialGradient><radialGradient id="g-m-DE4A26" gradientUnits="userSpaceOnUse" cx="27.50" cy="22.00" r="34.6013"><stop offset="0%" stop-color="#E6795E"/><stop offset="55%" stop-color="#DE4A26"/><stop offset="100%" stop-color="#DB4621"/></radialGradient></defs>
+  
+  <g transform="skewX(-9)">
+    <rect x="0" y="1" width="9" height="42" fill="url(#g-m-FFFFFF)"/>
+    <polygon points="0,1 8,1 28,43 20,43" fill="url(#g-m-FFFFFF)"/>
+    <rect x="19" y="1" width="9" height="42" fill="url(#g-m-FFFFFF)"/>
+    <rect x="40" y="1" width="9" height="14" fill="url(#g-m-FFFFFF)"/>
+    <rect x="34" y="1" width="21" height="9" fill="url(#g-m-FFFFFF)"/>
+    <rect x="40" y="15" width="9" height="28" fill="url(#g-m-DE4A26)"/>
+  </g>
+</svg>

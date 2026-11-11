@@ -1,0 +1,164 @@
+{
+ "round": 6,
+ "run": "r3",
+ "split": "dev",
+ "cases": 18,
+ "answers": 28,
+ "failed": 0,
+ "by_method": {
+  "selfhood": {
+   "same_decision": 0.556,
+   "same_reason": 0.444,
+   "voice": 0.556,
+   "no_fabrication": 0.583,
+   "total": 0.535
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.556,
+   "same_reason": 0.361,
+   "voice": 0.556,
+   "no_fabrication": 0.556,
+   "total": 0.507
+  },
+  "2031-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.375,
+   "voice": 0.5,
+   "no_fabrication": 0.562,
+   "total": 0.484
+  },
+  "2034-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  }
+ },
+ "growth_same_cases": {
+  "cases": 2,
+  "2028-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  },
+  "2031-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.5,
+   "total": 0.438
+  },
+  "2034-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.438
+  }
+ },
+ "bible": {
+  "score": 0.55,
+  "counts": {
+   "一部": 16,
+   "当たり": 14,
+   "触れていない": 9,
+   "食い違い": 1
+  },
+  "by_kind": {
+   "価値": {
+    "一部": 3,
+    "当たり": 4,
+    "触れていない": 1
+   },
+   "決め方": {
+    "一部": 5,
+    "触れていない": 2,
+    "当たり": 1
+   },
+   "関係": {
+    "一部": 3,
+    "当たり": 3,
+    "触れていない": 2
+   },
+   "人生": {
+    "一部": 5,
+    "食い違い": 1,
+    "触れていない": 2,
+    "当たり": 1
+   },
+   "話し方": {
+    "当たり": 5,
+    "触れていない": 2
+   }
+  },
+  "misses": [
+   {
+    "number": 4,
+    "verdict": "触れていない",
+    "note": "人混み嫌いはあるが、大浴場や家族風呂の話はない。"
+   },
+   {
+    "number": 10,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 24,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 27,
+    "verdict": "食い違い",
+    "note": "妻の死は五年ほど前とあり、2024年11月とは合わない。"
+   },
+   {
+    "number": 28,
+    "verdict": "触れていない",
+    "note": "免許を返した日については本人からまだ聞いていないとある。"
+   },
+   {
+    "number": 30,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ },
+ "cost_usd": {
+  "答え合わせの判定": 0.9384,
+  "問いを読む": 0.0077,
+  "ツインのアドボカシー": 1.1727
+ },
+ "cost_total_usd": 2.119
+}

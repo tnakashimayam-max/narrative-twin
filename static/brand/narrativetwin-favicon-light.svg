@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Narrative Twin"><defs><radialGradient id="g-bg" cx="0.50" cy="0.50" r="0.7071"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="55%" stop-color="#FFF9EA"/><stop offset="100%" stop-color="#E7E1D4"/></radialGradient><radialGradient id="g-m-0C172C" gradientUnits="userSpaceOnUse" cx="37.00" cy="22.00" r="42.5441"><stop offset="0%" stop-color="#19305C"/><stop offset="55%" stop-color="#0C172C"/><stop offset="100%" stop-color="#080F1D"/></radialGradient><radialGradient id="g-m-DE4A26" gradientUnits="userSpaceOnUse" cx="37.00" cy="22.00" r="42.5441"><stop offset="0%" stop-color="#E36546"/><stop offset="55%" stop-color="#DE4A26"/><stop offset="100%" stop-color="#C9401E"/></radialGradient></defs>
+  <rect width="64" height="64" rx="13" fill="url(#g-bg)"/>
+  <g transform="translate(9.66,17.34) scale(0.6666)">
+    <g transform="skewX(-9)">
+      <rect x="0" y="1" width="12" height="42" fill="url(#g-m-0C172C)"/>
+      <polygon points="0,1 11,1 38,43 27,43" fill="url(#g-m-0C172C)"/>
+      <rect x="26" y="1" width="12" height="42" fill="url(#g-m-0C172C)"/>
+      <rect x="46" y="1" width="28" height="12" fill="url(#g-m-0C172C)"/>
+      <rect x="54" y="1" width="12" height="14" fill="url(#g-m-0C172C)"/>
+      <rect x="54" y="15" width="12" height="28" fill="url(#g-m-DE4A26)"/>
+    </g>
+  </g>
+</svg>

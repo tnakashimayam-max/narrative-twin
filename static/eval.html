@@ -1,0 +1,56 @@
+<!doctype html>
+<!--
+  役割：評価用の質問と正解を入力し、確認する画面。
+  4つの極：特定の極に属さない土台（評価の道具）。
+  守る原則：8（「架空データ」を常に出す）。
+  サーバーとのやり取りの取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>評価の質問と正解</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* 戻るボタンの分だけ見出しが長いので、狭い窓では折り返す */
+      .site-header { flex-wrap: wrap; }
+      .site-header .tags { flex: 0 1 auto; flex-wrap: wrap; padding: 6px 0 6px 12px; }
+      .page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+    </style>
+  </head>
+  <body data-look="modern">
+    <header class="site-header">
+      <img class="brand-logo" src="brand/narrativetwin-logo.svg" alt="Narrative Twin" width="263" height="44" />
+      <span class="tags"><span class="tag">架空データ</span><span class="page-nav"></span></span>
+    </header>
+
+    <main class="panel">
+      <h1>評価の質問と正解</h1>
+      <p>意思モデルと比較用の方式を同じ質問で比べるための入れ物です。正解は人が入れます。</p>
+
+      <form id="case-form" class="case-form">
+        <input id="case-id" type="hidden" />
+        <label for="case-question">質問</label>
+        <textarea id="case-question" rows="2" required></textarea>
+        <label for="case-answer">正解</label>
+        <textarea id="case-answer" rows="3"></textarea>
+        <label for="case-type">質問の種類</label>
+        <select id="case-type">
+          <option>今の考え</option>
+          <option>変化</option>
+          <option>知らないこと</option>
+          <option>一字一句</option>
+        </select>
+        <button id="case-save" type="submit" data-tip="入れた質問と正解を保存します（修正中なら上書きします）">保存する</button>
+        <p id="case-status" role="status"></p>
+      </form>
+
+      <h2>入っている質問</h2>
+      <ul id="case-list" class="case-list"></ul>
+    </main>
+
+    <script type="module" src="page_nav.js"></script>
+    <script src="eval.js"></script>
+  </body>
+</html>

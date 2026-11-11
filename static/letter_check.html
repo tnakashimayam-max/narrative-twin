@@ -1,0 +1,31 @@
+<!doctype html>
+<!--
+  役割：ご本人か、託されたご家族が、手紙の下書きを読んで直し、返すか出さないかを決めるページ。
+  4つの極：4. 10年後に代弁する。
+  守る原則：1（決めるのはご本人とご家族）、12（紙に必ず「ツイン（AI）」と出す）。
+  開き方：letter_check.html?id=<手紙の番号>。番号がなければ、確かめ待ちのいちばん新しい手紙を開く。
+  取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>手紙を確かめる</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="letter-print.css" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body class="check-page">
+    <div class="page-logo"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <div class="page">
+      <h1 class="page-title" id="title">手紙を確かめる</h1>
+      <p class="hint" id="lead"></p>
+      <p class="hint" id="status" role="status"></p>
+      <div id="paper"></div>
+      <div class="actions no-print" id="buttons"></div>
+    </div>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="letter_check.js"></script>
+  </body>
+</html>

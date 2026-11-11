@@ -1,0 +1,848 @@
+{
+  "id": "assessment",
+  "title": "アセスメントシート",
+  "use": "専門職が本人の心身と暮らしの状態を調べて書く書式。選ぶ欄と、選んだ理由を書く詳細の欄がある。",
+  "choice_sets": {
+    "A": [
+      "自立",
+      "見守り",
+      "一部介助",
+      "全介助"
+    ],
+    "B": [
+      "できる",
+      "一部介助",
+      "できない"
+    ],
+    "C": [
+      "つかまらないで出来る",
+      "何かにつかまればできる",
+      "できない"
+    ],
+    "D": [
+      "ない",
+      "ときどきある",
+      "ある"
+    ],
+    "E": [
+      "自立",
+      "見守りなど",
+      "一部介助",
+      "できない"
+    ]
+  },
+  "sections": [
+    {
+      "title": "基本情報",
+      "fields": [
+        {
+          "name": "利用者名",
+          "type": "text"
+        },
+        {
+          "name": "フリガナ",
+          "type": "text"
+        },
+        {
+          "name": "保険者番号",
+          "type": "text"
+        },
+        {
+          "name": "被保険者番号",
+          "type": "text"
+        },
+        {
+          "name": "調査実施日",
+          "type": "date"
+        },
+        {
+          "name": "障害高齢者の日常生活自立度（主治医意見書）",
+          "type": "text"
+        },
+        {
+          "name": "認知症高齢者の日常生活自立度（主治医意見書）",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "身体状況・移動",
+      "fields": [
+        {
+          "name": "麻痺",
+          "type": "select",
+          "choices": [
+            "ない",
+            "左上肢",
+            "右上肢",
+            "左下肢",
+            "右下肢",
+            "その他"
+          ],
+          "detail": true
+        },
+        {
+          "name": "関節可動域",
+          "type": "select",
+          "choices": [
+            "ない",
+            "肩関節",
+            "肘関節",
+            "股関節",
+            "膝関節",
+            "足関節",
+            "その他"
+          ],
+          "detail": true
+        },
+        {
+          "name": "寝返り",
+          "type": "select",
+          "choice_set": "C"
+        },
+        {
+          "name": "起き上がり",
+          "type": "select",
+          "choice_set": "C"
+        },
+        {
+          "name": "座位保持",
+          "type": "select",
+          "choices": [
+            "できる",
+            "自分の手で支えればできる",
+            "支えてもらえればできる",
+            "できない"
+          ]
+        },
+        {
+          "name": "立位保持",
+          "type": "select",
+          "choices": [
+            "つかまらないでできる",
+            "何かにつかまればできる",
+            "できない"
+          ]
+        },
+        {
+          "name": "屋内歩行",
+          "type": "select",
+          "choices": [
+            "できる",
+            "何かにつかまればできる",
+            "できない"
+          ]
+        },
+        {
+          "name": "屋外歩行",
+          "type": "select",
+          "choices": [
+            "できる",
+            "何かにつかまればできる",
+            "できない"
+          ]
+        },
+        {
+          "name": "移乗",
+          "type": "select",
+          "choice_set": "E"
+        },
+        {
+          "name": "移動",
+          "type": "select",
+          "choice_set": "E",
+          "detail": true
+        },
+        {
+          "name": "立ち上がり",
+          "type": "select",
+          "choice_set": "C"
+        },
+        {
+          "name": "片足での立位",
+          "type": "select",
+          "choices": [
+            "支えなしでもできる",
+            "何か支えがあればできる",
+            "できない"
+          ]
+        },
+        {
+          "name": "段差（階段等）",
+          "type": "select",
+          "choices": [
+            "（５㎝）",
+            "（１５㎝）",
+            "（３０㎝）"
+          ],
+          "detail": true
+        }
+      ]
+    },
+    {
+      "title": "入浴・清潔",
+      "fields": [
+        {
+          "name": "洗身",
+          "type": "select",
+          "choices": [
+            "自立",
+            "一部介助",
+            "全介助",
+            "行っていない"
+          ]
+        },
+        {
+          "name": "洗髪",
+          "type": "select",
+          "choices": [
+            "自立",
+            "一部介助",
+            "全介助",
+            "行っていない"
+          ]
+        },
+        {
+          "name": "浴槽への出入り",
+          "type": "select",
+          "choices": [
+            "できる",
+            "何かにつかまればできる",
+            "できない",
+            "行っていない"
+          ],
+          "detail": true
+        },
+        {
+          "name": "浴室の環境",
+          "type": "select",
+          "choices": [
+            "和式浴槽",
+            "洋式浴槽",
+            "据置浴槽",
+            "シャワーあり"
+          ],
+          "detail": true
+        },
+        {
+          "name": "褥そう（床ずれ）",
+          "type": "select",
+          "choices": [
+            "ない",
+            "ある"
+          ]
+        },
+        {
+          "name": "褥そう以外の皮膚疾患",
+          "type": "select",
+          "choices": [
+            "ない",
+            "ある"
+          ]
+        },
+        {
+          "name": "清潔（整容）",
+          "type": "group",
+          "fields": [
+            {
+              "name": "口腔ケア",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "洗顔",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "整髪",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "爪切り",
+              "type": "select",
+              "choice_set": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "食事・栄養",
+      "fields": [
+        {
+          "name": "嚥下",
+          "type": "select",
+          "choices": [
+            "できる",
+            "見守りなど",
+            "できない"
+          ],
+          "detail": true
+        },
+        {
+          "name": "主食",
+          "type": "select",
+          "choices": [
+            "普通",
+            "軟飯",
+            "粥",
+            "その他"
+          ]
+        },
+        {
+          "name": "副食",
+          "type": "select",
+          "choices": [
+            "普通",
+            "刻み食",
+            "ミキサー",
+            "その他"
+          ]
+        },
+        {
+          "name": "飲水",
+          "type": "select",
+          "choices": [
+            "自立",
+            "見守り等",
+            "一部介助",
+            "全介助"
+          ]
+        },
+        {
+          "name": "食欲",
+          "type": "select",
+          "choices": [
+            "旺盛",
+            "普通",
+            "あまりない"
+          ]
+        },
+        {
+          "name": "調理",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        },
+        {
+          "name": "準備・配膳",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        },
+        {
+          "name": "後片づけ・下膳",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        }
+      ]
+    },
+    {
+      "title": "排泄",
+      "fields": [
+        {
+          "name": "トイレの形状",
+          "type": "select",
+          "choices": [
+            "和式便器",
+            "洋式便器"
+          ]
+        },
+        {
+          "name": "排泄場所",
+          "type": "select",
+          "choices": [
+            "和式便器",
+            "洋式便器",
+            "ポータブルトイレ",
+            "オムツ（紙・布）"
+          ],
+          "detail": true
+        },
+        {
+          "name": "尿意",
+          "type": "select",
+          "choices": [
+            "ある",
+            "ない"
+          ]
+        },
+        {
+          "name": "排尿動作",
+          "type": "select",
+          "choice_set": "A",
+          "detail": true
+        }
+      ]
+    },
+    {
+      "title": "着脱・薬・金銭",
+      "fields": [
+        {
+          "name": "衣服着脱",
+          "type": "group",
+          "fields": [
+            {
+              "name": "ボタン",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "上衣",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "下衣",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "靴下",
+              "type": "select",
+              "choice_set": "A"
+            },
+            {
+              "name": "靴",
+              "type": "select",
+              "choice_set": "A"
+            }
+          ]
+        },
+        {
+          "name": "薬の内服",
+          "type": "select",
+          "choice_set": "A"
+        },
+        {
+          "name": "薬の管理",
+          "type": "select",
+          "choices": [
+            "できる",
+            "できない"
+          ]
+        },
+        {
+          "name": "生活費管理",
+          "type": "select",
+          "choices": [
+            "できる",
+            "できない"
+          ]
+        },
+        {
+          "name": "財産管理",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "コミュニケーション",
+      "fields": [
+        {
+          "name": "電話の利用",
+          "type": "group",
+          "fields": [
+            {
+              "name": "かける",
+              "type": "select",
+              "choices": [
+                "できる",
+                "一部介助"
+              ]
+            },
+            {
+              "name": "でる",
+              "type": "select",
+              "choices": [
+                "できる",
+                "一部介助"
+              ]
+            },
+            {
+              "name": "理解・伝達",
+              "type": "select",
+              "choices": [
+                "できる",
+                "一部介助"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "日常の意思決定",
+          "type": "select",
+          "choices": [
+            "できる",
+            "困難",
+            "できない"
+          ],
+          "detail": true
+        },
+        {
+          "name": "視力",
+          "type": "select",
+          "choices": [
+            "普通",
+            "日常生活を送る事が困難",
+            "殆ど見えない",
+            "判断不明"
+          ],
+          "detail": true
+        },
+        {
+          "name": "聴力",
+          "type": "select",
+          "choices": [
+            "普通",
+            "かなり大きい声なら聞こえる",
+            "殆ど聞こえない",
+            "判断不明"
+          ],
+          "detail": true
+        },
+        {
+          "name": "意思の伝達",
+          "type": "select",
+          "choices": [
+            "できる",
+            "ややはっきりしない",
+            "できない"
+          ]
+        },
+        {
+          "name": "指示への反応",
+          "type": "select",
+          "choices": [
+            "通じる",
+            "ときどき通じる",
+            "通じない"
+          ]
+        },
+        {
+          "name": "記憶・理解",
+          "type": "group",
+          "fields": [
+            {
+              "name": "日課",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "生年月日",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "直前の記憶",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "自分の名前",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "今の季節",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "今いる場所",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            },
+            {
+              "name": "新聞等の理解",
+              "type": "select",
+              "choices": [
+                "できる",
+                "できない"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "生活習慣・家事",
+      "fields": [
+        {
+          "name": "たばこの喫煙",
+          "type": "select",
+          "choices": [
+            "する",
+            "しない"
+          ]
+        },
+        {
+          "name": "飲酒",
+          "type": "select",
+          "choices": [
+            "する",
+            "しない"
+          ]
+        },
+        {
+          "name": "洗濯をする",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        },
+        {
+          "name": "洗濯物を干す",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        },
+        {
+          "name": "洗濯物を取り込む",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        },
+        {
+          "name": "洗濯物をたたむ",
+          "type": "select",
+          "choice_set": "B",
+          "detail": true
+        }
+      ]
+    },
+    {
+      "title": "行動・心理症状",
+      "fields": [
+        {
+          "name": "問題行動",
+          "type": "group",
+          "fields": [
+            {
+              "name": "被害妄想",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "無気力・うつ",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "幻視幻聴",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "感情失禁",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "夜間不眠・昼夜逆転",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "暴言・暴行",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "作話・不快音",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "大声",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "介護への抵抗",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "徘徊",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "落ち着きなし",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "外出して戻れない",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "外に出て目が離せない",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "収集癖",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "火の不始末",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "破壊癖",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "不潔行為",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "異食摂取",
+              "type": "select",
+              "choice_set": "D"
+            },
+            {
+              "name": "ひどい物忘れ",
+              "type": "select",
+              "choice_set": "D"
+            }
+          ]
+        },
+        {
+          "name": "問題行動の詳細",
+          "type": "long_text"
+        },
+        {
+          "name": "記憶保持時間",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "社会生活・医療",
+      "fields": [
+        {
+          "name": "買い物",
+          "type": "select",
+          "choices": [
+            "できる",
+            "やや困難",
+            "困難"
+          ],
+          "detail": true
+        },
+        {
+          "name": "日中の安否確認",
+          "type": "select",
+          "choices": [
+            "必要",
+            "不要"
+          ],
+          "detail": true
+        },
+        {
+          "name": "通院援助",
+          "type": "select",
+          "choices": [
+            "必要",
+            "不要"
+          ],
+          "detail": true
+        },
+        {
+          "name": "医療的処置",
+          "type": "multi_select",
+          "choices": [
+            "経管栄養",
+            "中心静脈栄養",
+            "点滴",
+            "カリウム製剤",
+            "透析",
+            "ストーマ",
+            "酸素療法",
+            "レスピレーター",
+            "気管切開",
+            "疼痛の看護",
+            "経路（胃ろう等）",
+            "モニター",
+            "褥瘡の処置",
+            "カテーテル",
+            "インスリン",
+            "自己腹膜灌流（CAPD）"
+          ],
+          "detail": true,
+          "medical": true
+        }
+      ]
+    },
+    {
+      "title": "意向・環境",
+      "fields": [
+        {
+          "name": "利用者本人の意向",
+          "type": "long_text"
+        },
+        {
+          "name": "家族の意向",
+          "type": "long_text"
+        },
+        {
+          "name": "主な介護者",
+          "type": "text"
+        },
+        {
+          "name": "介護者の状況",
+          "type": "long_text"
+        },
+        {
+          "name": "その他協力者",
+          "type": "text"
+        },
+        {
+          "name": "居住環境",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "title": "特記事項・人生史等",
+      "fields": [
+        {
+          "name": "特記事項",
+          "type": "long_text"
+        },
+        {
+          "name": "人生史",
+          "type": "long_text"
+        }
+      ]
+    }
+  ]
+}

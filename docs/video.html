@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Narrative Twin プレゼン動画の内容</title>
+<style>
+:root{--ai:#182E52;--ai2:#0C172C;--sun:#F6C453;--shu:#EB6101;--bg:#FFF8EC;--card:#fff;--ink:#1d2433;--sub:#5b6577;--line:#e6dccb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1626;--card:#16203a;--ink:#eef2f8;--sub:#aab4c6;--line:#2a3756}}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:"Yu Gothic UI","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;line-height:1.8}
+header{background:var(--ai);color:#fff;padding:40px 16px 32px} header .in,main{max-width:980px;margin:0 auto}
+header h1{margin:0 0 6px;font-size:clamp(22px,4vw,32px)} header p{margin:4px 0;color:#d7e0ee} header .lead{color:#fff;font-size:17px;margin-top:14px}
+header .lead b{color:var(--sun)} main{padding:8px 16px 60px}
+h2{margin:44px 0 14px;padding-left:12px;border-left:6px solid var(--shu);font-size:22px}
+.points{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.point,.flip,.scene{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.point h3,.flip h3{margin:0 0 6px;color:var(--shu);font-size:17px} .point p,.flip p{margin:0}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left} th{background:var(--ai);color:#fff;font-weight:600}
+td.t,span.t{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--sub)} td.n{white-space:nowrap}
+.scene{margin:14px 0} .scene h3{margin:0 0 10px;font-size:18px} .scene h3 .t{margin-right:10px;font-size:14px}
+.msg{background:rgba(246,196,83,.18);border-left:4px solid var(--sun);padding:8px 12px;border-radius:6px;margin-bottom:10px}
+.msg b{display:block;font-size:12px;color:var(--sub)}
+dl{margin:0;display:grid;grid-template-columns:150px 1fr;gap:6px 14px} dt{font-weight:700;color:var(--sub);font-size:14px} dd{margin:0}
+dd.voice{font-family:"Yu Mincho","Hiragino Mincho ProN",serif} ol.telop,dd ul{margin:0;padding-left:20px} ol.telop li span.t{margin-right:8px;font-size:13px}
+.none{margin:0;color:var(--sub)} .flips{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.flip ul{margin:8px 0 0;padding-left:20px} .code{margin-top:8px!important;font-family:Consolas,monospace;font-size:13px;color:var(--sub)}
+.facts li{margin:2px 0} footer{color:var(--sub);font-size:13px;text-align:center;padding:24px}
+@media (max-width:640px){dl{grid-template-columns:1fr} th:nth-child(4),td:nth-child(4){display:none}}
+</style></head><body>
+<header><div class="in">
+<h1>Narrative Twin　プレゼン動画の内容</h1>
+<p>長さ 2分59秒（1920×1080）／ナレーション：中島知巳（リビングアエル、ケアマネジャー歴26年）</p>
+<p>動画：<a href="https://youtu.be/suv638PMKpk" style="color:#F6C453">https://youtu.be/suv638PMKpk</a>（YouTube の限定公開。長さ 178.97秒。YouTube の画面では切り上げて 3:00 と出ることがあります）</p>
+<p class="lead">認知症になっても、本人の思いが置き去りにされないように。<br><b>Narrative Twin</b> は、元気なうちから日々の言葉を積み重ね、いざという時に<b>本人の隣で思いを代弁する AI</b> です。</p>
+</div></header>
+<main>
+<h2>この動画で伝えたいこと</h2>
+<div class="points"><div class='point'><h3>課題</h3><p>認知症になると、本人の声は届きにくくなる。介護の理念は本人中心（パーソン・センタード・ケア）なのに、現実には本人の過去を知らない専門職や家族の意向が優先される「アザー・センタード・ケア」になりがち。当事者はそれを「認知症になったらアンコウにされる」と表した。</p></div><div class='point'><h3>答え</h3><p>Narrative Twin は、元気なうちから日々の言葉を積み重ね、いざという時に本人の隣で思いを代弁する AI。エンディングノートのように一度書いて終わりではなく、揺れ動く気持ちに長く伴走する。</p></div><div class='point'><h3>話がつながるしくみ</h3><p>Claude で本人の言葉を月ごとに読み直し、人とテーマの「心の目次」に階層化する。返事は、AI が書いた文をプログラムの決まりで確かめてから出す。</p></div><div class='point'><h3>本人像「セルフ」</h3><p>言葉の読みを仮説として持ち、次の言葉で確かめて補正する。積み上げた本人像を「5つの花びら」で表し、本人が確かめた分だけ色づく。</p></div><div class='point'><h3>代弁の使いどころ</h3><p>ケア会議で本人として答える。書類を本人の目でチェックする。暮らしのプランを下書きする。本人と一緒に、家族や関係者へ手紙を書く。</p></div><div class='point'><h3>これから</h3><p>まずは身近な利用者とケアマネジャーから。招待できる職種とつながるツールを増やし、本人の想いを刻み続ける。結びの言葉は「AIの先に、人がいる。」</p></div></div>
+
+<h2>構成（時間割）</h2>
+<table><thead><tr><th>時刻</th><th>場面</th><th>長さ</th><th>伝えたいこと</th></tr></thead><tbody><tr><td class='t'>0:00.0〜0:11.0</td><td>オープニング</td><td class='n'>11秒</td><td>認知症になった人が「意思がないモノ」のように扱われる悔しさを、当事者の言葉で最初に示す。動画全体の問いになる。</td></tr><tr><td class='t'>0:11.0〜1:04.7</td><td>第1幕　課題と、作った理由</td><td class='n'>54秒</td><td>介護の現場では、本人中心（パーソン・センタード・ケア）が理念なのに、実際は本人の過去を知らない専門職や家族の意向が優先されがち。26年の現場の経験から、その「アザー・センタード・ケア」を変えたい。答えは、元気なうちから言葉を積み重ね、いざという時に本人の隣で思いを代弁する AI。</td></tr><tr><td class='t'>1:04.7〜1:18.6</td><td>第2幕①　なぜ AI なのか</td><td class='n'>14秒</td><td>一度書いて終わる定型のノートでは、日々揺れる気持ちや一人ひとり違う暮らしに応えられない。毎日の言葉に長く付き合う AI だから、本人の今と変化を残せる。</td></tr><tr><td class='t'>1:18.6〜1:36.5</td><td>第2幕②　話がつながるしくみ</td><td class='n'>18秒</td><td>会話をそのまま AI に渡すだけでは、何年分の話はつながらない。Claude で本人の言葉を月ごとに読み直し、人とテーマごとの「心の目次」に階層化しておく。返事は、AI が書いた文をプログラムの決まりで確かめてから出す。</td></tr><tr><td class='t'>1:36.5〜1:55.4</td><td>第2幕③　本人像「セルフ」を組み上げる</td><td class='n'>19秒</td><td>ツインは言葉を覚えるだけでなく、本人そのものを組み上げる。言葉の読みを仮説として持ち、次の言葉で確かめて補正する。積み上げた本人像が「セルフ」。</td></tr><tr><td class='t'>1:55.4〜2:09.3</td><td>第2幕④　5つの花びら</td><td class='n'>14秒</td><td>セルフは、パーソン・センタード・ケアの「5つの心の求め」（くつろぎ・結びつき・共にあること・たずさわること・自分らしさ）で表す。色は本人が確かめた分だけのり、数字は出さず、減らない。</td></tr><tr><td class='t'>2:09.3〜2:28.2</td><td>第3幕　代弁の使いどころ</td><td class='n'>19秒</td><td>セルフがあるから、ツインは本人として代弁できる。専門職はケア会議やトークでツインに問いかけて本人の言葉と代弁を受け取り、書類を本人の目でチェックし、暮らしのプランの下書きも作る。本人はツインと一緒に、家族や関係者へ手紙を書く。</td></tr><tr><td class='t'>2:28.2〜2:41.1</td><td>第4幕　これから</td><td class='n'>13秒</td><td>まずは身近な利用者とケアマネジャーから使い始め、招待できる職種とつながるツールを増やしていく。ツインは本人の想いを刻み続ける。</td></tr><tr><td class='t'>2:41.1〜2:42.1</td><td>間（黒い画面）</td><td class='n'>1秒</td><td>ひと呼吸おいて、結びへ。</td></tr><tr><td class='t'>2:42.1〜2:47.0</td><td>つなぎ</td><td class='n'>5秒</td><td>AI が残した想いは、最後は人に届くためのもの。</td></tr><tr><td class='t'>2:47.0〜2:54.0</td><td>庭の場面</td><td class='n'>7秒</td><td>10年後も、本人の想いが家族の時間の中に生きている未来。</td></tr><tr><td class='t'>2:54.0〜2:59.0</td><td>エンドカード</td><td class='n'>5秒</td><td>主役は AI ではなく人。</td></tr></tbody></table>
+
+<h2>場面ごとの内容</h2>
+<p>画面・ナレーション（読み上げた全文）・テロップ（出る時刻つき）・フリップとスーパーインポーズを、場面ごとにまとめています。テロップはナレーションより少し詳しい文で、声と同じ時刻に出ます。</p>
+
+<section class="scene">
+  <h3><span class="t">0:00.0〜0:11.0</span>オープニング</h3>
+  <div class="msg"><b>伝えたいこと</b>認知症になった人が「意思がないモノ」のように扱われる悔しさを、当事者の言葉で最初に示す。動画全体の問いになる。</div>
+  <dl>
+    <dt>画面</dt><dd>水族館の水槽の前で、母と子がアンコウを見ている（生成した映像）。最後に黒い画面へ変わり、白い文字で「認知症になったらアンコウにされる ― ある認知症当事者の言葉 ―」。</dd>
+    <dt>ナレーション</dt><dd class="voice">（ナレーションなし）</dd>
+    <dt>テロップ</dt><dd><p class='none'>なし</p></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">0:11.0〜1:04.7</span>第1幕　課題と、作った理由</h3>
+  <div class="msg"><b>伝えたいこと</b>介護の現場では、本人中心（パーソン・センタード・ケア）が理念なのに、実際は本人の過去を知らない専門職や家族の意向が優先されがち。26年の現場の経験から、その「アザー・センタード・ケア」を変えたい。答えは、元気なうちから言葉を積み重ね、いざという時に本人の隣で思いを代弁する AI。</div>
+  <dl>
+    <dt>画面</dt><dd>① 介護施設の中で、ケアマネジャーの中島知巳が正面を向いて語る（右に縦書きの名前「リビングアエル　中島知巳」）。② 施設の共用の部屋。③ 職員が利用者の手を取り、笑顔で話しかける。④ ケアマネジャーがパソコンで書類を書く。⑤ アプリの入口の画面「あなたの言葉を、未来の自分へ託す。」</dd>
+    <dt>ナレーション</dt><dd class="voice">『認知症になったらアンコウにされる』。これは海底でじっと暮らし意思がないモノのように扱われる——そんな認知症当事者の悔しさを表した言葉です。はじめまして中島です。私は26年間ケアマネジャーをしてきました。パーソン・センタード・ケアがケアの基本理念ですが、現実は本人の過去を知らない専門職や家族の意向が優先される『アザー・センタード・ケア』になっている。私はこれをどうにかしたい。その思いで作ったのが元気なうちから日々の言葉を積み重ねいざという時に本人の隣で思いを代弁するAI『Narrative Twin』です。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>0:11.3〜0:15.4</span>『認知症になったらアンコウにされる』。</li><li><span class='t'>0:15.4〜0:27.1</span>これは海底でじっと暮らし意思がないモノのように扱われる——そんな認知症当事者の悔しさを表した言葉です。</li><li><span class='t'>0:27.1〜0:29.7</span>はじめまして中島です。</li><li><span class='t'>0:29.7〜0:34.4</span>私は26年間ケアマネジャーをしてきました。</li><li><span class='t'>0:34.4〜0:43.5</span>パーソン・センタード・ケアがケアの基本理念ですが、現実は本人の過去を知らない専門職や家族の意向が</li><li><span class='t'>0:43.5〜0:47.6</span>優先される『アザー・センタード・ケア』になっている。</li><li><span class='t'>0:47.6〜0:51.0</span>私はこれをどうにかしたい。</li><li><span class='t'>0:51.0〜1:01.1</span>その思いで作ったのが元気なうちから日々の言葉を積み重ねいざという時に本人の隣で思いを代弁するAI</li><li><span class='t'>1:01.1〜1:04.5</span>『Narrative Twin』です。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>名前の札（縦書き）：リビングアエル　中島知巳（0:13〜0:18）</li><li>右上に小さく、ブランドロゴ「Narrative Twin」（0:12〜2:40、番組名のようにずっと）</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">1:04.7〜1:18.6</span>第2幕①　なぜ AI なのか</h3>
+  <div class="msg"><b>伝えたいこと</b>一度書いて終わる定型のノートでは、日々揺れる気持ちや一人ひとり違う暮らしに応えられない。毎日の言葉に長く付き合う AI だから、本人の今と変化を残せる。</div>
+  <dl>
+    <dt>画面</dt><dd>PC 版のアプリで、本人とツイン（AI）のトークを、何年分もさかのぼっていく。</dd>
+    <dt>ナレーション</dt><dd class="voice">『エンディングノートで十分では？』しかし日々揺れ動く気持ちと千差万別の暮らしに応えるには長く伴走するAIが必要です。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>1:05.0〜1:11.3</span>『エンディングノートで十分では？』しかし定型的なノートでは日々揺れ動く気持ちや</li><li><span class='t'>1:11.3〜1:13.6</span>千差万別の暮らしに応えられません。</li><li><span class='t'>1:13.6〜1:18.4</span>だから長く伴走するAIが必要なのです。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>左上に「PC」</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">1:18.6〜1:36.5</span>第2幕②　話がつながるしくみ</h3>
+  <div class="msg"><b>伝えたいこと</b>会話をそのまま AI に渡すだけでは、何年分の話はつながらない。Claude で本人の言葉を月ごとに読み直し、人とテーマごとの「心の目次」に階層化しておく。返事は、AI が書いた文をプログラムの決まりで確かめてから出す。</div>
+  <dl>
+    <dt>画面</dt><dd>スマホ版のアプリで、本人が打ち込み、ツインが返事をする。右にフリップ1「心の目次」、続いてフリップ2「例：美穂さん」。</dd>
+    <dt>ナレーション</dt><dd class="voice">チャットを渡すだけでは話がつながりません。Claudeで、本人の言葉を月ごとに読み直し『心の目次』に階層化。（公開版では、この部分の説明を省いています）</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>1:18.9〜1:23.3</span>単純にチャットをAIへ渡すだけでは話がつながりません。</li><li><span class='t'>1:23.3〜1:30.8</span>Claudeを使い、本人の言葉を月ごとに読み直し人とテーマの『心の目次』に階層化しました。</li><li><span class='t'>1:30.8〜1:36.2</span>（公開版では、この部分の説明を省いています）</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>フリップ1「心の目次」</li><li>フリップ2「例：美穂さん」</li><li>左上に「スマホ」</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">1:36.5〜1:55.4</span>第2幕③　本人像「セルフ」を組み上げる</h3>
+  <div class="msg"><b>伝えたいこと</b>ツインは言葉を覚えるだけでなく、本人そのものを組み上げる。言葉の読みを仮説として持ち、次の言葉で確かめて補正する。積み上げた本人像が「セルフ」。</div>
+  <dl>
+    <dt>画面</dt><dd>ツインが自分の推測を本人に確かめ、本人が「そうです」と答える画面。右にフリップ3。「こうして」の声で、5つの花びらの画面へ変わる。</dd>
+    <dt>ナレーション</dt><dd class="voice">さらにツインは本人そのものを組み上げます。（公開版では、この部分の説明を省いています）こうして積み上げた本人像を私たちは『セルフ』と呼んでいます。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>1:36.8〜1:41.3</span>さらにツインは心の目次とは別に本人そのものを組み上げ、チャットを</li><li><span class='t'>1:41.3〜1:47.2</span>（公開版では、この部分の説明を省いています）</li><li><span class='t'>1:47.2〜1:54.9</span>こうして積み上げた本人像を私たちは『セルフ』と呼んでいます。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>フリップ3</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">1:55.4〜2:09.3</span>第2幕④　5つの花びら</h3>
+  <div class="msg"><b>伝えたいこと</b>セルフは、パーソン・センタード・ケアの「5つの心の求め」（くつろぎ・結びつき・共にあること・たずさわること・自分らしさ）で表す。色は本人が確かめた分だけのり、数字は出さず、減らない。</div>
+  <dl>
+    <dt>画面</dt><dd>5つの花びらの画面。花びらを押すと、何で満たされるか・何で損なわれるか・今どうか・根拠の本人の言葉が出る。右にフリップ4「5つの花びら」。</dd>
+    <dt>ナレーション</dt><dd class="voice">その本人像はパーソン・センタード・ケアの考え方『5つの花びら』で表され本人が確かめた分だけツインが色づいていきます。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>1:55.7〜1:59.5</span>その本人像はパーソン・センタード・ケアの考え方</li><li><span class='t'>1:59.5〜2:08.4</span>『5つの花びら』で表され本人が確かめた分だけツインが色づいていきます。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>フリップ4「5つの花びら」</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:09.3〜2:28.2</span>第3幕　代弁の使いどころ</h3>
+  <div class="msg"><b>伝えたいこと</b>セルフがあるから、ツインは本人として代弁できる。専門職はケア会議やトークでツインに問いかけて本人の言葉と代弁を受け取り、書類を本人の目でチェックし、暮らしのプランの下書きも作る。本人はツインと一緒に、家族や関係者へ手紙を書く。</div>
+  <dl>
+    <dt>画面</dt><dd>4つの画面を順に：ケア会議でツインにたずねる → ケア資料をチェックする → 生活まとめプラン → 本人の手紙（それぞれ小さな札つき）。</dd>
+    <dt>ナレーション</dt><dd class="voice">このセルフがツインの代弁を支えます。会議では本人として答え書類をチェックしプランを下書きする。手紙は本人とAIが一緒に書きます。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>2:09.6〜2:14.5</span>このセルフがツインの代弁機能を支えます。</li><li><span class='t'>2:14.5〜2:17.5</span>専門職は会議やトークでツインに問いかけ本人の言葉と代弁を受け取る。</li><li><span class='t'>2:17.5〜2:22.2</span>書類をツインの目でチェックし暮らしプランの下書きも作る。</li><li><span class='t'>2:22.2〜2:28.0</span>本人はツインと一緒に家族や関係者へ手紙を書きます。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:28.2〜2:41.1</span>第4幕　これから</h3>
+  <div class="msg"><b>伝えたいこと</b>まずは身近な利用者とケアマネジャーから使い始め、招待できる職種とつながるツールを増やしていく。ツインは本人の想いを刻み続ける。</div>
+  <dl>
+    <dt>画面</dt><dd>本人のホームの「つながりの地図」（本人を真ん中に、家族・近所の人・主治医・ケアマネジャー）。最後の1秒で画面全体（テロップとロゴも）がゆっくり暗くなり、黒い画面へつながる。</dd>
+    <dt>ナレーション</dt><dd class="voice">まずは身近な利用者とケアマネジャーから。招待できる職種とつながるツールを増やしツインは本人の想いを刻み続けます。</dd>
+    <dt>テロップ</dt><dd><ol class='telop'><li><span class='t'>2:28.5〜2:33.1</span>まずは身近な利用者とケアマネジャーから。</li><li><span class='t'>2:33.1〜2:40.9</span>招待できる職種とつながるツールを増やしツインは本人の想いを刻み続けます。</li></ol></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:41.1〜2:42.1</span>間（黒い画面）</h3>
+  <div class="msg"><b>伝えたいこと</b>ひと呼吸おいて、結びへ。</div>
+  <dl>
+    <dt>画面</dt><dd>黒い画面（無音、1秒）。</dd>
+    <dt>ナレーション</dt><dd class="voice">（ナレーションなし）</dd>
+    <dt>テロップ</dt><dd><p class='none'>なし</p></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:42.1〜2:47.0</span>つなぎ</h3>
+  <div class="msg"><b>伝えたいこと</b>AI が残した想いは、最後は人に届くためのもの。</div>
+  <dl>
+    <dt>画面</dt><dd>黒い画面の真ん中に白い文字「そしてその想いは人へと届いていく。」（フェードイン・フェードアウト）。</dd>
+    <dt>ナレーション</dt><dd class="voice">（ナレーションなし）</dd>
+    <dt>テロップ</dt><dd><p class='none'>なし</p></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:47.0〜2:54.0</span>庭の場面</h3>
+  <div class="msg"><b>伝えたいこと</b>10年後も、本人の想いが家族の時間の中に生きている未来。</div>
+  <dl>
+    <dt>画面</dt><dd>2036年6月。紫陽花の庭の縁側で、84歳の本人が孫と庭を見ている。そばに花の姿のツイン（生成した映像）。左上に「2036年6月」と朱色の線。雨音。最後は暗くなる。</dd>
+    <dt>ナレーション</dt><dd class="voice">（ナレーションなし。雨音）</dd>
+    <dt>テロップ</dt><dd><p class='none'>なし</p></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><ul><li>左上のスーパーインポーズ「2036年6月」（2:48〜2:53）</li></ul></dd>
+  </dl>
+</section>
+<section class="scene">
+  <h3><span class="t">2:54.0〜2:59.0</span>エンドカード</h3>
+  <div class="msg"><b>伝えたいこと</b>主役は AI ではなく人。</div>
+  <dl>
+    <dt>画面</dt><dd>黒い画面に Narrative Twin のロゴと「AIの先に、人がいる。」「Technology connects memories. People connect hearts.」</dd>
+    <dt>ナレーション</dt><dd class="voice">（ナレーションなし）</dd>
+    <dt>テロップ</dt><dd><p class='none'>なし</p></dd>
+    <dt>フリップ・スーパーインポーズ</dt><dd><p class='none'>なし</p></dd>
+  </dl>
+</section>
+
+<h2>フリップの中身</h2>
+<div class="flips">
+<div class="flip"><h3>フリップ1　心の目次</h3><p>日々の本人の言葉を、人とテーマごとにまとめた目次。</p><ul><li>本人にとって何か</li><li>どう受け止めるか</li><li>本人の言葉（原文）</li><li>返事のたびに読む</li><li>発言をそのまま LLM へ渡す形や、似た文を探すだけの RAG とちがい、受け止め方まで踏まえて返す</li></ul><p class="code">app/heart.py</p></div>
+<div class="flip"><h3>フリップ2　例：美穂さん</h3><p>心の目次の1項目の例。</p><ul><li>本人にとって：最後に話を託すと決めた長女</li><li>受け止め方：どちらか一方に寄せず、急がずそのまま聞く</li><li>本人の言葉：「ありがたい話たい。ばってん、この家ば離れる自分が、どうしても思い浮かばん。」（2027年1月3日）</li></ul></div>
+<div class="flip"><h3>フリップ3</h3><p>（公開版では、この部分の説明を省いています）</p><ul><li>読みはすべて仮説として持ち、本人の言葉とは分けておく</li><li>次の言葉が仮説を支えるか、反するかを確かめ、外れたら改める</li><li>家族の言葉にある気持ちは、家族のもの。本人の気持ちには数えない</li><li>確からしさは AI で単純に解析するのではなく、根拠から推論エンジンが重みを計算する。本人が確かめた言葉がいちばん重い</li></ul><p class="code">app/selfhood.py　app/selfhood_prompts.py</p></div>
+<div class="flip"><h3>フリップ4　5つの花びら</h3><p>パーソン・センタード・ケアで、その人らしさを保つために満たされるべき5つの心の求め（心理学者トム・キットウッド）。</p><ul><li>くつろぎ・結びつき・共にあること・たずさわること・自分らしさ</li><li>押すと出るもの：何で満たされるか／何で損なわれるか／今どうか／根拠の本人の言葉（原文）</li><li>色は、本人が確かめた分だけのる（数字は出さない・減らない）</li></ul><p class="code">app/petals.py　app/growth.py</p></div></div>
+
+<h2>作り方と素材</h2>
+<ul class="facts">
+<li>アプリの画面：Narrative Twin の実際の画面（PC 版とスマホ版）を録画して使っています。登場する人物と会話は、デモ用に作った架空の物語です。</li>
+<li>ナレーション：中島知巳が一幕ずつ録音。第1幕の顔出しは、録音した声に合わせて口の動きを撮影しました。</li>
+<li>施設の映像：リビングアエルで撮影しました。</li>
+<li>オープニングと庭の場面：生成 AI で作った映像です（Runway、Kling）。庭の場面の雨音も同じ映像のものです。BGM は使っていません。</li>
+<li>文字：游ゴシック、游明朝（Windows 付属）。</li>
+</ul>
+</main>
+<footer>Narrative Twin — AIの先に、人がいる。</footer>
+</body></html>

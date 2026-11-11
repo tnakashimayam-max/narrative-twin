@@ -1,0 +1,52 @@
+"""起動の入口。python -m app で架空用、python -m app --mine で自分用が動く。
+
+役割：開発用のサーバーを起動する。
+4つの極：特定の極に属さない土台。
+守る原則：8（提出物とデモは架空。開発者が自分の記録で試すときは手元だけに置く）。
+
+どちらも 127.0.0.1 だけで待ち受ける。パスワードのない簡易ログインを、
+同じネットワークのほかの機器から開けないようにするため。
+保存先の分け方は app/config.py の Deployment にある。
+関連するテスト：tests/test_modes.py
+"""
+
+from __future__ import annotations
+
+import argparse
+import threading
+from collections.abc import Sequence
+
+import uvicorn
+
+from app import config, demo, devlog, jobs
+from app.main import create_app
+
+HOST = "127.0.0.1"
+
+
+def choose_deployment(argv: Sequence[str] | None = None) -> config.Deployment:
+    """起動の指定を読む。"""
+    parser = argparse.ArgumentParser(prog="python -m app", description="Narrative Twin を起動します。")
+    parser.add_argument("--mine", action="store_true", help="自分用（ポート 8001、data/mine/）で起動します。")
+    return config.deployment(mine=parser.parse_args(argv).mine)
+
+
+def main() -> None:
+    deployment = choose_deployment()
+    app = create_app(deployment=deployment)
+    app.state.devlog.write(devlog.START, outcome=devlog.SUCCESS)
+    # 架空用の起動では、デモの顔と、デモの日より前の架空ログを入れる。自分用の記録には入れない。
+    # 顔を先に入れる。架空ログを入れた直後に取る最初の控えに、顔も入るようにするため。
+    if not deployment.mine:
+        demo.ensure_story(deployment)
+        demo.ensure_demo_faces(deployment)
+        demo.restore_day(app)
+        # 新規は最初に開いたときに、止まった処理を流し直す
+        app.state.fresh_apps.catch_up_on_open = True
+    # 前回の起動で止まった処理を流し直す。テストが本物の API を呼ばないよう、ここからだけ呼ぶ。
+    threading.Thread(target=jobs.catch_up, args=(app,), daemon=True).start()
+    uvicorn.run(app, host=HOST, port=deployment.port)
+
+
+if __name__ == "__main__":
+    main()

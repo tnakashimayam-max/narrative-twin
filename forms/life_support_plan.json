@@ -1,0 +1,70 @@
+{
+  "id": "life_support_plan",
+  "title": "ライフサポートプラン",
+  "use": "本人の目標と、目標に向かう道のり（だれが、いつからいつまで、どのように支えるか）を書く計画書。モニタリングの欄がある。",
+  "choice_sets": {},
+  "sections": [
+    {
+      "title": "基本情報",
+      "fields": [
+        {"name": "利用者名", "type": "text"},
+        {"name": "生年月日", "type": "date"},
+        {"name": "住所", "type": "text"},
+        {"name": "要介護区分", "type": "text"},
+        {"name": "認定日", "type": "date"},
+        {"name": "有効期間開始", "type": "date"},
+        {"name": "有効期間終了", "type": "date"},
+        {"name": "審査会の意見", "type": "long_text"},
+        {"name": "作成日", "type": "date"},
+        {"name": "事業所名", "type": "text"},
+        {"name": "担当者", "type": "text"}
+      ]
+    },
+    {
+      "title": "目標",
+      "fields": [
+        {"name": "個々の目標", "type": "long_text"}
+      ]
+    },
+    {
+      "title": "当面の目標",
+      "fields": [
+        {
+          "name": "当面の目標",
+          "type": "group",
+          "repeat": 2,
+          "fields": [
+            {"name": "当面の目標", "type": "long_text"},
+            {"name": "目標プロセス", "type": "long_text"},
+            {"name": "本人", "type": "long_text"},
+            {"name": "家族", "type": "long_text"},
+            {"name": "地域", "type": "long_text"},
+            {"name": "事業所", "type": "long_text"},
+            {"name": "いつから", "type": "date"},
+            {"name": "いつまで", "type": "date"},
+            {"name": "誰が", "type": "long_text"},
+            {"name": "どのように", "type": "long_text"},
+            {"name": "支援のタイミング等", "type": "text", "hint": "10文字程度"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "サービス",
+      "fields": [
+        {"name": "サービス内容・目的", "type": "long_text"},
+        {"name": "いつから", "type": "date"},
+        {"name": "いつまで", "type": "date"},
+        {"name": "誰が", "type": "long_text"},
+        {"name": "どのように", "type": "long_text"}
+      ]
+    },
+    {
+      "title": "モニタリング",
+      "fields": [
+        {"name": "モニタリング実施日", "type": "date"},
+        {"name": "モニタリング内容", "type": "long_text"}
+      ]
+    }
+  ]
+}

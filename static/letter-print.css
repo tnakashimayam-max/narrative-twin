@@ -1,0 +1,102 @@
+/*
+  役割：本人の今を代弁する手紙の紙の見た目。A4 1枚。専門職の画面（letter.html）と、確かめる画面（letter_check.html）で使う。
+  4つの極：4. 10年後に代弁する。
+  守る原則：12（紙の札に必ず「ツイン（AI）」と出す。札は消さない）。
+
+  色は藍と陽だまり。本人の筆跡に似せないので、本文は明朝にする（姿と声を似せない決まりと同じ考え）。
+  顔を描かない水彩の挿絵だけを載せる。黒い面や四角い枠で囲まない（遺影に見せない）。
+*/
+
+:root {
+  --ink: #1b2a3f;
+  --sub: #5b6678;
+  --line: #d9dee6;
+  --sun: #e9c46a;
+  --sun-soft: #fbf3dc;
+  --paper: #fffdf8;
+  --body-font: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  --hand: "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho NK-R", "Yu Mincho", serif;
+  --ui-font: "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #f2f1ec; color: var(--ink); font: 16px/1.7 var(--ui-font); }
+
+.page { max-width: 1040px; margin: 0 auto; padding: 0 16px 40px; }
+.page h1 { font-size: 22px; margin: 18px 0 6px; }
+/* 画面の説明の文は、本文と同じく16px以上にする（CLAUDE.md の画面の方針） */
+.page .hint { color: var(--sub); font-size: 16px; }
+.page .error { color: #a12b2b; }
+.page .notice { background: var(--sun-soft); border-left: 4px solid var(--sun); padding: 8px 12px; }
+.page-logo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: 1040px; margin: 12px auto 0; padding: 0 16px; }
+.page-logo img { display: block; width: 263px; max-width: 100%; height: auto; }
+.page-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+button, select { min-height: 44px; padding: 0 18px; font: inherit; border: 1px solid var(--ink); background: #fff; color: var(--ink); border-radius: 8px; cursor: pointer; }
+button.primary { background: var(--ink); color: #fff; }
+button:disabled { opacity: 0.5; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+
+/* 手紙の一覧 */
+.letter-list { list-style: none; padding: 0; margin: 8px 0 18px; display: grid; gap: 8px; }
+.letter-list li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.letter-list .chip { font-size: 16px; padding: 2px 10px; border-radius: 999px; background: #eef1f5; }
+.letter-list .chip.returned { background: var(--sun-soft); }
+
+/* 紙 */
+.paper {
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 12px auto;
+  padding: 18mm 20mm 16mm;
+  background: var(--paper);
+  box-shadow: 0 2px 14px rgba(27, 42, 63, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+.paper-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.paper-to { font-family: var(--body-font); font-size: 22px; margin: 0; }
+.paper-date { font-size: 16px; color: var(--sub); }
+.paper-art { margin: 8mm auto 6mm; text-align: center; }
+.paper-art img { display: block; max-width: 100%; max-height: var(--art-height, 82mm); margin: 0 auto; mix-blend-mode: multiply; }
+/* 挿絵がないときは、陽だまりの淡いにじみだけを置く。四角い枠にしない */
+.paper-art.empty { height: 18mm; background: radial-gradient(ellipse at 50% 60%, rgba(233, 196, 106, 0.28), rgba(233, 196, 106, 0) 65%); }
+.paper-body { font-family: var(--body-font); font-size: var(--body-size, 12.5pt); line-height: var(--body-line, 2.05); white-space: pre-wrap; margin: 0; flex: 0 0 auto; }
+.paper-requests { margin: 7mm 0 0; }
+.paper-requests h2 { font-family: var(--body-font); font-size: 13pt; margin: 0 0 2mm; }
+.paper-requests ul { margin: 0; padding-left: 1.4em; font-family: var(--body-font); font-size: 12pt; line-height: 1.9; }
+.paper-quote { margin: 6mm 0 0; padding-left: 4mm; border-left: 2px solid var(--sun); font-size: 11pt; }
+.paper-quote .lead { color: var(--sub); font-size: 10pt; display: block; }
+.paper-quote .words { font-family: var(--hand); }
+.paper-foot { margin-top: auto; padding-top: 5mm; border-top: 1px solid var(--line); font-size: 16px; color: var(--sub); }
+.paper-foot .label { color: var(--ink); font-weight: 700; margin: 0; }
+
+/* 確かめる画面で直すところ */
+.paper textarea.paper-body { width: 100%; min-height: 110mm; border: 1px dashed var(--line); background: #fff; padding: 3mm; resize: vertical; field-sizing: content; }
+.paper input.request { width: 100%; font-family: var(--body-font); font-size: 12pt; border: 1px dashed var(--line); padding: 2mm; margin: 1mm 0; background: #fff; }
+
+/* 画面だけに出す材料 */
+.screen-only { max-width: 210mm; margin: 0 auto; }
+.screen-only h2 { font-size: 16px; margin: 14px 0 6px; }
+.screen-only li { margin: 4px 0; }
+
+/* 本人とご家族の画面は字を大きくする */
+.check-page { font-size: 18px; }
+.check-page button { min-height: 52px; font-size: 18px; }
+
+@media (max-width: 640px) {
+  .paper { min-height: auto; padding: 18px 16px; }
+  .paper-art img { max-height: 50vw; }
+}
+
+@page { size: A4; margin: 0; }
+@media print {
+  body { background: #fff; }
+  .page-logo, .actions, .letter-list, .page > h1, .page > .hint, .screen-only, .no-print { display: none !important; }
+  .page { padding: 0; max-width: none; }
+  .paper { margin: 0; box-shadow: none; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; }
+  /* 画面では 16px にした日付を、紙では元の大きさにする */
+  .paper-date { font-size: 10pt; }
+  .paper-foot { font-size: 10.5pt; }
+}

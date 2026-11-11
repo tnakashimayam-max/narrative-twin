@@ -1,0 +1,166 @@
+{
+ "round": 8,
+ "run": "r4",
+ "split": "dev",
+ "cases": 18,
+ "answers": 28,
+ "failed": 0,
+ "by_method": {
+  "selfhood": {
+   "same_decision": 0.667,
+   "same_reason": 0.333,
+   "voice": 0.639,
+   "no_fabrication": 0.583,
+   "total": 0.555
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.556,
+   "same_reason": 0.306,
+   "voice": 0.639,
+   "no_fabrication": 0.528,
+   "total": 0.507
+  },
+  "2031-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.25,
+   "voice": 0.562,
+   "no_fabrication": 0.562,
+   "total": 0.469
+  },
+  "2034-12-31": {
+   "same_decision": 0.75,
+   "same_reason": 0.25,
+   "voice": 0.75,
+   "no_fabrication": 0.75,
+   "total": 0.625
+  }
+ },
+ "growth_same_cases": {
+  "cases": 2,
+  "2028-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 1.0,
+   "no_fabrication": 0.75,
+   "total": 0.562
+  },
+  "2031-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.5
+  },
+  "2034-12-31": {
+   "same_decision": 0.75,
+   "same_reason": 0.25,
+   "voice": 0.75,
+   "no_fabrication": 0.75,
+   "total": 0.625
+  }
+ },
+ "bible": {
+  "score": 0.55,
+  "counts": {
+   "当たり": 15,
+   "一部": 14,
+   "触れていない": 11
+  },
+  "by_kind": {
+   "価値": {
+    "当たり": 4,
+    "一部": 4
+   },
+   "決め方": {
+    "一部": 3,
+    "触れていない": 3,
+    "当たり": 2
+   },
+   "関係": {
+    "触れていない": 3,
+    "当たり": 4,
+    "一部": 1
+   },
+   "人生": {
+    "一部": 6,
+    "当たり": 1,
+    "触れていない": 2
+   },
+   "話し方": {
+    "当たり": 4,
+    "触れていない": 3
+   }
+  },
+  "misses": [
+   {
+    "number": 10,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 15,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 17,
+    "verdict": "触れていない",
+    "note": "投稿と返信の日課はない。安全をめぐる衝突も美穂さんとは書かれていない。"
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 24,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 28,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 33,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 40,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ },
+ "cost_usd": {
+  "答え合わせの判定": 0.9436,
+  "問いを読む": 0.0092,
+  "ツインのアドボカシー": 1.1651
+ },
+ "cost_total_usd": 2.118
+}

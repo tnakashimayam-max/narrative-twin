@@ -1,0 +1,167 @@
+{
+ "round": 0,
+ "run": "r2",
+ "split": "dev",
+ "cases": 18,
+ "answers": 64,
+ "failed": 0,
+ "by_method": {
+  "selfhood": {
+   "same_decision": 0.464,
+   "same_reason": 0.339,
+   "voice": 0.5,
+   "no_fabrication": 0.464,
+   "total": 0.442
+  },
+  "bm25": {
+   "same_decision": 0.389,
+   "same_reason": 0.222,
+   "voice": 0.5,
+   "no_fabrication": 0.694,
+   "total": 0.451
+  },
+  "model": {
+   "same_decision": 0.583,
+   "same_reason": 0.306,
+   "voice": 0.417,
+   "no_fabrication": 0.639,
+   "total": 0.486
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.528,
+   "same_reason": 0.389,
+   "voice": 0.5,
+   "no_fabrication": 0.444,
+   "total": 0.465
+  },
+  "2031-12-31": {
+   "same_decision": 0.312,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.438,
+   "total": 0.375
+  },
+  "2034-12-31": {
+   "same_decision": 0.5,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.5
+  }
+ },
+ "bible": {
+  "score": 0.45,
+  "counts": {
+   "一部": 16,
+   "触れていない": 13,
+   "当たり": 10,
+   "食い違い": 1
+  },
+  "by_kind": {
+   "価値": {
+    "一部": 5,
+    "触れていない": 2,
+    "当たり": 1
+   },
+   "決め方": {
+    "一部": 5,
+    "触れていない": 3
+   },
+   "関係": {
+    "一部": 3,
+    "当たり": 4,
+    "触れていない": 1
+   },
+   "人生": {
+    "一部": 3,
+    "当たり": 1,
+    "食い違い": 1,
+    "触れていない": 4
+   },
+   "話し方": {
+    "当たり": 4,
+    "触れていない": 3
+   }
+  },
+  "misses": [
+   {
+    "number": 4,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 5,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 10,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 12,
+    "verdict": "触れていない",
+    "note": "庭は正雄が刈るとあり、自分で草を抜いた話はない。"
+   },
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 27,
+    "verdict": "食い違い",
+    "note": "2024年に妻を看取ったとあるが、人物像は七回忌も済んでいると書き、年数が合わない。"
+   },
+   {
+    "number": 28,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 30,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 32,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 33,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 40,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ }
+}

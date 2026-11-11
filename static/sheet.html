@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  役割：1枚の紙の印刷できるページ（仮置き）。ツインの代弁を真ん中に置き、下に本人の言葉を載せる。
+  4つの極：4. 10年後に代弁する。
+  守る原則：3（ツインの文と記録を分ける）、8（「架空データ」を出す）、9（本人の言葉は記録の本文のまま）。
+  サーバーとのやり取りの取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1枚の紙</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <style>
+      :root {
+        --ink: #1b2a3f;
+        --sub: #566377;
+        --line: #d7dde6;
+        --accent: #b8860b;
+        --hand: "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho NK-R", "UD デジタル 教科書体 N-R", "Yu Mincho", serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f5f6f8; color: var(--ink); font: 16px/1.7 "Yu Gothic UI", "Hiragino Sans", sans-serif; }
+      main { max-width: 820px; margin: 16px auto; padding: 28px 32px; background: #fff; border: 1px solid var(--line); }
+      header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 2px solid var(--ink); padding-bottom: 6px; }
+      h1 { font-size: 20px; margin: 0; }
+      h2 { font-size: 15px; margin: 18px 0 6px; color: var(--sub); }
+      .tag { font-size: 13px; color: var(--sub); }
+      .now { font-size: 14px; color: var(--sub); margin: 8px 0 0; }
+      .claim { font-size: 19px; line-height: 1.8; margin: 14px 0 4px; padding: 14px 16px; border-left: 4px solid var(--accent); background: #fbf8ef; }
+      .label { font-size: 12.5px; color: var(--sub); margin: 0 0 8px; }
+      .topic { margin: 10px 0; }
+      .topic h3 { font-size: 15px; margin: 0; }
+      .topic p { margin: 2px 0; }
+      .quote { font-family: var(--hand); margin: 3px 0 3px 12px; padding-left: 10px; border-left: 2px solid var(--line); }
+      .quote small { display: block; font-family: "Yu Gothic UI", "Hiragino Sans", sans-serif; font-size: 12px; color: var(--sub); }
+      .plan { border: 1px solid var(--line); padding: 8px 12px; margin-top: 4px; }
+      .plan dt { font-weight: 700; font-size: 14px; }
+      .plan dd { margin: 0 0 6px; }
+      .pair { margin: 6px 0; }
+      .pair .asked { font-size: 14px; color: var(--sub); }
+      .pair .answer { font-family: var(--hand); font-size: 18px; }
+      .treasure { font-family: var(--hand); font-size: 19px; }
+      .empty { color: var(--sub); font-size: 14px; }
+      .actions { max-width: 820px; margin: 16px auto; display: flex; gap: 10px; flex-wrap: wrap; padding: 0 16px; }
+      button { min-height: 44px; padding: 0 18px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 6px; cursor: pointer; }
+      button.primary { background: var(--ink); color: #fff; }
+      .status { padding: 0 16px; max-width: 820px; margin: 0 auto; }
+      @media (max-width: 640px) { main { padding: 18px 16px; margin: 0; border: 0; } }
+      /* ロゴは画面だけに出す。紙が A4 1枚に収まる形を変えないため */
+      @media print { .page-logo { display: none; } }
+      @media screen { .page-logo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: 1040px; margin: 12px auto 0; padding: 0 16px; } .page-logo img { display: block; width: 263px; max-width: 100%; height: auto; } .page-nav { display: flex; flex-wrap: wrap; gap: 8px; } .page-nav button { margin: 0; } }
+    </style>
+    <link id="print-style" rel="stylesheet" href="sheet-print.css" media="print" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body data-look="modern">
+    <div class="page-logo"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <div class="actions">
+      <button type="button" id="make" class="primary" data-tip="ツイン（AI）が記録を読んで、代弁の1枚の紙を書きます">紙を作る</button>
+      <button type="button" id="again" data-tip="今の記録から、1枚の紙を新しく書き直します">作り直す</button>
+      <button type="button" id="print" data-tip="印刷の窓を開きます。PDF にも残せます">印刷する</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+    <main id="sheet"></main>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="sheet.js"></script>
+  </body>
+</html>

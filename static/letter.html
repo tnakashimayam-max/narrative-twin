@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  役割：専門職が手紙を頼み、返ってきた手紙を読んで印刷するページ。
+  4つの極：4. 10年後に代弁する。
+  守る原則：1（返すか出さないかは本人とご家族が決める）、12（紙に必ず「ツイン（AI）」と出す）。
+  確かめを経ていない手紙の中身は、サーバーが返さない。取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>手紙を作る</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <link rel="stylesheet" href="letter-print.css" />
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body data-look="modern">
+    <div class="page-logo"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <div class="page">
+      <h1 class="page-title">手紙を作る</h1>
+      <p class="hint">ツイン（AI）が、本人の今の暮らしと今の気持ちを、本人に代わって A4 1枚の手紙に書きます。ご本人かご家族が読んで修正してから、ここに届きます。</p>
+      <div class="actions">
+        <label>目的
+          <select id="purpose">
+            <option>今月の様子</option>
+            <option>会議の前に</option>
+            <option>新しい人が来る前に</option>
+            <option>そのほか</option>
+          </select>
+        </label>
+        <button type="button" id="make" class="primary" data-tip="ツイン（AI）が下書きを書き、本人か家族が修正してから届きます">手紙を頼む</button>
+        <button type="button" id="print" data-tip="手紙を紙1枚に合わせて、印刷の窓を開きます" hidden>印刷する</button>
+      </div>
+      <p class="hint" id="status" role="status"></p>
+      <ul class="letter-list" id="list" aria-label="頼んだ手紙"></ul>
+      <div id="paper"></div>
+      <section class="screen-only" id="material"></section>
+    </div>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="letter.js"></script>
+  </body>
+</html>

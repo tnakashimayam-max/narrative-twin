@@ -1,0 +1,19 @@
+.env
+.venv
+__pycache__
+*.db
+*.sqlite
+data/trial/
+data/mine/
+data/fresh/
+data/photos/
+data/demo_photos/
+logs/
+*.db-wal
+*.db-shm
+.playwright-mcp/
+*.db.before_*
+.claude/worktrees/
+# 専門職が取り込んだ資料（PDF）。架空の見本は fiction/documents/ に置く
+data/**/documents/
+data/documents/

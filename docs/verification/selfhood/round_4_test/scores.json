@@ -1,0 +1,157 @@
+{
+ "round": 4,
+ "run": "r3",
+ "split": "test",
+ "cases": 8,
+ "answers": 28,
+ "failed": 0,
+ "by_method": {
+  "bm25": {
+   "same_decision": 0.5,
+   "same_reason": 0.312,
+   "voice": 0.5,
+   "no_fabrication": 0.562,
+   "total": 0.469
+  },
+  "model": {
+   "same_decision": 0.688,
+   "same_reason": 0.5,
+   "voice": 0.438,
+   "no_fabrication": 0.562,
+   "total": 0.547
+  },
+  "selfhood": {
+   "same_decision": 0.625,
+   "same_reason": 0.438,
+   "voice": 0.625,
+   "no_fabrication": 0.625,
+   "total": 0.578
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.75,
+   "same_reason": 0.438,
+   "voice": 0.562,
+   "no_fabrication": 0.625,
+   "total": 0.594
+  },
+  "2031-12-31": {
+   "same_decision": 0.625,
+   "same_reason": 0.5,
+   "voice": 0.625,
+   "no_fabrication": 0.625,
+   "total": 0.594
+  },
+  "2034-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.0,
+   "voice": 0.0,
+   "no_fabrication": 0.0,
+   "total": 0.0
+  }
+ },
+ "growth_same_cases": {
+  "cases": 0,
+  "2028-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.0,
+   "voice": 0.0,
+   "no_fabrication": 0.0,
+   "total": 0.0
+  },
+  "2031-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.0,
+   "voice": 0.0,
+   "no_fabrication": 0.0,
+   "total": 0.0
+  },
+  "2034-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.0,
+   "voice": 0.0,
+   "no_fabrication": 0.0,
+   "total": 0.0
+  }
+ },
+ "bible": {
+  "score": 0.662,
+  "counts": {
+   "当たり": 19,
+   "一部": 15,
+   "触れていない": 5,
+   "食い違い": 1
+  },
+  "by_kind": {
+   "価値": {
+    "当たり": 5,
+    "一部": 3
+   },
+   "決め方": {
+    "当たり": 3,
+    "一部": 4,
+    "触れていない": 1
+   },
+   "関係": {
+    "一部": 2,
+    "当たり": 4,
+    "触れていない": 2
+   },
+   "人生": {
+    "一部": 6,
+    "食い違い": 1,
+    "当たり": 2
+   },
+   "話し方": {
+    "当たり": 5,
+    "触れていない": 2
+   }
+  },
+  "misses": [
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 24,
+    "verdict": "触れていない",
+    "note": "『怒らない和子さん』はあるが、この言葉や笑って受け止める描写はない。"
+   },
+   {
+    "number": 27,
+    "verdict": "食い違い",
+    "note": "妻を亡くしたのは『五年ほど前』とされ、2024年11月の看取りと合わない。"
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ },
+ "cost_usd": {
+  "基本の答え": 0.4649,
+  "答え合わせの判定": 0.6436,
+  "問いを読む": 0.0022,
+  "ツインのアドボカシー": 0.542
+ },
+ "cost_total_usd": 1.653
+}

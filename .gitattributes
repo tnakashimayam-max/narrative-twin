@@ -1,0 +1,5 @@
+# 架空データは生成物として扱う。言語の集計から外し、差分を畳む（コードが埋もれないように）
+data/** linguist-generated=true
+data/README.md linguist-generated=false
+# 外から持ち込んだ three.js は手を入れないので、改行を変えず、言語の集計から外す
+static/vendor/** -text linguist-vendored=true

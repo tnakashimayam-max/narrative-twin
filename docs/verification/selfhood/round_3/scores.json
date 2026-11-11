@@ -1,0 +1,162 @@
+{
+ "round": 3,
+ "run": "r3",
+ "split": "dev",
+ "cases": 18,
+ "answers": 64,
+ "failed": 0,
+ "by_method": {
+  "model": {
+   "same_decision": 0.528,
+   "same_reason": 0.306,
+   "voice": 0.472,
+   "no_fabrication": 0.667,
+   "total": 0.493
+  },
+  "selfhood": {
+   "same_decision": 0.556,
+   "same_reason": 0.389,
+   "voice": 0.583,
+   "no_fabrication": 0.556,
+   "total": 0.521
+  },
+  "bm25": {
+   "same_decision": 0.389,
+   "same_reason": 0.194,
+   "voice": 0.556,
+   "no_fabrication": 0.722,
+   "total": 0.465
+  }
+ },
+ "selfhood_by_cut": {
+  "2028-12-31": {
+   "same_decision": 0.528,
+   "same_reason": 0.361,
+   "voice": 0.583,
+   "no_fabrication": 0.583,
+   "total": 0.514
+  },
+  "2031-12-31": {
+   "same_decision": 0.438,
+   "same_reason": 0.312,
+   "voice": 0.562,
+   "no_fabrication": 0.5,
+   "total": 0.453
+  },
+  "2034-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.375
+  }
+ },
+ "growth_same_cases": {
+  "cases": 2,
+  "2028-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.5,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.5
+  },
+  "2031-12-31": {
+   "same_decision": 0.25,
+   "same_reason": 0.25,
+   "voice": 0.75,
+   "no_fabrication": 0.75,
+   "total": 0.5
+  },
+  "2034-12-31": {
+   "same_decision": 0.0,
+   "same_reason": 0.25,
+   "voice": 0.5,
+   "no_fabrication": 0.75,
+   "total": 0.375
+  }
+ },
+ "bible": {
+  "score": 0.6,
+  "counts": {
+   "当たり": 15,
+   "一部": 18,
+   "触れていない": 7
+  },
+  "by_kind": {
+   "価値": {
+    "当たり": 4,
+    "一部": 3,
+    "触れていない": 1
+   },
+   "決め方": {
+    "一部": 5,
+    "当たり": 2,
+    "触れていない": 1
+   },
+   "関係": {
+    "一部": 3,
+    "当たり": 3,
+    "触れていない": 2
+   },
+   "人生": {
+    "一部": 7,
+    "触れていない": 1,
+    "当たり": 1
+   },
+   "話し方": {
+    "当たり": 5,
+    "触れていない": 2
+   }
+  },
+  "misses": [
+   {
+    "number": 4,
+    "verdict": "触れていない",
+    "note": "人混み嫌いはあるが、大浴場や家族風呂は出てこない。"
+   },
+   {
+    "number": 16,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 22,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 24,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 28,
+    "verdict": "触れていない",
+    "note": "免許返納は本人から聞いていないとされている。"
+   },
+   {
+    "number": 38,
+    "verdict": "触れていない",
+    "note": ""
+   },
+   {
+    "number": 39,
+    "verdict": "触れていない",
+    "note": ""
+   }
+  ]
+ },
+ "guard": {
+  "selfhood": [],
+  "answers": [],
+  "type_words": [],
+  "health_words": []
+ },
+ "cost_usd": {
+  "基本の答え": 1.0335,
+  "答え合わせの判定": 1.4028,
+  "問いを読む": 0.008,
+  "ツインのアドボカシー": 1.1549
+ },
+ "cost_total_usd": 3.599
+}

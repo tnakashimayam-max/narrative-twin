@@ -1,0 +1,75 @@
+<!doctype html>
+<!--
+  役割：架空のケアプラン（居宅サービス計画書の第1表と第2表を簡単にしたもの）。資料の取り込みとケアプランのチェックの試しと動画に使う。
+  守る原則：8（提出物とデモは架空）。人も事業所も架空で、実在の様式の写しではない。
+  わざと、本人のセルフとずれる中身にしている（通所の希望、通所での入浴）。ツインのチェックが見どころになるようにするため。
+  PDF は fiction/documents/make_pdfs.py で作る。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>居宅サービス計画書（架空）</title>
+    <style>
+      @page { size: A4; margin: 14mm; }
+      body { font: 10.5pt/1.6 "Yu Gothic", "Hiragino Sans", sans-serif; color: #111; margin: 0; }
+      .sheet { width: 182mm; margin: 0 auto; }
+      h1 { font-size: 15pt; text-align: center; margin: 0 0 2mm; }
+      .fiction { text-align: center; font-size: 9pt; color: #555; margin: 0 0 4mm; }
+      table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; }
+      th, td { border: 1px solid #333; padding: 1.6mm 2mm; vertical-align: top; text-align: left; }
+      th { background: #f0f0f0; font-weight: 600; width: 34mm; }
+      .grid th { width: auto; text-align: center; }
+      .page-break { page-break-before: always; }
+      .small { font-size: 9pt; }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <h1>居宅サービス計画書（1）</h1>
+      <p class="fiction">架空の資料です（Narrative Twin のデモ用）</p>
+      <table>
+        <tr><th>利用者名</th><td>誠一 様</td><th>作成年月日</th><td>2036年5月1日</td></tr>
+        <tr><th>計画作成者</th><td>田中（ひだまり居宅介護支援センター）</td><th>要介護状態区分</th><td>要介護1</td></tr>
+      </table>
+      <table>
+        <tr>
+          <th>利用者及び家族の生活に対する意向</th>
+          <td>
+            本人：デイサービスに通って、友人を作りたい。<br />
+            家族（長女）：一人暮らしが心配。日中は人の目があるところで過ごしてほしい。
+          </td>
+        </tr>
+        <tr>
+          <th>総合的な援助の方針</th>
+          <td>通所介護で人と交流する機会をつくり、閉じこもりを防ぐ。入浴は通所介護で行い、転倒を防ぐ。夕方の調理は訪問介護が見守る。服薬は長女が週末に確かめる。</td>
+        </tr>
+      </table>
+      <p class="small">本計画の内容について説明を受け、同意しました。　利用者署名欄・家族署名欄（省略）</p>
+
+      <h1 class="page-break">居宅サービス計画書（2）</h1>
+      <p class="fiction">架空の資料です（Narrative Twin のデモ用）</p>
+      <table class="grid">
+        <tr><th>生活全般の解決すべき課題（ニーズ）</th><th>長期目標</th><th>短期目標</th><th>サービス内容／頻度</th></tr>
+        <tr>
+          <td>人との交流が少なく、日中は一人で過ごしている。</td>
+          <td>地域の人とつながって暮らす。</td>
+          <td>週2回、通所介護に通う。</td>
+          <td>通所介護　週2回（月・木）</td>
+        </tr>
+        <tr>
+          <td>炊飯の手順が抜けることがあり、夕食の準備に不安がある。</td>
+          <td>安全に食事の用意ができる。</td>
+          <td>夕方の調理を見守ってもらう。</td>
+          <td>訪問介護　週3回（夕方、調理の見守り）</td>
+        </tr>
+        <tr>
+          <td>一人での入浴時に転倒しないか心配である。</td>
+          <td>安全に入浴できる。</td>
+          <td>通所介護で入浴する。</td>
+          <td>通所介護での入浴　週2回</td>
+        </tr>
+      </table>
+      <p class="small">訪問時の様子（4月28日）：台所はよく片付いていた。炊飯器の最後のボタンを押せていない日があると、本人から聞いた。本人は「家の中に知らん人が入るのは好かん」と話した。</p>
+    </div>
+  </body>
+</html>

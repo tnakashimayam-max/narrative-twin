@@ -1,0 +1,269 @@
+{
+  "id": "face_sheet",
+  "title": "フェイスシート",
+  "use": "本人の基本の情報、医療機関、連絡先、心身と暮らしの様子、生活歴を1枚にまとめる書式。",
+  "choice_sets": {},
+  "sections": [
+    {
+      "title": "作成",
+      "fields": [
+        {
+          "name": "作成日",
+          "type": "date"
+        },
+        {
+          "name": "作成者",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "利用者基本情報",
+      "fields": [
+        {
+          "name": "氏名",
+          "type": "text"
+        },
+        {
+          "name": "フリガナ",
+          "type": "text"
+        },
+        {
+          "name": "性別",
+          "type": "select",
+          "choices": [
+            "男性",
+            "女性"
+          ]
+        },
+        {
+          "name": "生年月日",
+          "type": "date"
+        },
+        {
+          "name": "郵便番号",
+          "type": "text"
+        },
+        {
+          "name": "住所",
+          "type": "text"
+        },
+        {
+          "name": "電話番号",
+          "type": "text"
+        },
+        {
+          "name": "介護度",
+          "type": "select",
+          "choices": [
+            "自立",
+            "暫定",
+            "事業対象者",
+            "要支援1",
+            "要支援2",
+            "要介護1",
+            "要介護2",
+            "要介護3",
+            "要介護4",
+            "要介護5"
+          ]
+        },
+        {
+          "name": "認定期間開始",
+          "type": "date"
+        },
+        {
+          "name": "認定期間終了",
+          "type": "date"
+        },
+        {
+          "name": "居宅介護支援事業所",
+          "type": "text"
+        },
+        {
+          "name": "担当ケアマネジャー",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "医療",
+      "fields": [
+        {
+          "name": "かかりつけ医療機関",
+          "type": "group",
+          "repeat": 3,
+          "fields": [
+            {
+              "name": "医療機関",
+              "type": "text"
+            },
+            {
+              "name": "主治医",
+              "type": "text"
+            },
+            {
+              "name": "連絡先",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "name": "病名・既往歴",
+          "type": "group",
+          "repeat": 6,
+          "medical": true,
+          "fields": [
+            {
+              "name": "病名",
+              "type": "text"
+            },
+            {
+              "name": "発症時期",
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "支援者",
+      "fields": [
+        {
+          "name": "支援者連絡先",
+          "type": "group",
+          "repeat": 3,
+          "fields": [
+            {
+              "name": "氏名",
+              "type": "text"
+            },
+            {
+              "name": "続柄",
+              "type": "text"
+            },
+            {
+              "name": "住所",
+              "type": "text"
+            },
+            {
+              "name": "電話番号",
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "自立度",
+      "fields": [
+        {
+          "name": "障害高齢者の日常生活自立度",
+          "type": "text"
+        },
+        {
+          "name": "認知症高齢者の日常生活自立度",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "title": "緊急連絡先",
+      "fields": [
+        {
+          "name": "緊急連絡先",
+          "type": "group",
+          "repeat": 3,
+          "fields": [
+            {
+              "name": "氏名",
+              "type": "text"
+            },
+            {
+              "name": "続柄",
+              "type": "text"
+            },
+            {
+              "name": "住所",
+              "type": "text"
+            },
+            {
+              "name": "電話番号",
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "心身・生活状況",
+      "fields": [
+        {
+          "name": "移動",
+          "type": "long_text"
+        },
+        {
+          "name": "食事",
+          "type": "long_text"
+        },
+        {
+          "name": "排泄",
+          "type": "long_text"
+        },
+        {
+          "name": "入浴",
+          "type": "long_text"
+        },
+        {
+          "name": "身の回り",
+          "type": "long_text"
+        },
+        {
+          "name": "意思疎通",
+          "type": "long_text"
+        },
+        {
+          "name": "周辺症状",
+          "type": "long_text"
+        },
+        {
+          "name": "その他心身状況",
+          "type": "long_text"
+        },
+        {
+          "name": "現在利用中の介護サービス",
+          "type": "long_text"
+        }
+      ]
+    },
+    {
+      "title": "総合情報・生活歴",
+      "fields": [
+        {
+          "name": "要望・訴え",
+          "type": "long_text"
+        },
+        {
+          "name": "住環境",
+          "type": "long_text"
+        },
+        {
+          "name": "生活歴",
+          "type": "long_text"
+        },
+        {
+          "name": "家族関係",
+          "type": "long_text"
+        },
+        {
+          "name": "概要",
+          "type": "long_text"
+        },
+        {
+          "name": "自由記述",
+          "type": "long_text"
+        }
+      ]
+    }
+  ]
+}

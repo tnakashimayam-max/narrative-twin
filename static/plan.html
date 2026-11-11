@@ -1,0 +1,69 @@
+<!doctype html>
+<!--
+  役割：ケアプラン案へのツインの異議のページ（仮置き）。第1版、異議、第2版を並べる。
+  4つの極：4. 10年後に代弁する。
+  守る原則：3（ツインの文と記録を分ける）、5（前の版を残す）、9（本人の言葉は記録の本文のまま）。
+  サーバーとのやり取りの取り決めは docs/api.md にある。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ケアプラン案</title>
+    <link rel="icon" type="image/svg+xml" href="brand/narrativetwin-favicon-light.svg" />
+    <style>
+      :root {
+        --ink: #1b2a3f;
+        --sub: #566377;
+        --line: #d7dde6;
+        --accent: #b8860b;
+        --hand: "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho NK-R", "UD デジタル 教科書体 N-R", "Yu Mincho", serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f5f6f8; color: var(--ink); font: 16px/1.7 "Yu Gothic UI", "Hiragino Sans", sans-serif; }
+      main { max-width: 1040px; margin: 16px auto; padding: 0 16px 40px; }
+      h1 { font-size: 20px; margin: 8px 0 12px; }
+      h2 { font-size: 16px; margin: 0 0 6px; }
+      h3 { font-size: 15px; margin: 12px 0 2px; }
+      section { background: #fff; border: 1px solid var(--line); padding: 16px; margin: 0 0 14px; }
+      textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); }
+      button { min-height: 44px; padding: 0 18px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 6px; cursor: pointer; margin: 6px 6px 0 0; }
+      button.primary { background: var(--ink); color: #fff; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .hint { font-size: 13px; color: var(--sub); margin: 0 0 6px; }
+      .claim { padding: 10px 14px; border-left: 4px solid var(--accent); background: #fbf8ef; margin: 6px 0; }
+      .quote { font-family: var(--hand); margin: 3px 0 3px 12px; padding-left: 10px; border-left: 2px solid var(--line); }
+      .quote small { display: block; font-family: "Yu Gothic UI", "Hiragino Sans", sans-serif; font-size: 12px; color: var(--sub); }
+      .item { margin: 8px 0; }
+      .item strong { display: block; }
+      .own-word { font-family: var(--hand, inherit); margin: 4px 0; }
+      .own-word small { font-family: inherit; }
+      .error { color: #a4262c; }
+      .chosen { font-weight: 700; }
+      @media (max-width: 760px) { .compare { grid-template-columns: 1fr; } }
+      /* ロゴは画面だけに出す。紙が A4 1枚に収まる形を変えないため */
+      @media print { .page-logo { display: none; } }
+      @media screen { .page-logo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: 1040px; margin: 12px auto 0; padding: 0 16px; } .page-logo img { display: block; width: 263px; max-width: 100%; height: auto; } .page-nav { display: flex; flex-wrap: wrap; gap: 8px; } .page-nav button { margin: 0; } }
+    </style>
+      <!-- アプリの本体と見出しの帯・地・主なボタンをそろえる（ページの CSS のあとに読む） -->
+    <link rel="stylesheet" href="page-frame.css" />
+  </head>
+  <body data-look="modern">
+    <div class="page-logo"><img src="brand/narrativetwin-logo-on-dark.svg" alt="Narrative Twin" width="263" height="44" /><nav class="page-nav" aria-label="ほかの画面へ"></nav></div>
+    <main>
+      <h1 class="page-title">ケアプラン案（ツイン（AI）に見せる）</h1>
+      <section id="start">
+        <h2>第1版を入れる</h2>
+        <p class="hint">案を入れるか、空のまま押すと、本人の言葉を読まずに AI が一般的な案を作ります。</p>
+        <textarea id="text" rows="3" maxlength="2000" aria-label="ケアプランの案" placeholder="例：週2回のデイサービスと配食弁当"></textarea>
+        <button type="button" id="make" class="primary" data-tip="書いた案を第1版にします（空なら AI が一般的な案を作ります）">第1版にする</button>
+        <button type="button" id="example" data-tip="前のケアマネジャーが勧めた案を入れて、第1版から始めます">「週2回のデイサービスと配食弁当」で始める</button>
+      </section>
+      <p id="status" role="status"></p>
+      <div id="plan"></div>
+    </main>
+    <script type="module" src="page_nav.js"></script>
+    <script type="module" src="plan.js"></script>
+  </body>
+</html>

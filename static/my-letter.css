@@ -1,0 +1,173 @@
+/*
+  役割：本人が手紙を書くページ（my_letter.html）の見た目。便箋の紙に、挿絵と明朝の字で手紙を出す。
+  守る原則：画面の字は16px以上、押す所は44px以上（CLAUDE.md の画面の方針）。手紙の本文は18px。
+  色は藍と陽だまり。紙はあたたかい白で、便箋の罫線を引く。
+*/
+
+:root {
+  --ink: #23262b;
+  --sub: #5a5f69;
+  --ai: #27507f;
+  --ai-deep: #1b3a5e;
+  --ai-soft: #eaf0f8;
+  --sun: #e9c46a;
+  --sun-soft: #fbf1d6;
+  --sun-ink: #6b4a00;
+  --linen: #efe8da;
+  --paper: #fffdf6;
+  --paper-edge: #e3d7bd;
+  --rule: #ece2cb;
+  --line: #d9d2c3;
+  --letter-font: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  --ui-font: "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --letter-size: 18px;
+  --letter-line: 2.1;
+}
+
+* { box-sizing: border-box; }
+/* hidden の付いた部品は、display を指定していても出さない（期間の欄、本人のほかの人の画面の切り替え） */
+[hidden] { display: none !important; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #f7f2e7, var(--linen) 70%); color: var(--ink); font: 16px/1.7 var(--ui-font); }
+
+.page-logo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: 860px; margin: 12px auto 0; padding: 0 16px; }
+.page-logo img { display: block; width: 220px; max-width: 60%; height: auto; }
+.page-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.page-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* PC版とスマホ版の切り替え（static/device.js が作る）。アプリの画面の切り替えと同じ形 */
+.device-switch { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
+.device-switch button { min-width: 56px; min-height: 44px; padding: 0 14px; border: none; border-radius: 999px; background: transparent; color: var(--ai-deep); white-space: nowrap; }
+.device-switch button:hover { background: var(--ai-soft); }
+.device-switch button[aria-pressed="true"] { background: var(--ai); color: #fff; }
+
+button, select, input, textarea { font: inherit; color: inherit; }
+button { min-height: 48px; padding: 0 18px; border: 1px solid var(--ai); border-radius: 10px; background: #fff; color: var(--ai-deep); font-weight: 600; cursor: pointer; }
+button:hover { background: var(--ai-soft); }
+button.primary { background: var(--ai); color: #fff; border-color: var(--ai); }
+button.primary:hover { background: var(--ai-deep); }
+button.quiet { border-color: var(--line); color: var(--sub); font-weight: 500; }
+button:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, label:focus-within { outline: 3px solid color-mix(in srgb, var(--ai) 55%, transparent); outline-offset: 2px; }
+
+.ml-page { max-width: 860px; margin: 0 auto; padding: 8px 16px 48px; }
+.ml-head h1 { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; font-family: var(--letter-font); font-size: 30px; letter-spacing: 0.08em; }
+.ml-head p { margin: 0 0 14px; color: var(--sub); }
+/* 封筒の印。手紙のページだと一目で分かるように */
+.ml-mark { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--sun-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2327507f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h18v12H3z'/%3E%3Cpath d='M3 7l9 6 9-6'/%3E%3C/svg%3E") center / 26px no-repeat; box-shadow: inset 0 0 0 1px var(--sun); }
+
+.ml-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 14px; }
+.ml-switch button { min-height: 60px; border-radius: 14px; font-size: 18px; }
+.ml-switch button[aria-pressed="true"] { background: var(--ai); color: #fff; box-shadow: 0 6px 16px -10px var(--ai); }
+
+.ml-status { margin: 0 0 12px; padding: 10px 14px; border-left: 4px solid var(--ai); border-radius: 8px; background: var(--ai-soft); color: var(--ai-deep); }
+.ml-status:empty { display: none; }
+.ml-error { border-left-color: #a12b2b; background: #fbeaea; color: #7a1f1f; }
+
+/* ---- 書く ---- */
+.ml-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 20px; box-shadow: 0 8px 24px -18px rgba(60, 40, 10, 0.5); }
+.ml-step { margin: 0 0 18px; padding: 0; border: 0; }
+.ml-step legend, .ml-step > .ml-step-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+.ml-step-no { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--ai); color: #fff; font-size: 16px; }
+.ml-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ml-chips label { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 16px; border: 1px solid var(--line); border-radius: 999px; background: #fff; cursor: pointer; }
+.ml-chips label:has(input:checked) { border-color: var(--ai); background: var(--ai-soft); color: var(--ai-deep); font-weight: 700; }
+.ml-chips input { accent-color: var(--ai); width: 18px; height: 18px; }
+.ml-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.ml-range input { min-height: 48px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.ml-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ml-person { position: relative; display: grid; gap: 2px; min-height: 64px; padding: 10px 12px 10px 40px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.ml-person input { position: absolute; left: 12px; top: 14px; width: 18px; height: 18px; accent-color: var(--ai); }
+.ml-person strong { font-size: 18px; }
+.ml-person span { color: var(--sub); }
+.ml-person:has(input:checked) { border: 2px solid var(--ai); background: var(--ai-soft); padding: 9px 11px 9px 39px; }
+.ml-outline { width: 100%; min-height: 6.5em; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fffef9; font-family: var(--letter-font); font-size: 17px; line-height: 1.9; resize: vertical; }
+.ml-make { width: 100%; min-height: 58px; font-size: 19px; border-radius: 14px; }
+.ml-note { margin: 6px 0 0; color: var(--sub); }
+
+/* ---- 紙 ---- */
+.ml-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 12px; color: var(--sub); }
+.ml-chip { display: inline-block; padding: 2px 12px; border-radius: 999px; background: var(--sun-soft); color: var(--sun-ink); font-weight: 700; }
+.ml-chip.sent { background: var(--ai-soft); color: var(--ai-deep); }
+.ml-paper { position: relative; margin: 0 auto 16px; padding: 30px 34px 22px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); box-shadow: 0 1px 0 #fff inset, 0 18px 40px -22px rgba(70, 45, 10, 0.55), 0 2px 6px -2px rgba(70, 45, 10, 0.18); }
+/* 紙の上の端に、陽だまりの細い帯 */
+.ml-paper::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; background: linear-gradient(90deg, transparent, var(--sun) 20%, var(--sun) 80%, transparent); opacity: 0.6; }
+.ml-date { margin: 0 0 6px; text-align: right; color: var(--sub); font-family: var(--letter-font); }
+.ml-art { margin: 4px auto 14px; text-align: center; }
+.ml-art img { display: block; max-width: 100%; max-height: 230px; margin: 0 auto; mix-blend-mode: multiply; }
+/* ツインが挿絵を描いている間は、前もって作った絵を薄くして、描いていることを添える */
+.ml-art.drawing img { opacity: 0.35; filter: saturate(0.6); transition: opacity 0.4s; }
+.ml-art-wait { margin-top: 6px; color: var(--ai-deep); font-family: var(--ui-font); font-size: 16px; }
+@media (prefers-reduced-motion: no-preference) {
+  .ml-art.drawing .ml-art-wait { animation: ml-breathe 2.4s ease-in-out infinite; }
+}
+@keyframes ml-breathe { 50% { opacity: 0.55; } }
+/* 便箋の罫線。字の大きさと行の高さに合わせて、1行ごとに線を引く */
+.ml-lines { font-family: var(--letter-font); font-size: var(--letter-size); line-height: var(--letter-line); background-image: linear-gradient(transparent calc(100% - 1px), var(--rule) calc(100% - 1px)); background-size: 100% calc(var(--letter-size) * var(--letter-line)); }
+.ml-lines p { margin: 0 0 calc(var(--letter-size) * var(--letter-line)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ml-lines .ml-to { margin: 0 0 calc(var(--letter-size) * var(--letter-line)); font-size: var(--letter-size); }
+.ml-lines .ml-body p { text-indent: 1em; }
+.ml-lines .ml-closing { margin-bottom: 0; }
+.ml-lines .ml-sign { margin: 0; text-align: right; padding-right: 1em; }
+.ml-foot { margin-top: 18px; padding-top: 10px; border-top: 1px dashed var(--paper-edge); color: var(--sub); }
+
+/* ---- 直す・校正・戻す ---- */
+.ml-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 14px; }
+.ml-actions .ml-send { margin-left: auto; background: var(--sun); border-color: #c99a2e; color: #3a2a00; }
+.ml-actions .ml-send:hover { background: #dfb54f; }
+.ml-proof { margin: 0 0 14px; padding: 12px 16px; border-left: 4px solid var(--sun); border-radius: 8px; background: var(--sun-soft); }
+.ml-proof h3 { margin: 0 0 4px; font-size: 17px; }
+.ml-proof ul { margin: 0 0 8px; padding-left: 1.3em; }
+.ml-edit { display: grid; gap: 12px; margin: 0 0 16px; padding: 18px; border: 1px solid var(--paper-edge); border-radius: 8px; background: var(--paper); }
+.ml-edit-title { margin: 0; font-family: var(--letter-font); font-size: 22px; }
+.ml-edit .ml-actions { margin: 4px 0 0; }
+.ml-edit label { display: grid; gap: 4px; font-weight: 700; }
+.ml-edit input, .ml-edit textarea { width: 100%; min-height: 48px; padding: 8px 12px; border: 1px dashed #c9bb98; border-radius: 6px; background: #fff; font-family: var(--letter-font); font-size: var(--letter-size); line-height: 1.9; font-weight: 400; }
+.ml-edit textarea { min-height: 18em; resize: vertical; field-sizing: content; }
+.ml-versions { margin: 6px 0 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.ml-versions summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.ml-versions ul { margin: 4px 0 6px; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ml-versions li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 6px 0; border-top: 1px solid #f0ebe0; }
+/* 下書きを捨てるボタン。押し間違えないよう、紙と版の一覧の下に離して置く */
+.ml-discard { display: flex; justify-content: flex-end; margin: 18px 0 0; padding-top: 14px; border-top: 1px dashed var(--line); }
+.ml-discard button { border-color: #c9a3a3; color: #7a1f1f; }
+.ml-discard button:hover { background: #fbeaea; }
+.ml-sent-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 8px; background: var(--ai-soft); color: var(--ai-deep); font-weight: 700; }
+
+/* ---- これまでの手紙 ---- */
+.ml-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ml-entry { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-left: 6px solid var(--sun); border-radius: 12px; background: var(--paper); color: var(--ink); font-weight: 400; text-align: left; }
+.ml-entry.sent { border-left-color: var(--ai); }
+.ml-entry:hover { background: #fffaf0; }
+.ml-entry-to { font-family: var(--letter-font); font-size: 20px; font-weight: 700; }
+.ml-entry-sub { grid-column: 1 / -1; color: var(--sub); }
+.ml-entry-first { grid-column: 1 / -1; font-family: var(--letter-font); font-size: 17px; color: #3d3a33; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ml-empty { padding: 28px 16px; text-align: center; color: var(--sub); }
+
+/* 幅の狭い画面と、スマホ版を選んだときの並べ方。どちらも同じ形にする */
+@media (max-width: 560px) {
+  .ml-paper { padding: 22px 18px 18px; }
+  .ml-switch button { font-size: 17px; }
+  .ml-actions .ml-send { margin-left: 0; }
+}
+
+body[data-device="phone"] .page-logo img { width: 170px; }
+body[data-device="phone"] .ml-head h1 { font-size: 26px; }
+body[data-device="phone"] .ml-paper { padding: 22px 18px 18px; }
+body[data-device="phone"] .ml-switch button { font-size: 17px; }
+body[data-device="phone"] .ml-people { grid-template-columns: 1fr 1fr; }
+body[data-device="phone"] .ml-actions > button { flex: 1 1 100%; }
+body[data-device="phone"] .ml-actions .ml-send { margin-left: 0; }
+body[data-device="phone"] .ml-art img { max-height: 180px; }
+
+/* スマホ版を広い画面で開くと、幅390pxで中央に置く。PC 1台で両方を確かめられるようにするため（アプリの画面と同じ） */
+@media (min-width: 480px) {
+  body[data-device="phone"] { background: #d8ccb3; }
+  body[data-device="phone"] .ml-frame { max-width: 390px; min-height: 100vh; margin: 0 auto; padding-top: 1px; background: radial-gradient(ellipse at 50% 0%, #f7f2e7, var(--linen) 70%); box-shadow: 0 0 24px rgba(39, 80, 127, 0.22); }
+}
+
+@media print {
+  body { background: #fff; }
+  .page-logo, .ml-head, .ml-switch, .ml-status, .ml-meta, .ml-actions, .ml-proof, .ml-versions, .ml-edit, .ml-discard { display: none !important; }
+  .ml-page { max-width: none; padding: 0; }
+  .ml-paper { box-shadow: none; border: 0; }
+}
